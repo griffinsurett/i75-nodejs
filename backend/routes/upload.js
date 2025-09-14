@@ -4,8 +4,8 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const { db } = require("../../config/database");
-const { images } = require("../../config/schema");
+const { db } = require("../config/database");
+const { images } = require("../config/schema");
 
 // Ensure upload dirs exist
 const UPLOAD_ROOT = path.resolve(process.cwd(), "uploads");

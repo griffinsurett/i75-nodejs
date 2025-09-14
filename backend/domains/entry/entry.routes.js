@@ -1,7 +1,7 @@
 // ==================== routes/entries.js ====================
 const express = require("express");
 const router = express.Router();
-const entryController = require("../../controllers/api/entry.controller");
+const entryController = require("./entry.controller");
 
 // CRUD Routes for Entries
 // GET /api/entries

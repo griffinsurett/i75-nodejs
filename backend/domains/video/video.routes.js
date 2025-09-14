@@ -1,7 +1,7 @@
-// ==================== routes/videos.js (NEW) ====================
+// ==================== routes/video.routes.js (NEW) ====================
 const express = require("express");
 const router = express.Router();
-const videoController = require("../../controllers/api/video.controller");
+const videoController = require("./video.controller");
 
 // GET /api/videos
 router.get("/", videoController.getAllVideos);

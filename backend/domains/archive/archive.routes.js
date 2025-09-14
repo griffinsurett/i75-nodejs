@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const archiveController = require("../../controllers/api/archive.controller");
+const archiveController = require("./archive.controller");
 
 // GET /api/archive
 router.get("/", archiveController.list);

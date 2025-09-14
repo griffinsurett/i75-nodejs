@@ -1,7 +1,7 @@
 // ==================== routes/instructors.js (UPDATED) ====================
 const express = require("express");
 const router = express.Router();
-const instructorController = require("../../controllers/api/instructor.controller");
+const instructorController = require("./instructor.controller");
 
 // GET /api/instructors
 router.get("/", instructorController.getAllInstructors);
