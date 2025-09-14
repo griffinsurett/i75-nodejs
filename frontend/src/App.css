@@ -1,0 +1,51 @@
+/* App.css */
+@import "tailwindcss";
+/* ───────────────────────────────────────────────────── */
+/* 0. CUSTOM VARIANTS FOR LIGHT + DARK                  */
+/* ───────────────────────────────────────────────────── */
+@custom-variant light  (&:where([data-theme="light"], [data-theme="light"] *));
+@custom-variant dark   (&:where([data-theme="dark"],  [data-theme="dark"]  *));
+
+@theme {
+  --color-primary-dark: var(--color-black);
+  --color-secondary-dark: var(--color-gray-900);
+  --color-tertiary-dark: var(--color-gray-600);
+  --color-quaternary-dark: var(--color-gray-400);
+  --color-primary-light: var(--color-white);
+  --color-secondary-light: var(--color-gray-100);
+  --color-tertiary-light: var(--color-gray-600);
+  --color-quaternary-light: var(--color-gray-400);
+  /* primary color */
+  --color-primary: #278476;
+
+  --color-bg: var(--color-primary-light);
+  --color-bg2: var(--color-secondary-light);
+  --color-bg3: var(--color-tertiary-light);
+  --color-bg4: var(--color-quaternary-light);
+  --color-border-primary: var(--color-secondary-light);
+  --color-heading: var(--color-primary-dark);
+  --color-text: var(--color-secondary-dark);
+}
+
+[data-theme="light"] {
+  --color-bg: var(--color-primary-light);
+  --color-bg2: var(--color-secondary-light);
+  --color-bg3: var(--color-tertiary-light);
+  --color-bg4: var(--color-quaternary-light);
+  --color-border-primary: var(--color-secondary-light);
+  --color-heading: var(--color-primary-dark);
+  --color-text: var(--color-secondary-dark);
+}
+[data-theme="dark"] {
+  --color-bg: var(--color-primary-dark);
+  --color-bg2: var(--color-secondary-dark);
+  --color-bg3: var(--color-tertiary-dark);
+  --color-bg4: var(--color-quaternary-dark);
+  --color-border-primary: var(--color-secondary-dark);
+  --color-heading: var(--color-primary-light);
+  --color-text: var(--color-secondary-light);
+}
+
+body {
+  @apply bg-bg text-text;
+}

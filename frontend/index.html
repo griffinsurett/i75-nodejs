@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="color-scheme" content="dark light" />
+
+    <title>Vite + React</title>
+     <!-- Let the UA know we support both schemes -->
+
+    <!-- Pre-paint theme/accent bootstrap (prevents flash of wrong theme) -->
+    <script>
+      (() => {
+        try {
+          const root = document.documentElement;
+
+          // Resolve theme: localStorage -> OS preference -> dark
+          const ls = localStorage.getItem("theme");
+          const prefersLight =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: light)").matches;
+          const theme =
+            ls === "light" || ls === "dark"
+              ? ls
+              : prefersLight
+              ? "light"
+              : "dark";
+
+          root.setAttribute("data-theme", theme);
+          root.style.colorScheme = theme;
+
+          // 1.5) remove pre-paint inline override so CSS can control the token
+          if (root.style.getPropertyValue("--color-bg")) {
+            root.style.removeProperty("--color-bg");
+          }
+
+        } catch {}
+      })();
+    </script>
+
+    <script>
+      (() => {
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (!meta) return;
+
+        const update = () => {
+          const bg = getComputedStyle(document.documentElement)
+            .getPropertyValue("--color-bg")
+            .trim();
+          if (bg) meta.setAttribute("content", bg);
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", update, { once: true });
+        } else {
+          update();
+        }
+
+        new MutationObserver(update).observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["data-theme", "style"],
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

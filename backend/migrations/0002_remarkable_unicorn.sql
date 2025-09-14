@@ -1,0 +1,1 @@
+ALTER TABLE "courses" ADD COLUMN "purge_after_at" timestamp with time zone;
