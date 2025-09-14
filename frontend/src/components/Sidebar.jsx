@@ -12,6 +12,7 @@ import ThemeToggle from './ThemeToggle';
 import Logo from '../assets/i75logo.webp';
 import { courseAPI } from '../services/api';
 
+
 const Sidebar = ({ widthClass = 'w-64' }) => {
   const location = useLocation();
 
