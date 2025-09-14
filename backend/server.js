@@ -46,18 +46,13 @@ app.use(
 // Routes
 const healthRoutes = require("./routes/health");
 const apiRouter = require("./routes/api"); // <-- NEW aggregator
+const notFoundRoute = require("./routes/notFound"); // <-- NEW
 
 app.use("/health", healthRoutes);
 app.use("/api", apiRouter); // <-- all API lives here now
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
-    tip: "Visit /api for available endpoints",
-  });
-});
+// 404 handler (as a route, after all other routes & static)
+app.use(notFoundRoute);
 
 // Error handler
 app.use(errorHandler);
@@ -66,7 +61,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`I75 Educational Platform API - Powered by Drizzle ORM`);
   console.log(`Server: http://localhost:${PORT}`);
-  console.log(`API Docs: http://localhost:${PORT}/api`);  // now served by routes/api.js
+  console.log(`API Docs: http://localhost:${PORT}/api`); 
   console.log(`Health: http://localhost:${PORT}/health`);
 });
 

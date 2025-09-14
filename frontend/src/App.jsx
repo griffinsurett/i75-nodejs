@@ -12,6 +12,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import CourseList from './components/CourseList';
 import CourseDetail from './components/CourseDetail';
 import Sidebar from './components/Sidebar';
+import ThemeToggle from './components/ThemeToggle';
 
 function App() {
   return (
@@ -39,8 +40,9 @@ function App() {
 
           <footer className="bg-bg border-t border-border-primary">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-               <div className="text-sm text-text text-center">
+               <div className="text-sm text-text text-center flex justify-center items-center gap-4">
             <p>&copy; 2025 I75 Platform Educational Management</p>
+            <ThemeToggle />
           </div>
             </div>
           </footer>

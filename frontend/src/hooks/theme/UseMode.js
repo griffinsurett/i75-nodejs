@@ -1,78 +1,84 @@
 // src/hooks/theme/UseMode.js
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import useLocalStorageState from "../useLocalStorageState";
 
 /**
- * Theme hook:
- * - Sets `data-theme` and `color-scheme` on <html>
- * - Updates <meta name="theme-color"> from computed --color-bg (no manual var writes)
- * - Persists user choice; follows OS when no stored preference
+ * Tri-state theme: 'light' | 'dark' | 'system'
+ * - Applies [data-theme] & color-scheme to <html>
+ * - Keeps <meta name="theme-color"> in sync with computed --color-bg
+ * - Follows OS when mode === 'system'
+ *
+ * Returns: [mode, setMode, resolved]
+ *   mode: 'light' | 'dark' | 'system' (user preference)
+ *   setMode(next) -> void
+ *   resolved: 'light' | 'dark' (effective theme after resolving 'system')
  */
-export function UseMode() {
-  // Initial: localStorage > OS preference (dark?) > dark fallback
-  const [theme, setTheme] = useLocalStorageState(
-    "theme",
-    () => {
-      try {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
-      } catch {
-        return "dark";
-      }
-    },
-    { raw: true, validate: (v) => v === "light" || v === "dark" }
+export function useThemeMode() {
+  const mqRef = useRef(
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-color-scheme: dark)")
+      : null
   );
 
-  const isLight = theme === "light";
-  const setIsLight = (val) => setTheme(val ? "light" : "dark");
+  const [mode, setMode] = useLocalStorageState(
+    "theme",
+    "system",
+    { raw: true, validate: (v) => v === "light" || v === "dark" || v === "system" }
+  );
 
-  // Apply theme attributes to <html> and update theme-color meta
+  const [resolved, setResolved] = useState(() => {
+    const prefersDark = mqRef.current?.matches ?? true;
+    return mode === "system" ? (prefersDark ? "dark" : "light") : mode;
+  });
+
+  // Apply attributes & meta when mode or OS changes
   useEffect(() => {
-    const root = document.documentElement;
-    const t = isLight ? "light" : "dark";
+    const mq = mqRef.current;
+    const apply = (pref) => {
+      const isDark =
+        pref === "system" ? (mq?.matches ?? true) : pref === "dark";
+      const effective = isDark ? "dark" : "light";
+      setResolved(effective);
 
-    // 1) reflect theme for CSS
-    root.setAttribute("data-theme", t);
-    root.style.colorScheme = t;
+      const root = document.documentElement;
+      root.setAttribute("data-theme", effective);
+      root.style.colorScheme = effective;
 
-    // 2) read computed --color-bg and set meta[name="theme-color"]
-    // This uses whatever your CSS currently resolves for --color-bg in this theme.
-    const computed = getComputedStyle(root).getPropertyValue("--color-bg").trim();
-
-    // ensure we have (some) value; browsers accept rgb(), hsl(), or hex
-    if (computed) {
-      let meta = document.querySelector('meta[name="theme-color"]');
-      if (!meta) {
-        meta = document.createElement("meta");
-        meta.name = "theme-color";
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute("content", computed);
-    }
-  }, [isLight]);
-
-  // Follow OS changes only if user hasn't explicitly saved a preference
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e) => {
-      try {
-        const stored = localStorage.getItem("theme");
-        // Only auto-switch when no explicit stored preference
-        if (stored !== "light" && stored !== "dark") {
-          setTheme(e.matches ? "dark" : "light");
+      const bg = getComputedStyle(root).getPropertyValue("--color-bg").trim();
+      if (bg) {
+        let meta = document.querySelector('meta[name="theme-color"]');
+        if (!meta) {
+          meta = document.createElement("meta");
+          meta.name = "theme-color";
+          document.head.appendChild(meta);
         }
-      } catch {}
+        meta.setAttribute("content", bg);
+      }
     };
-    // Modern addEventListener; fallback for older Safari
-    if (mq.addEventListener) mq.addEventListener("change", handler);
-    else if (mq.addListener) mq.addListener(handler);
+
+    apply(mode);
+
+    const onChange = () => mode === "system" && apply("system");
+    if (mq?.addEventListener) mq.addEventListener("change", onChange);
+    else if (mq?.addListener) mq.addListener(onChange);
 
     return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", handler);
-      else if (mq.removeListener) mq.removeListener(handler);
+      if (mq?.removeEventListener) mq.removeEventListener("change", onChange);
+      else if (mq?.removeListener) mq.removeListener(onChange);
     };
-  }, [setTheme]);
+  }, [mode]);
 
-  return [isLight, setIsLight];
+  return [mode, setMode, resolved];
+}
+
+/**
+ * Back-compat wrapper used by ThemeToggle:
+ * Returns [isLight, setIsLight(boolean)].
+ */
+export function UseMode() {
+  const [mode, setMode, resolved] = useThemeMode();
+  return [
+    resolved === "light",
+    (nextBool) => setMode(nextBool ? "light" : "dark"),
+  ];
 }

@@ -3,20 +3,18 @@ const express = require("express");
 const router = express.Router();
 
 // --- Domain routers (note the paths are from /routes -> /domains) ---
-const coursesRoutes     = require("../domains/course/course.routes");
+const coursesRoutes = require("../domains/course/course.routes");
 const instructorsRoutes = require("../domains/instructor/instructor.routes");
-const imagesRoutes      = require("../domains/image/image.routes");
-const videosRoutes      = require("../domains/video/video.routes");
-const sectionsRoutes    = require("../domains/section/section.routes");
-const chaptersRoutes    = require("../domains/chapter/chapter.routes");
-const testsRoutes       = require("../domains/test/test.routes");
-const questionsRoutes   = require("../domains/question/question.routes");
-const optionsRoutes     = require("../domains/option/option.routes");
-const entriesRoutes     = require("../domains/entry/entry.routes");
-const archiveRoutes     = require("../domains/archive/archive.routes");
-
-// This one already lives under /routes
-const uploadsRoutes     = require("./upload");
+const imagesRoutes = require("../domains/media/image/image.routes");
+const videosRoutes = require("../domains/media/video/video.routes");
+const sectionsRoutes = require("../domains/section/section.routes");
+const chaptersRoutes = require("../domains/chapter/chapter.routes");
+const testsRoutes = require("../domains/test/test.routes");
+const questionsRoutes = require("../domains/question/question.routes");
+const optionsRoutes = require("../domains/option/option.routes");
+const entriesRoutes = require("../domains/entry/entry.routes");
+const archiveRoutes = require("../domains/archive/archive.routes");
+const uploadsRoutes = require("../domains/media/upload");
 
 // Optional: simple index to list top-level resources
 router.get("/", (req, res) => {

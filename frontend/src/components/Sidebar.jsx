@@ -11,7 +11,7 @@ import {
 import ThemeToggle from './ThemeToggle';
 import Logo from '../assets/i75logo.webp';
 import { courseAPI } from '../services/api';
-
+import CurrentUser from './CurrentUser'; // <-- NEW
 
 const Sidebar = ({ widthClass = 'w-64' }) => {
   const location = useLocation();
@@ -151,12 +151,9 @@ const Sidebar = ({ widthClass = 'w-64' }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-6 border-t border-border-primary">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-semibold text-text uppercase tracking-wider">Appearance</span>
-            <ThemeToggle />
-          </div>
-         
+        <div className="flex justify-left items-center p-2 border-t border-border-primary space-y-3">
+          {/* Current user (static for now) */}
+          <CurrentUser />
         </div>
       </div>
     </div>

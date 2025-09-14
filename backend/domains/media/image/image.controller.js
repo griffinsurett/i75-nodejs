@@ -1,18 +1,18 @@
 // ==================== controllers/imageController.js ====================
-const { db } = require("../../config/database");
-const { 
-  images, 
-  courses, 
-  instructors, 
-  sections, 
-  chapters, 
-  tests, 
-  videos, 
+const { db } = require("../../../config/database");
+const {
+  images,
+  courses,
+  instructors,
+  sections,
+  chapters,
+  tests,
+  videos,
   questions,
   options,
-  questionImages, 
-  optionImages 
-} = require("../../config/schema");
+  questionImages,
+  optionImages,
+} = require("../../../config/schema");
 const { eq, count } = require("drizzle-orm");
 
 const imageController = {
@@ -42,14 +42,38 @@ const imageController = {
             questionsCount,
             optionsCount,
           ] = await Promise.all([
-            db.select({ count: count() }).from(courses).where(eq(courses.imageId, image.image_id)),
-            db.select({ count: count() }).from(instructors).where(eq(instructors.imageId, image.image_id)),
-            db.select({ count: count() }).from(sections).where(eq(sections.imageId, image.image_id)),
-            db.select({ count: count() }).from(chapters).where(eq(chapters.imageId, image.image_id)),
-            db.select({ count: count() }).from(tests).where(eq(tests.imageId, image.image_id)),
-            db.select({ count: count() }).from(videos).where(eq(videos.thumbnailImageId, image.image_id)),
-            db.select({ count: count() }).from(questionImages).where(eq(questionImages.imageId, image.image_id)),
-            db.select({ count: count() }).from(optionImages).where(eq(optionImages.imageId, image.image_id)),
+            db
+              .select({ count: count() })
+              .from(courses)
+              .where(eq(courses.imageId, image.image_id)),
+            db
+              .select({ count: count() })
+              .from(instructors)
+              .where(eq(instructors.imageId, image.image_id)),
+            db
+              .select({ count: count() })
+              .from(sections)
+              .where(eq(sections.imageId, image.image_id)),
+            db
+              .select({ count: count() })
+              .from(chapters)
+              .where(eq(chapters.imageId, image.image_id)),
+            db
+              .select({ count: count() })
+              .from(tests)
+              .where(eq(tests.imageId, image.image_id)),
+            db
+              .select({ count: count() })
+              .from(videos)
+              .where(eq(videos.thumbnailImageId, image.image_id)),
+            db
+              .select({ count: count() })
+              .from(questionImages)
+              .where(eq(questionImages.imageId, image.image_id)),
+            db
+              .select({ count: count() })
+              .from(optionImages)
+              .where(eq(optionImages.imageId, image.image_id)),
           ]);
 
           return {
@@ -144,58 +168,81 @@ const imageController = {
         optionsUsage,
       ] = await Promise.all([
         // Courses using this image
-        db.select({
-          course_id: courses.courseId,
-          course_name: courses.courseName,
-        }).from(courses).where(eq(courses.imageId, imageId)),
+        db
+          .select({
+            course_id: courses.courseId,
+            course_name: courses.courseName,
+          })
+          .from(courses)
+          .where(eq(courses.imageId, imageId)),
 
         // Instructors using this image
-        db.select({
-          instructor_id: instructors.instructorId,
-          name: instructors.name,
-        }).from(instructors).where(eq(instructors.imageId, imageId)),
+        db
+          .select({
+            instructor_id: instructors.instructorId,
+            name: instructors.name,
+          })
+          .from(instructors)
+          .where(eq(instructors.imageId, imageId)),
 
         // Sections using this image
-        db.select({
-          section_id: sections.sectionId,
-          title: sections.title,
-        }).from(sections).where(eq(sections.imageId, imageId)),
+        db
+          .select({
+            section_id: sections.sectionId,
+            title: sections.title,
+          })
+          .from(sections)
+          .where(eq(sections.imageId, imageId)),
 
         // Chapters using this image
-        db.select({
-          chapter_id: chapters.chapterId,
-          title: chapters.title,
-        }).from(chapters).where(eq(chapters.imageId, imageId)),
+        db
+          .select({
+            chapter_id: chapters.chapterId,
+            title: chapters.title,
+          })
+          .from(chapters)
+          .where(eq(chapters.imageId, imageId)),
 
         // Tests using this image
-        db.select({
-          test_id: tests.testId,
-          title: tests.title,
-        }).from(tests).where(eq(tests.imageId, imageId)),
+        db
+          .select({
+            test_id: tests.testId,
+            title: tests.title,
+          })
+          .from(tests)
+          .where(eq(tests.imageId, imageId)),
 
         // Videos using this image as thumbnail
-        db.select({
-          video_id: videos.videoId,
-          title: videos.title,
-        }).from(videos).where(eq(videos.thumbnailImageId, imageId)),
+        db
+          .select({
+            video_id: videos.videoId,
+            title: videos.title,
+          })
+          .from(videos)
+          .where(eq(videos.thumbnailImageId, imageId)),
 
         // Questions using this image
-        db.select({
-          question_id: questions.questionId,
-          question_text: questions.questionText,
-        })
-        .from(questions)
-        .innerJoin(questionImages, eq(questions.questionId, questionImages.questionId))
-        .where(eq(questionImages.imageId, imageId)),
+        db
+          .select({
+            question_id: questions.questionId,
+            question_text: questions.questionText,
+          })
+          .from(questions)
+          .innerJoin(
+            questionImages,
+            eq(questions.questionId, questionImages.questionId)
+          )
+          .where(eq(questionImages.imageId, imageId)),
 
         // Options using this image
-        db.select({
-          option_id: options.optionId,
-          option_text: options.optionText,
-        })
-        .from(options)
-        .innerJoin(optionImages, eq(options.optionId, optionImages.optionId))
-        .where(eq(optionImages.imageId, imageId)),
+        db
+          .select({
+            option_id: options.optionId,
+            option_text: options.optionText,
+          })
+          .from(options)
+          .innerJoin(optionImages, eq(options.optionId, optionImages.optionId))
+          .where(eq(optionImages.imageId, imageId)),
       ]);
 
       usage.used_in = {
@@ -303,17 +350,41 @@ const imageController = {
           questionImagesUsage,
           optionImagesUsage,
         ] = await Promise.all([
-          tx.select({ count: count() }).from(courses).where(eq(courses.imageId, imageId)),
-          tx.select({ count: count() }).from(instructors).where(eq(instructors.imageId, imageId)),
-          tx.select({ count: count() }).from(sections).where(eq(sections.imageId, imageId)),
-          tx.select({ count: count() }).from(chapters).where(eq(chapters.imageId, imageId)),
-          tx.select({ count: count() }).from(tests).where(eq(tests.imageId, imageId)),
-          tx.select({ count: count() }).from(videos).where(eq(videos.thumbnailImageId, imageId)),
-          tx.select({ count: count() }).from(questionImages).where(eq(questionImages.imageId, imageId)),
-          tx.select({ count: count() }).from(optionImages).where(eq(optionImages.imageId, imageId)),
+          tx
+            .select({ count: count() })
+            .from(courses)
+            .where(eq(courses.imageId, imageId)),
+          tx
+            .select({ count: count() })
+            .from(instructors)
+            .where(eq(instructors.imageId, imageId)),
+          tx
+            .select({ count: count() })
+            .from(sections)
+            .where(eq(sections.imageId, imageId)),
+          tx
+            .select({ count: count() })
+            .from(chapters)
+            .where(eq(chapters.imageId, imageId)),
+          tx
+            .select({ count: count() })
+            .from(tests)
+            .where(eq(tests.imageId, imageId)),
+          tx
+            .select({ count: count() })
+            .from(videos)
+            .where(eq(videos.thumbnailImageId, imageId)),
+          tx
+            .select({ count: count() })
+            .from(questionImages)
+            .where(eq(questionImages.imageId, imageId)),
+          tx
+            .select({ count: count() })
+            .from(optionImages)
+            .where(eq(optionImages.imageId, imageId)),
         ]);
 
-        const totalUsage = 
+        const totalUsage =
           coursesUsage[0].count +
           instructorsUsage[0].count +
           sectionsUsage[0].count +
@@ -326,7 +397,8 @@ const imageController = {
         if (totalUsage > 0) {
           return res.status(400).json({
             success: false,
-            message: "Cannot delete image that is being used in courses, instructors, sections, chapters, tests, videos, questions, or options. Remove from all references first.",
+            message:
+              "Cannot delete image that is being used in courses, instructors, sections, chapters, tests, videos, questions, or options. Remove from all references first.",
             usage_count: totalUsage,
           });
         }

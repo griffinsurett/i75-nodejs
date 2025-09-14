@@ -1,16 +1,16 @@
 // ==================== controllers/videoController.js ====================
-const { db } = require("../../config/database");
-const { 
-  videos, 
-  images, 
-  courses, 
-  sections, 
-  tests, 
-  options, 
-  entries, 
-  optionVideos, 
-  questionVideos 
-} = require("../../config/schema");
+const { db } = require("../../../config/database");
+const {
+  videos,
+  images,
+  courses,
+  sections,
+  tests,
+  options,
+  entries,
+  optionVideos,
+  questionVideos,
+} = require("../../../config/schema");
 const { eq, count } = require("drizzle-orm");
 
 const videoController = {
@@ -79,7 +79,8 @@ const videoController = {
   createVideo: async (req, res, next) => {
     try {
       const result = await db.transaction(async (tx) => {
-        const { title, description, slides_url, thumbnail_url, thumbnail_alt } = req.body;
+        const { title, description, slides_url, thumbnail_url, thumbnail_alt } =
+          req.body;
 
         // Validation
         if (!title) {
@@ -131,7 +132,8 @@ const videoController = {
     try {
       const result = await db.transaction(async (tx) => {
         const { videoId } = req.params;
-        const { title, description, slides_url, thumbnail_url, thumbnail_alt } = req.body;
+        const { title, description, slides_url, thumbnail_url, thumbnail_alt } =
+          req.body;
 
         // Check if video exists
         const existingVideo = await tx
@@ -205,19 +207,45 @@ const videoController = {
 
         // Check if video is used in other tables
         const usageChecks = await Promise.all([
-          tx.select({ count: count() }).from(courses).where(eq(courses.videoId, videoId)),
-          tx.select({ count: count() }).from(sections).where(eq(sections.videoId, videoId)),
-          tx.select({ count: count() }).from(tests).where(eq(tests.videoId, videoId)),
-          tx.select({ count: count() }).from(options).where(eq(options.videoId, videoId)),
-          tx.select({ count: count() }).from(entries).where(eq(entries.videoId, videoId)),
-          tx.select({ count: count() }).from(optionVideos).where(eq(optionVideos.videoId, videoId)),
-          tx.select({ count: count() }).from(questionVideos).where(eq(questionVideos.videoId, videoId)),
+          tx
+            .select({ count: count() })
+            .from(courses)
+            .where(eq(courses.videoId, videoId)),
+          tx
+            .select({ count: count() })
+            .from(sections)
+            .where(eq(sections.videoId, videoId)),
+          tx
+            .select({ count: count() })
+            .from(tests)
+            .where(eq(tests.videoId, videoId)),
+          tx
+            .select({ count: count() })
+            .from(options)
+            .where(eq(options.videoId, videoId)),
+          tx
+            .select({ count: count() })
+            .from(entries)
+            .where(eq(entries.videoId, videoId)),
+          tx
+            .select({ count: count() })
+            .from(optionVideos)
+            .where(eq(optionVideos.videoId, videoId)),
+          tx
+            .select({ count: count() })
+            .from(questionVideos)
+            .where(eq(questionVideos.videoId, videoId)),
         ]);
 
-        const totalUsage = usageChecks.reduce((sum, check) => sum + check[0].count, 0);
+        const totalUsage = usageChecks.reduce(
+          (sum, check) => sum + check[0].count,
+          0
+        );
 
         if (totalUsage > 0) {
-          throw new Error("Cannot delete video that is being used in courses, sections, tests, options, entries, or question/option associations");
+          throw new Error(
+            "Cannot delete video that is being used in courses, sections, tests, options, entries, or question/option associations"
+          );
         }
 
         const deleteResult = await tx
