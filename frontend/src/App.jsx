@@ -17,7 +17,7 @@ import ThemeToggle from './components/ThemeToggle';
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-bg2">
+      <div className="min-h-screen w-screen bg-bg2">
         {/* Sidebar */}
         <Sidebar widthClass="w-64" />
 
