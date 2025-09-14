@@ -1,7 +1,7 @@
 // ==================== routes/options.js ====================
 const express = require("express");
 const router = express.Router();
-const optionController = require("../../controllers/api/optionController");
+const optionController = require("../../controllers/api/option.controller");
 
 // CRUD Routes for Options
 // GET /api/options

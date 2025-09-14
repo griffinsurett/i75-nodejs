@@ -1,8 +1,8 @@
 // ==================== routes/questions.js ====================
 const express = require("express");
 const router = express.Router();
-const questionController = require("../../controllers/api/questionController");
-const optionController = require("../../controllers/api/optionController");
+const questionController = require("../../controllers/api/question.controller");
+const optionController = require("../../controllers/api/option.controller");
 
 // CRUD Routes for Questions
 // GET /api/questions

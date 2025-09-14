@@ -1,8 +1,8 @@
 // ==================== routes/chapters.js ====================
 const express = require("express");
 const router = express.Router();
-const chapterController = require("../../controllers/api/chapterController");
-const testController = require("../../controllers/api/testController");
+const chapterController = require("../../controllers/api/chapter.controller");
+const testController = require("../../controllers/api/test.controller");
 
 // CRUD Routes for Chapters
 // GET /api/chapters

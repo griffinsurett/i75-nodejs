@@ -1,7 +1,7 @@
 // ==================== routes/sections.js ====================
 const express = require("express");
 const router = express.Router();
-const sectionController = require("../../controllers/api/sectionController");
+const sectionController = require("../../controllers/api/section.controller");
 
 // GET /api/sections
 router.get("/", sectionController.getAllSections);

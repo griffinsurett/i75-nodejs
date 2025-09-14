@@ -1,7 +1,7 @@
 // ==================== routes/images.js ====================
 const express = require("express");
 const router = express.Router();
-const imageController = require("../../controllers/api/imageController");
+const imageController = require("../../controllers/api/image.controller");
 
 // CRUD Routes for Images
 // GET /api/images

@@ -2,7 +2,7 @@
 // backend/routes/courses.js (or wherever you register course routes)
 const express = require("express");
 const router = express.Router();
-const courseController = require("../../controllers/api/courseController");
+const courseController = require("../../controllers/api/course.controller");
 
 router.get("/", courseController.getAllCourses);
 router.get("/:courseId", courseController.getCourseById);

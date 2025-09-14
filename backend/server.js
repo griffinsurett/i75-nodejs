@@ -8,7 +8,7 @@ const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const { pool } = require("./config/database");
-const errorHandler = require("./middleware/errorHandler");
+const errorHandler = require("./shared/middleware/errorHandler");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,35 +30,39 @@ app.use(cors());
 app.use(limiter);
 
 // FIXED: Configure body parsers to skip multipart requests (for multer)
-app.use(express.json({ 
-  limit: "10mb",
-  // Skip requests with multipart content-type for multer to handle
-  type: ['application/json', 'text/*']
-}));
+app.use(
+  express.json({
+    limit: "10mb",
+    // Skip requests with multipart content-type for multer to handle
+    type: ["application/json", "text/*"],
+  })
+);
 
-app.use(express.urlencoded({ 
-  extended: true,
-  // Skip multipart requests for multer
-  type: ['application/x-www-form-urlencoded']
-}));
+app.use(
+  express.urlencoded({
+    extended: true,
+    // Skip multipart requests for multer
+    type: ["application/x-www-form-urlencoded"],
+  })
+);
 
 // Import routes
 const healthRoutes = require("./routes/health");
-const coursesRoutes = require("./routes/api/courses");
-const instructorsRoutes = require("./routes/api/instructors");
-const videosRoutes = require("./routes/api/videos");
-const sectionsRoutes = require("./routes/api/sections");
-const chaptersRoutes = require("./routes/api/chapters");
-const testsRoutes = require("./routes/api/tests");
-const questionsRoutes = require("./routes/api/questions");
-const optionsRoutes = require("./routes/api/options");
-const entriesRoutes = require("./routes/api/entries");
-const imagesRoutes = require("./routes/api/images");
-const archiveRoutes = require("./routes/api/archive");
+const coursesRoutes = require("./routes/api/course.routes");
+const instructorsRoutes = require("./routes/api/instructor.routes");
+const videosRoutes = require("./routes/api/video.routes");
+const sectionsRoutes = require("./routes/api/section.routes");
+const chaptersRoutes = require("./routes/api/chapter.routes");
+const testsRoutes = require("./routes/api/test.routes");
+const questionsRoutes = require("./routes/api/question.routes");
+const optionsRoutes = require("./routes/api/option.routes");
+const entriesRoutes = require("./routes/api/entry.routes");
+const imagesRoutes = require("./routes/api/image.routes");
+const archiveRoutes = require("./routes/api/archive.routes");
 
-const uploadsRoutes = require("./routes/api/uploads");
+const uploadsRoutes = require("./routes/api/upload.routes");
 
-const { purgeExpiredSnapshots } = require("./workers/archivePurger");
+const { purgeExpiredSnapshots } = require("./shared/workers/archivePurger");
 
 // Health routes
 app.use("/health", healthRoutes);
@@ -82,7 +86,7 @@ app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: "Route not found",
-    tip: "Visit /api for available endpoints"
+    tip: "Visit /api for available endpoints",
   });
 });
 
@@ -98,9 +102,13 @@ app.listen(PORT, () => {
 });
 
 // Simple purge scheduler (every 15s)
-const PURGE_INTERVAL_MS = Number(process.env.ARCHIVE_PURGE_INTERVAL_MS || 15000);
+const PURGE_INTERVAL_MS = Number(
+  process.env.ARCHIVE_PURGE_INTERVAL_MS || 15000
+);
 setInterval(() => {
-  purgeExpiredSnapshots().catch((e) => console.error("Archive purge error:", e));
+  purgeExpiredSnapshots().catch((e) =>
+    console.error("Archive purge error:", e)
+  );
 }, PURGE_INTERVAL_MS);
 
 // Graceful shutdown

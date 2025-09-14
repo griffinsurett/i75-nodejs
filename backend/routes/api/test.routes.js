@@ -1,8 +1,8 @@
 // ==================== routes/tests.js ====================
 const express = require("express");
 const router = express.Router();
-const testController = require("../../controllers/api/testController");
-const questionController = require("../../controllers/api/questionController");
+const testController = require("../../controllers/api/test.controller");
+const questionController = require("../../controllers/api/question.controller");
 
 // CRUD Routes for Tests
 // GET /api/tests

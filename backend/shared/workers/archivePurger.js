@@ -1,7 +1,7 @@
 // Periodically and permanently delete courses that were "safety deleted"
 // (archived + purge_after_at in the past).
-const { db } = require("../config/database");
-const { courses } = require("../config/schema");
+const { db } = require("../../config/database");
+const { courses } = require("../../config/schema");
 const { sql } = require("drizzle-orm");
 
 /**
