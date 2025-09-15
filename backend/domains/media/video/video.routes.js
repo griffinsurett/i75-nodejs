@@ -1,21 +1,23 @@
-// ==================== routes/video.routes.js (NEW) ====================
+// ==================== domains/media/video/video.routes.js ====================
 const express = require("express");
 const router = express.Router();
 const videoController = require("./video.controller");
+const videoUploadMiddleware = require("./video.upload");
 
-// GET /api/videos
+// CRUD Routes
 router.get("/", videoController.getAllVideos);
-
-// GET /api/videos/:videoId
 router.get("/:videoId", videoController.getVideoById);
-
-// POST /api/videos
 router.post("/", videoController.createVideo);
-
-// PUT /api/videos/:videoId
 router.put("/:videoId", videoController.updateVideo);
 
-// DELETE /api/videos/:videoId
+// Upload route
+router.post("/upload", videoUploadMiddleware, videoController.uploadVideo);
+
+// Archive operations
+router.post("/:videoId/archive", videoController.archiveVideo);
+router.post("/:videoId/restore", videoController.restoreVideo);
+
+// Safety delete (schedule purge in 60s)
 router.delete("/:videoId", videoController.deleteVideo);
 
 module.exports = router;

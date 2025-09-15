@@ -10,6 +10,11 @@ const IMAGE_FIELDS = {
   image_id: images.imageId,
   image_url: images.imageUrl,
   alt_text: images.altText,
+  is_archived: images.isArchived,
+  archived_at: images.archivedAt,
+  purge_after_at: images.purgeAfterAt,
+  created_at: images.createdAt,
+  updated_at: images.updatedAt,
 };
 
 const imageService = {
@@ -73,7 +78,11 @@ const imageService = {
         // Update existing image
         await tx
           .update(images)
-          .set({ imageUrl: image_url, altText: alt_text || null })
+          .set({ 
+            imageUrl: image_url, 
+            altText: alt_text || null,
+            updatedAt: new Date()
+          })
           .where(eq(images.imageId, currentImageId));
         return currentImageId;
       } else {
@@ -156,6 +165,8 @@ const imageService = {
       .values({
         imageUrl: image_url,
         altText: alt_text,
+        isArchived: false,
+        createdAt: new Date(),
       })
       .returning(IMAGE_FIELDS);
 
@@ -163,12 +174,16 @@ const imageService = {
   },
 
   async updateImage(tx, imageId, { image_url, alt_text }) {
-    const [result] = await tx
+    const updateData = {
+      updatedAt: new Date()
+    };
+
+    if (image_url !== undefined) updateData.imageUrl = image_url;
+    if (alt_text !== undefined) updateData.altText = alt_text;
+
+    const result = await tx
       .update(images)
-      .set({
-        imageUrl: image_url,
-        altText: alt_text,
-      })
+      .set(updateData)
       .where(eq(images.imageId, imageId))
       .returning(IMAGE_FIELDS);
 
@@ -176,11 +191,11 @@ const imageService = {
       throw this.createError("Image not found", 404);
     }
 
-    return result;
+    return result[0];
   },
 
   async deleteImage(tx, imageId) {
-    const [result] = await tx
+    const result = await tx
       .delete(images)
       .where(eq(images.imageId, imageId))
       .returning(IMAGE_FIELDS);
@@ -189,7 +204,7 @@ const imageService = {
       throw this.createError("Image not found", 404);
     }
 
-    return result;
+    return result[0];
   },
 
   async getImageById(tx, imageId) {
@@ -205,10 +220,11 @@ const imageService = {
     return result;
   },
 
-  async getAllImages(tx) {
+  async getAllImages(tx, showArchived = false) {
     return await tx
       .select(IMAGE_FIELDS)
       .from(images)
+      .where(eq(images.isArchived, showArchived))
       .orderBy(images.imageUrl);
   },
 };

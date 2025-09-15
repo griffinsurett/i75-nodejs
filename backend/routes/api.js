@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 
-// --- Domain routers (note the paths are from /routes -> /domains) ---
+// Domain routers
 const coursesRoutes = require("../domains/course/course.routes");
 const instructorsRoutes = require("../domains/instructor/instructor.routes");
 const imagesRoutes = require("../domains/media/image/image.routes");
@@ -14,9 +14,8 @@ const questionsRoutes = require("../domains/question/question.routes");
 const optionsRoutes = require("../domains/option/option.routes");
 const entriesRoutes = require("../domains/entry/entry.routes");
 const archiveRoutes = require("../domains/archive/archive.routes");
-const uploadsRoutes = require("../domains/media/upload");
+// REMOVE: const uploadsRoutes = require("../domains/media/upload");
 
-// Optional: simple index to list top-level resources
 router.get("/", (req, res) => {
   res.json({
     success: true,
@@ -34,12 +33,12 @@ router.get("/", (req, res) => {
       options: "/options",
       entries: "/entries",
       archive: "/archive",
-      uploads: "/uploads",
+      // Note: uploads are now handled by /images/upload and /videos/upload
     },
   });
 });
 
-// Mount domain routers under /api/*
+// Mount domain routers
 router.use("/courses", coursesRoutes);
 router.use("/instructors", instructorsRoutes);
 router.use("/images", imagesRoutes);
@@ -51,6 +50,6 @@ router.use("/questions", questionsRoutes);
 router.use("/options", optionsRoutes);
 router.use("/entries", entriesRoutes);
 router.use("/archive", archiveRoutes);
-router.use("/uploads", uploadsRoutes);
+// REMOVE: router.use("/uploads", uploadsRoutes);
 
 module.exports = router;

@@ -17,6 +17,12 @@ const images = pgTable("images", {
   imageId: serial("image_id").primaryKey(),
   imageUrl: text("image_url").notNull(),
   altText: text("alt_text"),
+  // Add archive fields
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 // Videos table
@@ -28,6 +34,11 @@ const videos = pgTable("videos", {
   thumbnailImageId: integer("thumbnail_image_id").references(
     () => images.imageId
   ),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 // Instructors table

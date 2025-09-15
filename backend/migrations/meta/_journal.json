@@ -22,6 +22,13 @@
       "when": 1757806446605,
       "tag": "0002_remarkable_unicorn",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1757959218286,
+      "tag": "0003_dear_nighthawk",
+      "breakpoints": true
     }
   ]
 }

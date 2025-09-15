@@ -1,3 +1,4 @@
+// ==================== frontend/src/services/api.js ====================
 import axios from "axios";
 
 const API_BASE_URL =
@@ -39,7 +40,6 @@ api.interceptors.response.use(
 export const courseAPI = {
   // Get all courses
   getAllCourses: (params = {}) => api.get('/courses', { params }),
-
 
   // Get single course by ID
   getCourse: (courseId) => api.get(`/courses/${courseId}`),
@@ -141,9 +141,21 @@ export const videoAPI = {
   createVideo: (videoData) => api.post("/videos", videoData),
   updateVideo: (videoId, videoData) => api.put(`/videos/${videoId}`, videoData),
   deleteVideo: (videoId) => api.delete(`/videos/${videoId}`),
+  // NEW: Upload video
+  uploadVideo: (file, title, description) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("title", title);
+    if (description) form.append("description", description);
+
+    return api.post("/videos/upload", form, {
+      onUploadProgress: (progressEvent) => {
+        console.log("Video upload progress:", progressEvent);
+      },
+    });
+  },
 };
 
-// Upload API functions
 // Upload API functions
 export const uploadAPI = {
   uploadImage: (file, alt_text) => {
@@ -158,10 +170,23 @@ export const uploadAPI = {
       console.log(pair[0], pair[1]);
     }
 
-    // This will show the headers that axios is sending
-    return api.post("/uploads/images", form, {
+    return api.post("/images/upload", form, {
       onUploadProgress: (progressEvent) => {
         console.log("Upload progress:", progressEvent);
+      },
+    });
+  },
+  
+  // NEW: Upload video (alternative location for consistency)
+  uploadVideo: (file, title, description) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("title", title);
+    if (description) form.append("description", description);
+
+    return api.post("/videos/upload", form, {
+      onUploadProgress: (progressEvent) => {
+        console.log("Video upload progress:", progressEvent);
       },
     });
   },
