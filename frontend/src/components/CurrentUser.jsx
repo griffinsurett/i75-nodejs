@@ -7,6 +7,7 @@ import UserElement from "./UserElement";
 /**
  * CurrentUser
  * Clickable profile row; opens the reusable <UserMenu /> anchored above the avatar.
+ * If `compact` is true, only the avatar is shown (like collapsed ChatGPT sidebar).
  */
 export default function CurrentUser({
   name = "Admin User",
@@ -16,6 +17,7 @@ export default function CurrentUser({
   profileTo = "/account",
   onSignOut,
   className = "",
+  compact = false,
 }) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef(null);
@@ -29,9 +31,12 @@ export default function CurrentUser({
   return (
     <>
       <div
-        className={`flex items-center gap-2 rounded-xl cursor-pointer px-3 py-2 transition-colors ${
-          open ? "bg-bg2" : "hover:bg-bg2"
-        } ${className}`}
+        className={`
+          ${compact ? "flex justify-center" : "flex items-center gap-2"}
+          rounded-xl cursor-pointer ${compact ? "px-1.5 py-1.5" : "px-3 py-2"}
+          transition-colors ${open ? "bg-bg2" : "hover:bg-bg2"}
+          ${className}
+        `}
         role="button"
         aria-expanded={open}
         tabIndex={0}
@@ -43,14 +48,14 @@ export default function CurrentUser({
           }
         }}
       >
-        {/* The ref anchors the menu to the avatar */}
         <UserElement
           ref={anchorRef}
           name={name}
           email={email}
           role={role}
           src={avatarUrl}
-          className="pointer-events-none" // makes the whole row handle clicks
+          showMeta={!compact}
+          className={compact ? "pointer-events-none" : "pointer-events-none"}
         />
       </div>
 

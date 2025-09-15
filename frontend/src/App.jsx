@@ -17,12 +17,14 @@ import ThemeToggle from './components/ThemeToggle';
 function App() {
   return (
     <Router>
-      <div className="min-h-screen w-screen bg-bg2">
+      {/* Give the layout a default sidebar width (matches open state).
+          Sidebar will update --sidebar-w on the :root as user toggles. */}
+      <div className="min-h-screen w-screen bg-bg2" style={{ ['--sidebar-w']: '16rem' }}>
         {/* Sidebar */}
-        <Sidebar widthClass="w-64" />
+        <Sidebar widthClass="" />
 
-        {/* Main */}
-        <div className="pl-64">
+        {/* Main (pad left by current sidebar width; animate changes) */}
+        <div className="pl-[var(--sidebar-w)] transition-[padding-left] duration-300 ease-in-out">
           <main className="min-h-screen">
             <Routes>
               <Route path="/" element={<HomePage />} />
@@ -39,11 +41,11 @@ function App() {
           </main>
 
           <footer className="bg-bg border-t border-border-primary">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-               <div className="text-sm text-text text-center flex justify-center items-center gap-4">
-            <p>&copy; 2025 I75 Platform Educational Management</p>
-            <ThemeToggle />
-          </div>
+            <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              <div className="text-sm text-text text-center flex justify-center items-center gap-4">
+                <p>&copy; 2025 I75 Platform Educational Management</p>
+                <ThemeToggle />
+              </div>
             </div>
           </footer>
         </div>

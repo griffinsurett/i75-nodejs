@@ -1,4 +1,4 @@
-// ==================== controllers/api/courseController.js (UPDATED with Archive) ====================
+// ==================== domains/course/course.controller.js ====================
 const { db } = require("../../config/database");
 const {
   courses,
@@ -9,63 +9,41 @@ const {
   sections,
 } = require("../../config/schema");
 const { eq, desc, count } = require("drizzle-orm");
+const courseService = require('./course.service');
 
 const ONE_MINUTE_MS = 60 * 1000;
 
 const courseController = {
-  // Get all active (non-archived) courses with basic info
- // Get all courses with basic info (supports ?archived=true)
-getAllCourses: async (req, res, next) => {
-  try {
-    const showArchived =
-      String(req.query.archived || "").toLowerCase() === "true";
+  /**
+   * GET /api/courses - Get all courses with optional archive filter
+   */
+  async getAllCourses(req, res, next) {
+    try {
+      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
 
-    const result = await db
-      .select({
-        course_id: courses.courseId,
-        course_name: courses.courseName,
-        description: courses.description,
-        created_at: courses.createdAt,
-        updated_at: courses.updatedAt,
-        // include archive fields so the UI can badge + decide actions
-        is_archived: courses.isArchived,
-        archived_at: courses.archivedAt,
-        course_image: images.imageUrl,
-        video_title: videos.title,
-      })
-      .from(courses)
-      .leftJoin(images, eq(courses.imageId, images.imageId))
-      .leftJoin(videos, eq(courses.videoId, videos.videoId))
-      .where(eq(courses.isArchived, showArchived))
-      .orderBy(desc(courses.createdAt));
+      const result = await db
+        .select(courseService.COURSE_FIELDS)
+        .from(courses)
+        .leftJoin(images, eq(courses.imageId, images.imageId))
+        .leftJoin(videos, eq(courses.videoId, videos.videoId))
+        .where(eq(courses.isArchived, showArchived))
+        .orderBy(desc(courses.createdAt));
 
-    res.json({ success: true, data: result });
-  } catch (error) {
-    next(error);
-  }
-},
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  },
 
-  // Get single course with instructors (returns even if archived)
-  getCourseById: async (req, res, next) => {
+  /**
+   * GET /api/courses/:courseId - Get single course with instructors
+   */
+  async getCourseById(req, res, next) {
     try {
       const { courseId } = req.params;
 
       const courseResult = await db
-        .select({
-          course_id: courses.courseId,
-          course_name: courses.courseName,
-          description: courses.description,
-          image_id: courses.imageId,
-          video_id: courses.videoId,
-          created_at: courses.createdAt,
-          updated_at: courses.updatedAt,
-          is_archived: courses.isArchived,
-          archived_at: courses.archivedAt,
-          purge_after_at: courses.purgeAfterAt,
-          course_image: images.imageUrl,
-          video_title: videos.title,
-          video_description: videos.description,
-        })
+        .select(courseService.COURSE_FIELDS)
         .from(courses)
         .leftJoin(images, eq(courses.imageId, images.imageId))
         .leftJoin(videos, eq(courses.videoId, videos.videoId))
@@ -76,12 +54,7 @@ getAllCourses: async (req, res, next) => {
       }
 
       const instructorsResult = await db
-        .select({
-          instructor_id: instructors.instructorId,
-          name: instructors.name,
-          bio: instructors.bio,
-          instructor_image: images.imageUrl,
-        })
+        .select(courseService.INSTRUCTOR_FIELDS)
         .from(instructors)
         .innerJoin(courseInstructors, eq(instructors.instructorId, courseInstructors.instructorId))
         .leftJoin(images, eq(instructors.imageId, images.imageId))
@@ -96,8 +69,10 @@ getAllCourses: async (req, res, next) => {
     }
   },
 
-  // Get sections for a course
-  getCourseSections: async (req, res, next) => {
+  /**
+   * GET /api/courses/:courseId/sections - Get sections for a course
+   */
+  async getCourseSections(req, res, next) {
     try {
       const { courseId } = req.params;
 
@@ -133,8 +108,10 @@ getAllCourses: async (req, res, next) => {
     }
   },
 
-  // Create new course (supports image_id OR image_url OR neither)
-  createCourse: async (req, res, next) => {
+  /**
+   * POST /api/courses - Create new course
+   */
+  async createCourse(req, res, next) {
     try {
       const result = await db.transaction(async (tx) => {
         const {
@@ -147,32 +124,12 @@ getAllCourses: async (req, res, next) => {
           instructor_ids,
         } = req.body;
 
-        if (!course_name || !course_name.trim()) {
-          const err = new Error("Course name is required");
-          err.status = 400;
-          throw err;
+        if (!course_name?.trim()) {
+          throw new Error("Course name is required");
         }
 
-        let finalImageId = null;
-
-        if (image_id) {
-          const imgCheck = await tx
-            .select({ count: count() })
-            .from(images)
-            .where(eq(images.imageId, image_id));
-          if (Number(imgCheck?.[0]?.count || 0) === 0) {
-            const err = new Error("Provided image_id does not exist");
-            err.status = 400;
-            throw err;
-          }
-          finalImageId = image_id;
-        } else if (image_url) {
-          const [imgRow] = await tx
-            .insert(images)
-            .values({ imageUrl: image_url, altText: alt_text || null })
-            .returning({ imageId: images.imageId });
-          finalImageId = imgRow.imageId;
-        }
+        // Use courseService for image handling
+        const finalImageId = await courseService.handleCourseImage(tx, { image_id, image_url, alt_text });
 
         const [course] = await tx
           .insert(courses)
@@ -184,13 +141,9 @@ getAllCourses: async (req, res, next) => {
           })
           .returning();
 
-        if (Array.isArray(instructor_ids) && instructor_ids.length > 0) {
-          await tx.insert(courseInstructors).values(
-            instructor_ids.map((iid) => ({
-              courseId: course.courseId,
-              instructorId: iid,
-            }))
-          );
+        // Use courseService for instructor linking
+        if (instructor_ids?.length > 0) {
+          await courseService.linkInstructors(tx, course.courseId, instructor_ids);
         }
 
         return course;
@@ -206,8 +159,10 @@ getAllCourses: async (req, res, next) => {
     }
   },
 
-  // Update course (supports switching to image_id, or setting a new image_url)
-  updateCourse: async (req, res, next) => {
+  /**
+   * PUT /api/courses/:courseId - Update course
+   */
+  async updateCourse(req, res, next) {
     try {
       const result = await db.transaction(async (tx) => {
         const { courseId } = req.params;
@@ -223,46 +178,13 @@ getAllCourses: async (req, res, next) => {
 
         const existing = await tx.select().from(courses).where(eq(courses.courseId, courseId));
         if (existing.length === 0) {
-          const err = new Error("Course not found");
-          err.status = 404;
-          throw err;
+          return res.status(404).json({ success: false, message: "Course not found" });
         }
 
-        let currentImageId = existing[0].imageId;
+        // Use courseService for image handling
+        const currentImageId = await courseService.updateCourseImage(tx, existing[0].imageId, { image_id, image_url, alt_text });
 
-        if (image_id !== undefined) {
-          if (image_id === null) {
-            currentImageId = null;
-          } else {
-            const imgCheck = await tx
-              .select({ count: count() })
-              .from(images)
-              .where(eq(images.imageId, image_id));
-            if (Number(imgCheck?.[0]?.count || 0) === 0) {
-              const err = new Error("Provided image_id does not exist");
-              err.status = 400;
-              throw err;
-            }
-            currentImageId = image_id;
-          }
-        } else if (image_url !== undefined && image_url !== null && image_url !== "") {
-          if (currentImageId) {
-            await tx
-              .update(images)
-              .set({ imageUrl: image_url, altText: alt_text || null })
-              .where(eq(images.imageId, currentImageId));
-          } else {
-            const [imgRow] = await tx
-              .insert(images)
-              .values({ imageUrl: image_url, altText: alt_text || null })
-              .returning({ imageId: images.imageId });
-            currentImageId = imgRow.imageId;
-          }
-        }
-
-        const updateFields = {
-          updatedAt: new Date(),
-        };
+        const updateFields = { updatedAt: new Date() };
         if (course_name !== undefined) updateFields.courseName = course_name;
         if (description !== undefined) updateFields.description = description;
         if (video_id !== undefined) updateFields.videoId = video_id;
@@ -274,16 +196,9 @@ getAllCourses: async (req, res, next) => {
           .where(eq(courses.courseId, courseId))
           .returning();
 
+        // Use courseService for instructor relationships
         if (instructor_ids !== undefined) {
-          await tx.delete(courseInstructors).where(eq(courseInstructors.courseId, courseId));
-          if (Array.isArray(instructor_ids) && instructor_ids.length > 0) {
-            await tx.insert(courseInstructors).values(
-              instructor_ids.map((iid) => ({
-                courseId,
-                instructorId: iid,
-              }))
-            );
-          }
+          await courseService.updateInstructors(tx, courseId, instructor_ids);
         }
 
         return updated;
@@ -299,8 +214,10 @@ getAllCourses: async (req, res, next) => {
     }
   },
 
-  // Archive indefinitely (no scheduled deletion)
-  archiveCourse: async (req, res, next) => {
+  /**
+   * POST /api/courses/:courseId/archive - Archive course indefinitely
+   */
+  async archiveCourse(req, res, next) {
     try {
       const { courseId } = req.params;
 
@@ -314,7 +231,7 @@ getAllCourses: async (req, res, next) => {
         .set({
           isArchived: true,
           archivedAt: new Date(),
-          purgeAfterAt: null, // <- indefinite
+          purgeAfterAt: null,
           updatedAt: new Date(),
         })
         .where(eq(courses.courseId, courseId))
@@ -326,8 +243,10 @@ getAllCourses: async (req, res, next) => {
     }
   },
 
-  // Restore (also cancels any pending purge)
-  restoreCourse: async (req, res, next) => {
+  /**
+   * POST /api/courses/:courseId/restore - Restore archived course
+   */
+  async restoreCourse(req, res, next) {
     try {
       const { courseId } = req.params;
 
@@ -354,11 +273,9 @@ getAllCourses: async (req, res, next) => {
   },
 
   /**
-   * "Delete" = schedule permanent deletion in 60s.
-   * We still prevent scheduling if the course has sections,
-   * keeping the same safety guard you already had.
+   * DELETE /api/courses/:courseId - Schedule course for deletion
    */
-  deleteCourse: async (req, res, next) => {
+  async deleteCourse(req, res, next) {
     try {
       await db.transaction(async (tx) => {
         const { courseId } = req.params;
@@ -366,9 +283,7 @@ getAllCourses: async (req, res, next) => {
         // Must exist
         const existing = await tx.select().from(courses).where(eq(courses.courseId, courseId));
         if (existing.length === 0) {
-          const err = new Error("Course not found");
-          err.status = 404;
-          throw err;
+          throw new Error("Course not found");
         }
 
         // Keep the original guard
@@ -378,9 +293,7 @@ getAllCourses: async (req, res, next) => {
           .where(eq(sections.courseId, courseId));
 
         if (Number(sectionsCheck?.[0]?.count || 0) > 0) {
-          const err = new Error("Cannot delete course with existing sections. Delete sections first.");
-          err.status = 400;
-          throw err;
+          throw new Error("Cannot delete course with existing sections. Delete sections first.");
         }
 
         // Schedule purge (archive now + purge in 60s)
@@ -395,8 +308,7 @@ getAllCourses: async (req, res, next) => {
             purgeAfterAt: purgeAt,
             updatedAt: new Date(now),
           })
-          .where(eq(courses.courseId, courseId))
-          .returning();
+          .where(eq(courses.courseId, courseId));
       });
 
       res.json({

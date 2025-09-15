@@ -1,5 +1,4 @@
-// ==================== routes/courses.js ====================
-// backend/routes/courses.js (or wherever you register course routes)
+// ==================== domains/course/course.routes.js ====================
 const express = require("express");
 const router = express.Router();
 const courseController = require("./course.controller");
@@ -10,7 +9,7 @@ router.get("/:courseId/sections", courseController.getCourseSections);
 router.post("/", courseController.createCourse);
 router.put("/:courseId", courseController.updateCourse);
 
-// NEW
+// Archive operations
 router.post("/:courseId/archive", courseController.archiveCourse);
 router.post("/:courseId/restore", courseController.restoreCourse);
 
