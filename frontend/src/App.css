@@ -1,7 +1,8 @@
 /* App.css */
 @import "tailwindcss";
+
 /* ───────────────────────────────────────────────────── */
-/* 0. CUSTOM VARIANTS FOR LIGHT + DARK                  */
+/* CUSTOM VARIANTS FOR LIGHT + DARK                      */
 /* ───────────────────────────────────────────────────── */
 @custom-variant light  (&:where([data-theme="light"], [data-theme="light"] *));
 @custom-variant dark   (&:where([data-theme="dark"],  [data-theme="dark"]  *));
@@ -36,6 +37,7 @@
   --color-heading: var(--color-primary-dark);
   --color-text: var(--color-secondary-dark);
 }
+
 [data-theme="dark"] {
   --color-bg: var(--color-primary-dark);
   --color-bg2: var(--color-secondary-dark);
@@ -48,4 +50,194 @@
 
 body {
   @apply bg-bg text-text;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* ───────────────────────────────────────────────────── */
+/* LAYOUT SYSTEM                                         */
+/* ───────────────────────────────────────────────────── */
+
+:root {
+  --sidebar-width-open: 256px;    /* 16rem */
+  --sidebar-width-closed: 64px;   /* 4rem */
+  --sidebar-transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Main wrapper */
+.app-wrapper {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+}
+
+/* ───────────────────────────────────────────────────── */
+/* SIDEBAR STYLES                                        */
+/* ───────────────────────────────────────────────────── */
+
+.sidebar {
+  @apply bg-bg border-r border-border-primary;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 40;
+  transition: width var(--sidebar-transition);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sidebar--open {
+  width: var(--sidebar-width-open);
+}
+
+.sidebar--closed {
+  width: var(--sidebar-width-closed);
+}
+
+/* ───────────────────────────────────────────────────── */
+/* MAIN CONTENT STYLES                                   */
+/* ───────────────────────────────────────────────────── */
+
+.app-content {
+  @apply bg-bg2;
+  flex: 1;
+  min-height: 100vh;
+  width: 100%;
+  transition: margin-left var(--sidebar-transition);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-content.sidebar-expanded {
+  margin-left: var(--sidebar-width-open);
+}
+
+.app-content.sidebar-collapsed {
+  margin-left: var(--sidebar-width-closed);
+}
+
+/* ───────────────────────────────────────────────────── */
+/* MOBILE STYLES                                         */
+/* ───────────────────────────────────────────────────── */
+
+@media (max-width: 1023px) {
+  .sidebar {
+    z-index: 50;
+  }
+
+  .sidebar--closed {
+    width: 0;
+    border-right: none;
+  }
+
+  .app-content {
+    margin-left: 0 !important;
+  }
+
+  .app-content.sidebar-expanded {
+    margin-left: 0 !important;
+  }
+  
+  .sidebar-mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+  }
+}
+
+/* ───────────────────────────────────────────────────── */
+/* SIDEBAR INTERNAL STYLES                               */
+/* ───────────────────────────────────────────────────── */
+
+.sidebar__content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: var(--sidebar-width-open);
+}
+
+.sidebar__header {
+  @apply px-3 py-4;
+  flex-shrink: 0;
+}
+
+.sidebar__toggle {
+  @apply p-2 rounded-lg hover:bg-bg2 transition-colors;
+}
+
+.sidebar__nav {
+  @apply px-3 flex-1 overflow-y-auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-primary) transparent;
+}
+
+.sidebar__nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar__nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar__nav::-webkit-scrollbar-thumb {
+  @apply bg-border-primary rounded-full;
+}
+
+.sidebar__nav-item {
+  @apply flex items-center py-2.5 text-sm font-medium rounded-lg transition-colors;
+}
+
+.sidebar__nav-item--expanded {
+  @apply px-3;
+}
+
+.sidebar__nav-item--collapsed {
+  @apply justify-center px-0;
+}
+
+.sidebar__nav-item--active {
+  @apply bg-primary/10 text-primary;
+}
+
+.sidebar__nav-item:not(.sidebar__nav-item--active) {
+  @apply text-text hover:text-heading hover:bg-bg2;
+}
+
+.sidebar__footer {
+  @apply p-2 border-t border-border-primary;
+  flex-shrink: 0;
+}
+
+/* ───────────────────────────────────────────────────── */
+/* ANIMATION IMPROVEMENTS                                */
+/* ───────────────────────────────────────────────────── */
+
+/* Hide text when sidebar is closed */
+.sidebar--closed .sidebar__header h1,
+.sidebar--closed .sidebar__header p,
+.sidebar--closed .sidebar__nav h2,
+.sidebar--closed .sidebar__nav span:not(.sr-only),
+.sidebar--closed .sidebar__nav-item span {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 200ms, visibility 200ms;
+}
+
+/* Show text when sidebar is open */
+.sidebar--open .sidebar__header h1,
+.sidebar--open .sidebar__header p,
+.sidebar--open .sidebar__nav h2,
+.sidebar--open .sidebar__nav span:not(.sr-only),
+.sidebar--open .sidebar__nav-item span {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 200ms 100ms, visibility 200ms 100ms;
+}
+
+/* Prevent text wrapping during animation */
+.sidebar {
+  white-space: nowrap;
 }

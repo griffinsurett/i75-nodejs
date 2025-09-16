@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import './App.css';
 import CourseCreatePage from './pages/CourseCreatePage';
 import CourseEditPage from './pages/CourseEditPage';
@@ -15,16 +16,30 @@ import Sidebar from './components/Sidebar';
 import ThemeToggle from './components/ThemeToggle';
 
 function App() {
+  // Track sidebar state at the app level
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  
+  // Handle responsive default state
+  useEffect(() => {
+    const checkWidth = () => {
+      setSidebarOpen(window.innerWidth >= 1024);
+    };
+    checkWidth();
+    window.addEventListener('resize', checkWidth);
+    return () => window.removeEventListener('resize', checkWidth);
+  }, []);
+
   return (
     <Router>
-      {/* Give the layout a default sidebar width (matches open state).
-          Sidebar will update --sidebar-w on the :root as user toggles. */}
-      <div className="min-h-screen w-screen bg-bg2" style={{ ['--sidebar-w']: '16rem' }}>
+      <div className="app-wrapper">
         {/* Sidebar */}
-        <Sidebar widthClass="" />
+        <Sidebar 
+          isOpen={sidebarOpen} 
+          onToggle={() => setSidebarOpen(!sidebarOpen)} 
+        />
 
-        {/* Main (pad left by current sidebar width; animate changes) */}
-        <div className="pl-[var(--sidebar-w)] transition-[padding-left] duration-300 ease-in-out">
+        {/* Main Content Area */}
+        <div className={`app-content ${sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
           <main className="min-h-screen">
             <Routes>
               <Route path="/" element={<HomePage />} />
@@ -49,6 +64,14 @@ function App() {
             </div>
           </footer>
         </div>
+
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div 
+            className="sidebar-mobile-overlay lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
       </div>
     </Router>
   );

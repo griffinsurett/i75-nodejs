@@ -15,42 +15,8 @@ import Logo from "../assets/i75logo.webp";
 import { courseAPI } from "../services/api";
 import CurrentUser from "./CurrentUser";
 
-// simple media query hook
-function useMediaQuery(query) {
-  const get = () =>
-    typeof window !== "undefined" ? window.matchMedia(query).matches : true;
-  const [matches, setMatches] = useState(get);
-  useEffect(() => {
-    const mq = window.matchMedia(query);
-    const handler = (e) => setMatches(e.matches);
-    if (mq.addEventListener) mq.addEventListener("change", handler);
-    else mq.addListener(handler);
-    setMatches(mq.matches);
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", handler);
-      else mq.removeListener(handler);
-    };
-  }, [query]);
-  return matches;
-}
-
-const Sidebar = ({
-  widthClass = "w-64",         // visual width class (open state)
-  openWidth = "16rem",        // CSS var value when open (matches w-64)
-  closedWidth = "4rem",       // CSS var value when closed (matches w-16)
-}) => {
+const Sidebar = ({ isOpen, onToggle }) => {
   const location = useLocation();
-
-  // Responsive behavior like ChatGPT: open on desktop, closed on small screens
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const [open, setOpen] = useState(isDesktop);
-  useEffect(() => setOpen(isDesktop), [isDesktop]);
-
-  // Keep a CSS variable in sync so the page offsets itself correctly
-  useEffect(() => {
-    const val = open ? openWidth : closedWidth;
-    document.documentElement.style.setProperty("--sidebar-w", val);
-  }, [open, openWidth, closedWidth]);
 
   // nav items
   const nav = [
@@ -87,21 +53,18 @@ const Sidebar = ({
     location.pathname === `/courses/${id}` || location.pathname.startsWith(`/courses/${id}/`);
 
   return (
-    <div
-      className={`
-        fixed inset-y-0 left-0 bg-bg shadow-sm border-r border-border-primary
-        transition-[width] duration-300 ease-in-out
-        ${open ? widthClass : "w-16"}
-      `}
+    <aside 
+      className="fixed inset-y-0 left-0 z-40 bg-bg border-r border-border-primary transition-all duration-300"
+      style={{ width: isOpen ? '256px' : '64px' }}
     >
       <div className="flex flex-col h-full">
         {/* Header / Logo + collapse button */}
-        <div className="px-3 py-4">
-          <div className={`flex items-center ${open ? "justify-between" : "justify-center"} gap-2`}>
-            <a href="/" className="rounded-xl flex items-center justify-center">
-              <img src={Logo} alt="I75 Logo" className={`${open ? "w-10 h-10" : "w-8 h-8"}`} />
-            </a>
-            {open && (
+        <div className="px-3 py-4 flex-shrink-0">
+          <div className={`flex items-center ${isOpen ? "justify-between" : "justify-center"} gap-2`}>
+            <Link to="/" className="rounded-xl flex items-center justify-center">
+              <img src={Logo} alt="I75 Logo" className={`${isOpen ? "w-10 h-10" : "w-8 h-8"}`} />
+            </Link>
+            {isOpen && (
               <div className="min-w-0">
                 <h1 className="text-lg font-bold text-heading leading-tight">I75 Platform</h1>
                 <p className="text-xs text-text">Education Management</p>
@@ -109,19 +72,19 @@ const Sidebar = ({
             )}
             <button
               type="button"
-              aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
-              onClick={() => setOpen((v) => !v)}
-              className={`p-2 rounded-lg hover:bg-bg2 ${open ? "" : "mt-0"}`}
-              title={open ? "Collapse" : "Expand"}
+              aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+              onClick={onToggle}
+              className="p-2 rounded-lg hover:bg-bg2 transition-colors"
+              title={isOpen ? "Collapse" : "Expand"}
             >
-              {open ? <PanelLeftClose className="w-4 h-4 text-text" /> : <PanelLeftOpen className="w-4 h-4 text-text" />}
+              {isOpen ? <PanelLeftClose className="w-4 h-4 text-text" /> : <PanelLeftOpen className="w-4 h-4 text-text" />}
             </button>
           </div>
         </div>
 
         {/* Nav (scrollable) */}
         <div className="px-3 flex-1 overflow-y-auto">
-          {open && (
+          {isOpen && (
             <h2 className="text-xs font-semibold text-text uppercase tracking-wider mb-3">Navigation</h2>
           )}
 
@@ -135,17 +98,18 @@ const Sidebar = ({
                   <Link
                     key={item.name}
                     to={item.href}
-                    title={!open ? item.name : undefined}
+                    title={!isOpen ? item.name : undefined}
                     className={`
-                      flex items-center ${open ? "justify-start px-3" : "justify-center px-0"}
-                      py-2.5 text-sm font-medium rounded-lg transition-colors group
+                      flex items-center group
+                      ${isOpen ? "justify-start px-3" : "justify-center px-0"}
+                      py-2.5 text-sm font-medium rounded-lg transition-colors
                       ${item.current ? "bg-primary/10 text-primary" : "text-text hover:text-heading hover:bg-bg2"}
                     `}
                   >
                     <Icon
-                      className={`w-5 h-5 ${item.current ? "text-primary" : "text-text group-hover:text-heading"}`}
+                      className={`w-5 h-5 flex-shrink-0 ${item.current ? "text-primary" : "text-text group-hover:text-heading"}`}
                     />
-                    {open && <span className="ml-3 truncate">{item.name}</span>}
+                    {isOpen && <span className="ml-3 truncate">{item.name}</span>}
                   </Link>
                 );
               }
@@ -155,18 +119,19 @@ const Sidebar = ({
                 <div key="Courses" className="space-y-1">
                   <div
                     className={`
-                      flex items-center ${open ? "px-3" : "px-0 justify-center"}
+                      flex items-center group
+                      ${isOpen ? "px-3" : "px-0 justify-center"}
                       py-2.5 text-sm font-medium rounded-lg transition-colors
                       ${item.current ? "bg-primary/10 text-primary" : "text-text hover:text-heading hover:bg-bg2"}
                     `}
-                    title={!open ? "Courses" : undefined}
+                    title={!isOpen ? "Courses" : undefined}
                   >
-                    <Link to={item.href} className={`flex items-center gap-3 ${open ? "flex-1" : ""}`}>
+                    <Link to={item.href} className={`flex items-center gap-3 ${isOpen ? "flex-1" : ""}`}>
                       <Icon className={`${item.current ? "text-primary" : "text-text"} w-5 h-5`} />
-                      {open && <span>Courses</span>}
+                      {isOpen && <span>Courses</span>}
                     </Link>
 
-                    {open && (
+                    {isOpen && (
                       <button
                         type="button"
                         aria-label="Toggle courses submenu"
@@ -184,8 +149,8 @@ const Sidebar = ({
                   </div>
 
                   {/* Submenu only when expanded sidebar */}
-                  {open && (
-                    <div className={`ml-8 pr-1 ${coursesOpen ? "block" : "hidden"}`}>
+                  {isOpen && coursesOpen && (
+                    <div className="ml-8 pr-1">
                       {coursesLoading && <div className="px-3 py-2 text-xs text-text/70">Loading…</div>}
                       {coursesError && <div className="px-3 py-2 text-xs text-red-600">{coursesError}</div>}
                       {!coursesLoading && !coursesError && courses.length === 0 && (
@@ -219,12 +184,11 @@ const Sidebar = ({
         </div>
 
         {/* Footer */}
-        <div className="p-2 border-t border-border-primary">
-          {/* When collapsed, show only avatar; when expanded, show full row */}
-          <CurrentUser compact={!open} />
+        <div className="p-2 border-t border-border-primary flex-shrink-0">
+          <CurrentUser compact={!isOpen} />
         </div>
       </div>
-    </div>
+    </aside>
   );
 };
 
