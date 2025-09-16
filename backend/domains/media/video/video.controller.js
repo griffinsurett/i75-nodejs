@@ -1,4 +1,4 @@
-// ==================== domains/media/video/video.controller.js ====================
+// backend/domains/media/video/video.controller.js
 const { db } = require("../../../config/database");
 const {
   videos,
@@ -11,15 +11,30 @@ const {
   optionVideos,
   questionVideos,
 } = require("../../../config/schema");
-const { eq, count } = require("drizzle-orm");
+const { eq } = require("drizzle-orm");
+const BaseController = require("../../../shared/utils/baseController");
+const videoService = require('./video.service');
 
-const ONE_MINUTE_MS = 60 * 1000;
+const TimeUntilDeletion = 60000;
 
-const videoController = {
+class VideoController extends BaseController {
+  // Define usage tables for checking
+  get usageTables() {
+    return [
+      { table: courses, field: courses.videoId },
+      { table: sections, field: sections.videoId },
+      { table: tests, field: tests.videoId },
+      { table: options, field: options.videoId },
+      { table: entries, field: entries.videoId },
+      { table: optionVideos, field: optionVideos.videoId },
+      { table: questionVideos, field: questionVideos.videoId },
+    ];
+  }
+
   /**
-   * GET /api/videos - Get all videos with optional archive filter
+   * GET /api/videos
    */
-  getAllVideos: async (req, res, next) => {
+  async getAllVideos(req, res, next) {
     try {
       const showArchived = String(req.query.archived || "").toLowerCase() === "true";
 
@@ -43,16 +58,16 @@ const videoController = {
         .where(eq(videos.isArchived, showArchived))
         .orderBy(videos.title);
 
-      res.json({ success: true, data: result });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
-   * GET /api/videos/:videoId - Get single video by ID
+   * GET /api/videos/:videoId
    */
-  getVideoById: async (req, res, next) => {
+  async getVideoById(req, res, next) {
     try {
       const { videoId } = req.params;
 
@@ -76,30 +91,24 @@ const videoController = {
         .where(eq(videos.videoId, videoId));
 
       if (result.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Video not found",
-        });
+        this.throwNotFound("Video");
       }
 
-      res.json({ success: true, data: result[0] });
+      this.success(res, result[0]);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
-   * POST /api/videos - Create new video
+   * POST /api/videos
    */
-  createVideo: async (req, res, next) => {
+  async createVideo(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { title, description, slides_url, thumbnail_url, thumbnail_alt } = req.body;
 
-        // Validation
-        if (!title) {
-          throw new Error("Title is required");
-        }
+        this.validateRequired(title, "Title");
 
         let thumbnail_image_id = null;
         if (thumbnail_url) {
@@ -128,42 +137,26 @@ const videoController = {
         return videoResult[0];
       });
 
-      res.status(201).json({ success: true, data: result });
+      this.success(res, result, null, 201);
     } catch (error) {
-      if (error.message === "Title is required") {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
-   * PUT /api/videos/:videoId - Update existing video
+   * PUT /api/videos/:videoId
    */
-  updateVideo: async (req, res, next) => {
+  async updateVideo(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { videoId } = req.params;
         const { title, description, slides_url, thumbnail_url, thumbnail_alt } = req.body;
 
-        // Check if video exists
-        const existingVideo = await tx
-          .select()
-          .from(videos)
-          .where(eq(videos.videoId, videoId));
+        const existingVideo = await this.getOrThrow(tx, videos, videos.videoId, videoId, "Video");
 
-        if (existingVideo.length === 0) {
-          throw new Error("Video not found");
-        }
-
-        // Handle thumbnail update
-        let thumbnail_image_id = existingVideo[0].thumbnailImageId;
+        let thumbnail_image_id = existingVideo.thumbnailImageId;
         if (thumbnail_url) {
           if (thumbnail_image_id) {
-            // Update existing thumbnail
             await tx
               .update(images)
               .set({
@@ -173,7 +166,6 @@ const videoController = {
               })
               .where(eq(images.imageId, thumbnail_image_id));
           } else {
-            // Create new thumbnail
             const imageResult = await tx
               .insert(images)
               .values({
@@ -185,235 +177,129 @@ const videoController = {
           }
         }
 
-        const updateData = {
-          updatedAt: new Date(),
-        };
-
+        const updateData = { updatedAt: new Date() };
         if (title !== undefined) updateData.title = title;
         if (description !== undefined) updateData.description = description;
         if (slides_url !== undefined) updateData.slidesUrl = slides_url;
         if (thumbnail_image_id !== undefined) updateData.thumbnailImageId = thumbnail_image_id;
 
-        const updateResult = await tx
-          .update(videos)
-          .set(updateData)
-          .where(eq(videos.videoId, videoId))
-          .returning();
-
-        return updateResult[0];
-      });
-
-      res.json({ success: true, data: result });
-    } catch (error) {
-      if (error.message === "Video not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
-    }
-  },
-
-  /**
-   * POST /api/videos/upload - Upload video file
-   */
-  uploadVideo: async (req, res, next) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: "No video file uploaded",
-        });
-      }
-
-      const { title, description } = req.body;
-
-      if (!title) {
-        // Clean up uploaded file if validation fails
-        const uploadService = require('../upload/upload.service');
-        await uploadService.deleteFile(req.file.path);
-        return res.status(400).json({
-          success: false,
-          message: "Video title is required",
-        });
-      }
-
-      const uploadService = require('../upload/upload.service');
-      // Process file metadata
-      const fileData = uploadService.processFile(req.file, req, "videos");
-
-      // Save to database
-      const [row] = await db
-        .insert(videos)
-        .values({
-          title,
-          description: description || null,
-          slidesUrl: fileData.publicUrl,
-          thumbnailImageId: null,
-          isArchived: false,
-          createdAt: new Date(),
-        })
-        .returning({
-          video_id: videos.videoId,
-          title: videos.title,
-          description: videos.description,
-          slides_url: videos.slidesUrl,
-        });
-
-      res.status(201).json({ 
-        success: true, 
-        data: row
-      });
-    } catch (err) {
-      // Clean up file on error
-      if (req.file) {
-        const uploadService = require('../upload/upload.service');
-        await uploadService.deleteFile(req.file.path);
-      }
-      next(err);
-    }
-  },
-
-  /**
-   * POST /api/videos/:videoId/archive - Archive video indefinitely
-   */
-  archiveVideo: async (req, res, next) => {
-    try {
-      const { videoId } = req.params;
-
-      const result = await db.transaction(async (tx) => {
-        const existing = await tx
-          .select()
-          .from(videos)
-          .where(eq(videos.videoId, videoId));
-
-        if (existing.length === 0) {
-          throw new Error("Video not found");
-        }
-
-        // Check if already archived
-        if (existing[0].isArchived) {
-          throw new Error("Video is already archived");
-        }
-
-        // Check usage
-        const usageChecks = await Promise.all([
-          tx.select({ count: count() }).from(courses).where(eq(courses.videoId, videoId)),
-          tx.select({ count: count() }).from(sections).where(eq(sections.videoId, videoId)),
-          tx.select({ count: count() }).from(tests).where(eq(tests.videoId, videoId)),
-          tx.select({ count: count() }).from(options).where(eq(options.videoId, videoId)),
-          tx.select({ count: count() }).from(entries).where(eq(entries.videoId, videoId)),
-          tx.select({ count: count() }).from(optionVideos).where(eq(optionVideos.videoId, videoId)),
-          tx.select({ count: count() }).from(questionVideos).where(eq(questionVideos.videoId, videoId)),
-        ]);
-
-        const totalUsage = usageChecks.reduce((sum, check) => sum + check[0].count, 0);
-
-        if (totalUsage > 0) {
-          throw new Error("Cannot archive video that is currently in use");
-        }
-
         const [updated] = await tx
           .update(videos)
-          .set({
-            isArchived: true,
-            archivedAt: new Date(),
-            purgeAfterAt: null,
-            updatedAt: new Date(),
-          })
+          .set(updateData)
           .where(eq(videos.videoId, videoId))
           .returning();
 
         return updated;
       });
 
-      res.json({ success: true, data: result, message: "Video archived" });
+      this.success(res, result);
     } catch (error) {
-      if (error.message === "Video not found") {
-        return res.status(404).json({ success: false, message: error.message });
-      }
-      if (error.message.includes("Cannot archive") || error.message.includes("already archived")) {
-        return res.status(400).json({ success: false, message: error.message });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
-   * POST /api/videos/:videoId/restore - Restore archived video
+   * POST /api/videos/upload
    */
-  restoreVideo: async (req, res, next) => {
+  async uploadVideo(req, res, next) {
+    try {
+      if (!req.file) {
+        throw this.createError("No video file uploaded", 400);
+      }
+
+      const { title, description } = req.body;
+      const uploadService = require('../upload/upload.service');
+
+      try {
+        this.validateRequired(title, "Video title");
+        
+        const fileData = uploadService.processFile(req.file, req, "videos");
+
+        const [row] = await db
+          .insert(videos)
+          .values({
+            title,
+            description: description || null,
+            slidesUrl: fileData.publicUrl,
+            thumbnailImageId: null,
+            isArchived: false,
+            createdAt: new Date(),
+          })
+          .returning({
+            video_id: videos.videoId,
+            title: videos.title,
+            description: videos.description,
+            slides_url: videos.slidesUrl,
+          });
+
+        this.success(res, row, null, 201);
+      } catch (error) {
+        await uploadService.deleteFile(req.file.path);
+        throw error;
+      }
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * POST /api/videos/:videoId/archive
+   */
+  async archiveVideo(req, res, next) {
     try {
       const { videoId } = req.params;
 
-      const existing = await db.select().from(videos).where(eq(videos.videoId, videoId));
-      
-      if (existing.length === 0) {
-        return res.status(404).json({ success: false, message: "Video not found" });
-      }
+      const result = await this.withTransaction(db, async (tx) => {
+        const existing = await this.getOrThrow(tx, videos, videos.videoId, videoId, "Video");
 
-      if (!existing[0].isArchived) {
-        return res.status(400).json({ success: false, message: "Video is not archived" });
-      }
+        if (existing.isArchived) {
+          throw this.createError("Video is already archived", 400);
+        }
 
-      const [updated] = await db
-        .update(videos)
-        .set({
-          isArchived: false,
-          archivedAt: null,
-          purgeAfterAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(videos.videoId, videoId))
-        .returning();
+        const totalUsage = await this.checkMultipleUsage(tx, videoId, this.usageTables);
+        if (totalUsage > 0) {
+          throw this.createError("Cannot archive video that is currently in use", 400);
+        }
 
-      res.json({ success: true, data: updated, message: "Video restored" });
+        return await this.archive(tx, videos, videos.videoId, videoId, "Video");
+      });
+
+      this.success(res, result, "Video archived");
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
-   * DELETE /api/videos/:videoId - Schedule video for deletion (safety delete)
+   * POST /api/videos/:videoId/restore
    */
-  deleteVideo: async (req, res, next) => {
+  async restoreVideo(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const { videoId } = req.params;
+      const updated = await this.restore(db, videos, videos.videoId, videoId, "Video");
+      this.success(res, updated, "Video restored");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * DELETE /api/videos/:videoId
+   */
+  async deleteVideo(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
         const { videoId } = req.params;
 
-        // Check existence
-        const existing = await tx
-          .select()
-          .from(videos)
-          .where(eq(videos.videoId, videoId));
+        await this.getOrThrow(tx, videos, videos.videoId, videoId, "Video");
 
-        if (existing.length === 0) {
-          throw new Error("Video not found");
-        }
-
-        // Check usage
-        const usageChecks = await Promise.all([
-          tx.select({ count: count() }).from(courses).where(eq(courses.videoId, videoId)),
-          tx.select({ count: count() }).from(sections).where(eq(sections.videoId, videoId)),
-          tx.select({ count: count() }).from(tests).where(eq(tests.videoId, videoId)),
-          tx.select({ count: count() }).from(options).where(eq(options.videoId, videoId)),
-          tx.select({ count: count() }).from(entries).where(eq(entries.videoId, videoId)),
-          tx.select({ count: count() }).from(optionVideos).where(eq(optionVideos.videoId, videoId)),
-          tx.select({ count: count() }).from(questionVideos).where(eq(questionVideos.videoId, videoId)),
-        ]);
-
-        const totalUsage = usageChecks.reduce((sum, check) => sum + check[0].count, 0);
-
+        const totalUsage = await this.checkMultipleUsage(tx, videoId, this.usageTables);
         if (totalUsage > 0) {
-          throw new Error(
-            "Cannot delete video that is being used. Remove all references first."
-          );
+          throw this.createError("Cannot delete video that is being used. Remove all references first.", 400);
         }
 
-        // Schedule for deletion
         const now = Date.now();
-        const purgeAt = new Date(now + ONE_MINUTE_MS);
+        const purgeAt = new Date(now + TimeUntilDeletion);
 
         const [updated] = await tx
           .update(videos)
@@ -429,21 +315,23 @@ const videoController = {
         return updated;
       });
 
-      res.json({
-        success: true,
-        message: "Video scheduled for deletion in 60 seconds (archived now). Restore within a minute to cancel.",
-        data: result,
-      });
+      this.success(res, result, "Video scheduled for deletion in 60 seconds. Restore within a minute to cancel.");
     } catch (error) {
-      if (error.message === "Video not found") {
-        return res.status(404).json({ success: false, message: error.message });
-      }
-      if (error.message.includes("Cannot delete")) {
-        return res.status(400).json({ success: false, message: error.message });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
-};
+  }
 
-module.exports = videoController;
+  /**
+   * Helper to check multiple table usage
+   */
+  async checkMultipleUsage(tx, videoId, tables) {
+    let totalUsage = 0;
+    for (const { table, field } of tables) {
+      const count = await this.checkRelatedCount(tx, table, field, videoId);
+      totalUsage += count;
+    }
+    return totalUsage;
+  }
+}
+
+module.exports = new VideoController();

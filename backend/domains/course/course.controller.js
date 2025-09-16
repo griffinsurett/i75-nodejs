@@ -1,4 +1,4 @@
-// ==================== domains/course/course.controller.js ====================
+// backend/domains/course/course.controller.js
 const { db } = require("../../config/database");
 const {
   courses,
@@ -14,20 +14,42 @@ const {
   optionVideos,
   questionVideos,
 } = require("../../config/schema");
-const { eq, desc, count } = require("drizzle-orm");
+const { eq, desc } = require("drizzle-orm");
 const courseService = require("./course.service");
 const mediaManager = require("../../shared/utils/mediaManager");
+const BaseController = require("../../shared/utils/baseController");
 
-const TimeUntilDeletion = 6000; 
+const TimeUntilDeletion = 60000;
 
-const courseController = {
+class CourseController extends BaseController {
+  // Schema for all media operations
+  get mediaSchema() {
+    return {
+      courses,
+      images,
+      videos,
+      sections,
+      chapters,
+      tests,
+      instructors,
+      options,
+      entries,
+      optionVideos,
+      questionVideos,
+    };
+  }
+
+  // Simplified schema for image operations
+  get imageSchema() {
+    return { images, videos };
+  }
+
   /**
    * GET /api/courses - Get all courses with optional archive filter
    */
   async getAllCourses(req, res, next) {
     try {
-      const showArchived =
-        String(req.query.archived || "").toLowerCase() === "true";
+      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
 
       const result = await db
         .select(courseService.COURSE_FIELDS)
@@ -37,11 +59,11 @@ const courseController = {
         .where(eq(courses.isArchived, showArchived))
         .orderBy(desc(courses.createdAt));
 
-      res.json({ success: true, data: result });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
    * GET /api/courses/:courseId - Get single course with instructors
@@ -58,9 +80,7 @@ const courseController = {
         .where(eq(courses.courseId, courseId));
 
       if (courseResult.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Course not found" });
+        this.throwNotFound("Course");
       }
 
       const instructorsResult = await db
@@ -76,11 +96,11 @@ const courseController = {
       const course = courseResult[0];
       course.instructors = instructorsResult;
 
-      res.json({ success: true, data: course });
+      this.success(res, course);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
    * GET /api/courses/:courseId/sections - Get sections for a course
@@ -89,15 +109,15 @@ const courseController = {
     try {
       const { courseId } = req.params;
 
-      const courseCheck = await db
-        .select({ count: count() })
-        .from(courses)
-        .where(eq(courses.courseId, courseId));
+      const courseExists = await this.checkRelatedCount(
+        db,
+        courses,
+        courses.courseId,
+        courseId
+      );
 
-      if (Number(courseCheck?.[0]?.count || 0) === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Course not found" });
+      if (courseExists === 0) {
+        this.throwNotFound("Course");
       }
 
       const result = await db
@@ -117,18 +137,18 @@ const courseController = {
         .where(eq(sections.courseId, courseId))
         .orderBy(sections.title);
 
-      res.json({ success: true, data: result });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
    * POST /api/courses - Create new course
    */
   async createCourse(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const {
           course_name,
           description,
@@ -139,60 +159,43 @@ const courseController = {
           instructor_ids,
         } = req.body;
 
-        if (!course_name?.trim()) {
-          throw new Error("Course name is required");
-        }
+        const courseName = this.validateRequired(course_name, "Course name");
 
-        // Use mediaManager for image handling
-        const schema = { images, videos };
         const finalImageId = await mediaManager.handleImage(
-          tx, 
+          tx,
           { image_id, image_url, alt_text },
-          schema
+          this.imageSchema
         );
 
         const [course] = await tx
           .insert(courses)
           .values({
-            courseName: course_name.trim(),
+            courseName,
             description: description || null,
             imageId: finalImageId,
             videoId: video_id || null,
           })
           .returning();
 
-        // Use courseService for instructor linking
         if (instructor_ids?.length > 0) {
-          await courseService.linkInstructors(
-            tx,
-            course.courseId,
-            instructor_ids
-          );
+          await courseService.linkInstructors(tx, course.courseId, instructor_ids);
         }
 
         return course;
       });
 
-      res.status(201).json({ success: true, data: result });
+      this.success(res, result, null, 201);
     } catch (error) {
-      const status =
-        error.status ||
-        (error.message === "Course name is required" ? 400 : 500);
-      if (status !== 500) {
-        return res
-          .status(status)
-          .json({ success: false, message: error.message });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
    * PUT /api/courses/:courseId - Update course
    */
   async updateCourse(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { courseId } = req.params;
         const {
           course_name,
@@ -204,21 +207,13 @@ const courseController = {
           instructor_ids,
         } = req.body;
 
-        const existing = await tx
-          .select()
-          .from(courses)
-          .where(eq(courses.courseId, courseId));
-        if (existing.length === 0) {
-          throw new Error("Course not found");
-        }
+        const existing = await this.getOrThrow(tx, courses, courses.courseId, courseId, "Course");
 
-        // Use mediaManager for image handling
-        const schema = { images, videos };
         const currentImageId = await mediaManager.updateImage(
           tx,
-          existing[0].imageId,
+          existing.imageId,
           { image_id, image_url, alt_text },
-          schema
+          this.imageSchema
         );
 
         const updateFields = { updatedAt: new Date() };
@@ -233,7 +228,6 @@ const courseController = {
           .where(eq(courses.courseId, courseId))
           .returning();
 
-        // Use courseService for instructor relationships
         if (instructor_ids !== undefined) {
           await courseService.updateInstructors(tx, courseId, instructor_ids);
         }
@@ -241,18 +235,11 @@ const courseController = {
         return updated;
       });
 
-      res.json({ success: true, data: result });
+      this.success(res, result);
     } catch (error) {
-      const status =
-        error.status || (error.message.includes("not found") ? 404 : 500);
-      if (status !== 500) {
-        return res
-          .status(status)
-          .json({ success: false, message: error.message });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
    * POST /api/courses/:courseId/archive - Archive course indefinitely
@@ -260,33 +247,12 @@ const courseController = {
   async archiveCourse(req, res, next) {
     try {
       const { courseId } = req.params;
-
-      const existing = await db
-        .select()
-        .from(courses)
-        .where(eq(courses.courseId, courseId));
-      if (existing.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Course not found" });
-      }
-
-      const [updated] = await db
-        .update(courses)
-        .set({
-          isArchived: true,
-          archivedAt: new Date(),
-          purgeAfterAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(courses.courseId, courseId))
-        .returning();
-
-      res.json({ success: true, data: updated, message: "Course archived" });
+      const updated = await this.archive(db, courses, courses.courseId, courseId, "Course");
+      this.success(res, updated, "Course archived");
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
    * POST /api/courses/:courseId/restore - Restore archived course
@@ -294,124 +260,52 @@ const courseController = {
   async restoreCourse(req, res, next) {
     try {
       const { courseId } = req.params;
-
-      const existing = await db
-        .select()
-        .from(courses)
-        .where(eq(courses.courseId, courseId));
-      if (existing.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Course not found" });
-      }
-
-      const [updated] = await db
-        .update(courses)
-        .set({
-          isArchived: false,
-          archivedAt: null,
-          purgeAfterAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(courses.courseId, courseId))
-        .returning();
-
-      res.json({ success: true, data: updated, message: "Course restored" });
+      const updated = await this.restore(db, courses, courses.courseId, courseId, "Course");
+      this.success(res, updated, "Course restored");
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
   /**
    * DELETE /api/courses/:courseId - Delete course with automatic cascade
    */
   async deleteCourse(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { courseId } = req.params;
 
-        // Check course exists
-        const existing = await tx
-          .select()
-          .from(courses)
-          .where(eq(courses.courseId, courseId));
-        if (existing.length === 0) {
-          throw new Error("Course not found");
+        const course = await this.getOrThrow(tx, courses, courses.courseId, courseId, "Course");
+
+        const sectionCount = await this.checkRelatedCount(tx, sections, sections.courseId, courseId);
+        if (sectionCount > 0) {
+          throw this.createError("Cannot delete course with existing sections. Delete sections first.", 400);
         }
 
-        // Check for sections
-        const sectionsCheck = await tx
-          .select({ count: count() })
-          .from(sections)
-          .where(eq(sections.courseId, courseId));
-
-        if (Number(sectionsCheck?.[0]?.count || 0) > 0) {
-          throw new Error(
-            "Cannot delete course with existing sections. Delete sections first."
-          );
-        }
-
-        const course = existing[0];
-        const schema = {
-          courses,
-          images,
-          videos,
-          sections,
-          chapters,
-          tests,
-          instructors,
-          options,
-          entries,
-          optionVideos,
-          questionVideos,
-        };
-
-        // Use mediaManager for deletion with cascade
-        const cascadedMedia = await mediaManager.deleteWithCascade(
+        return await mediaManager.deleteWithCascade(
           tx,
           course,
           courses,
           courses.courseId,
           courseId,
-          schema,
+          this.mediaSchema,
           TimeUntilDeletion
         );
-
-        return cascadedMedia;
       });
 
       let message = "Course scheduled for deletion in 60 seconds.";
       const cascaded = [];
       if (result.image) cascaded.push("image");
       if (result.video) cascaded.push("video");
-
       if (cascaded.length > 0) {
-        message = `Course and its exclusive ${cascaded.join(
-          " and "
-        )} scheduled for deletion in 60 seconds.`;
+        message = `Course and its exclusive ${cascaded.join(" and ")} scheduled for deletion in 60 seconds.`;
       }
 
-      res.json({
-        success: true,
-        message,
-        cascadedMedia: result,
-      });
+      this.success(res, result, message);
     } catch (error) {
-      const status =
-        error.status ||
-        (error.message.includes("not found")
-          ? 404
-          : error.message.includes("Cannot delete")
-          ? 400
-          : 500);
-      if (status !== 500) {
-        return res
-          .status(status)
-          .json({ success: false, message: error.message });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
-};
+  }
+}
 
-module.exports = courseController;
+module.exports = new CourseController();
