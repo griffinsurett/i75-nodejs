@@ -16,31 +16,50 @@ import Sidebar from './components/Sidebar';
 import ThemeToggle from './components/ThemeToggle';
 
 function App() {
-  // Track sidebar state at the app level
+  // Track sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   
-  // Handle responsive default state
+  // Handle responsive behavior
   useEffect(() => {
     const checkWidth = () => {
-      setSidebarOpen(window.innerWidth >= 1024);
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      // On desktop default to open, on mobile default to closed
+      if (mobile !== isMobile) {
+        setSidebarOpen(!mobile);
+      }
     };
+    
     checkWidth();
     window.addEventListener('resize', checkWidth);
     return () => window.removeEventListener('resize', checkWidth);
-  }, []);
+  }, []); // eslint-disable-line
+
+  // Content margin calculation
+  // Desktop: adjust based on sidebar state
+  // Mobile: always have collapsed width (64px) margin
+  const contentStyle = {
+    marginLeft: isMobile ? '64px' : (sidebarOpen ? '256px' : '64px'),
+    transition: 'margin-left 300ms ease-in-out'
+  };
 
   return (
     <Router>
-      <div className="app-wrapper">
+      <div className="min-h-screen bg-bg2">
         {/* Sidebar */}
         <Sidebar 
           isOpen={sidebarOpen} 
-          onToggle={() => setSidebarOpen(!sidebarOpen)} 
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+          isMobile={isMobile}
         />
 
-        {/* Main Content Area */}
-        <div className={`app-content ${sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
-          <main className="min-h-screen">
+        {/* Main Content */}
+        <div 
+          className="min-h-screen flex flex-col"
+          style={contentStyle}
+        >
+          <main className="flex-1">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/courses" element={<CourseList />} />
@@ -65,10 +84,10 @@ function App() {
           </footer>
         </div>
 
-        {/* Mobile Overlay */}
-        {sidebarOpen && (
+        {/* Mobile Overlay - only show when sidebar is open on mobile */}
+        {isMobile && sidebarOpen && (
           <div 
-            className="sidebar-mobile-overlay lg:hidden"
+            className="fixed inset-0 bg-black/50 z-30"
             onClick={() => setSidebarOpen(false)}
           />
         )}
