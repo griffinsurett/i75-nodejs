@@ -8,6 +8,7 @@ import CourseUpsertPage from './pages/CourseUpsertPage';
 import HomePage from './pages/HomePage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import NotFoundPage from './pages/NotFoundPage';
+import MediaLibrary from './pages/MediaLibrary';
 
 // Components
 import CourseList from './components/CourseList';
@@ -67,7 +68,7 @@ function App() {
               <Route path="/courses/new" element={<CourseUpsertPage />} />
               <Route path="/courses/:courseId/edit" element={<CourseUpsertPage />} />
               <Route path="/instructors" element={<PlaceholderPage title="Instructors" />} />
-              <Route path="/content" element={<PlaceholderPage title="Content Library" />} />
+              <Route path="/content" element={<MediaLibrary />} />
               <Route path="/assessments" element={<PlaceholderPage title="Assessments" />} />
               <Route path="/sections/:sectionId/chapters" element={<PlaceholderPage title="Chapters" />} />
               <Route path="*" element={<NotFoundPage />} />
@@ -77,7 +78,7 @@ function App() {
           <footer className="bg-bg border-t border-border-primary">
             <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
               <div className="text-sm text-text text-center flex justify-center items-center gap-4">
-                <p>&copy; 2025 I75 Platform Educational Management</p>
+                <p>&copy; 2025 I75 Platform Educational Management | Powered By <a href='https://griffinswebservices.com' className='text-primary hover:underline'>Griffin's Web Services</a></p>
                 <ThemeToggle />
               </div>
             </div>
