@@ -18,7 +18,7 @@ const { eq, desc, count } = require("drizzle-orm");
 const courseService = require("./course.service");
 const mediaManager = require("../../shared/utils/mediaManager");
 
-const TimeUntilDeletion = 6000; // Fixed to be 60 seconds
+const TimeUntilDeletion = 6000; 
 
 const courseController = {
   /**
