@@ -8,7 +8,6 @@ const {
   courseInstructors,
 } = require("../../config/schema");
 const { eq, count } = require("drizzle-orm");
-const imageService = require("../media/image/image.service");
 
 /**
  * Standard field mappings - use these everywhere to avoid duplication
@@ -40,20 +39,6 @@ const courseService = {
   // Field mappings - export these for reuse
   COURSE_FIELDS,
   INSTRUCTOR_FIELDS,
-
-  /**
-   * Handle image creation/linking for courses
-   */
-  async handleCourseImage(tx, { image_id, image_url, alt_text }) {
-    return await imageService.handleImageCreation(tx, { image_id, image_url, alt_text });
-  },
-
-  /**
-   * Handle image updates for courses
-   */
-  async updateCourseImage(tx, currentImageId, { image_id, image_url, alt_text }) {
-    return await imageService.handleImageUpdate(tx, currentImageId, { image_id, image_url, alt_text });
-  },
 
   /**
    * Link instructors to course - used by create and update

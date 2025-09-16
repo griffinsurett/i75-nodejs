@@ -7,11 +7,18 @@ const {
   instructors,
   courseInstructors,
   sections,
+  chapters,
+  tests,
+  options,
+  entries,
+  optionVideos,
+  questionVideos,
 } = require("../../config/schema");
 const { eq, desc, count } = require("drizzle-orm");
-const courseService = require('./course.service');
+const courseService = require("./course.service");
+const mediaManager = require("../../shared/utils/mediaManager");
 
-const ONE_MINUTE_MS = 60 * 1000;
+const TimeUntilDeletion = 6000; // Fixed to be 60 seconds
 
 const courseController = {
   /**
@@ -19,7 +26,8 @@ const courseController = {
    */
   async getAllCourses(req, res, next) {
     try {
-      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+      const showArchived =
+        String(req.query.archived || "").toLowerCase() === "true";
 
       const result = await db
         .select(courseService.COURSE_FIELDS)
@@ -50,13 +58,18 @@ const courseController = {
         .where(eq(courses.courseId, courseId));
 
       if (courseResult.length === 0) {
-        return res.status(404).json({ success: false, message: "Course not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Course not found" });
       }
 
       const instructorsResult = await db
         .select(courseService.INSTRUCTOR_FIELDS)
         .from(instructors)
-        .innerJoin(courseInstructors, eq(instructors.instructorId, courseInstructors.instructorId))
+        .innerJoin(
+          courseInstructors,
+          eq(instructors.instructorId, courseInstructors.instructorId)
+        )
         .leftJoin(images, eq(instructors.imageId, images.imageId))
         .where(eq(courseInstructors.courseId, courseId));
 
@@ -82,7 +95,9 @@ const courseController = {
         .where(eq(courses.courseId, courseId));
 
       if (Number(courseCheck?.[0]?.count || 0) === 0) {
-        return res.status(404).json({ success: false, message: "Course not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Course not found" });
       }
 
       const result = await db
@@ -128,8 +143,13 @@ const courseController = {
           throw new Error("Course name is required");
         }
 
-        // Use courseService for image handling
-        const finalImageId = await courseService.handleCourseImage(tx, { image_id, image_url, alt_text });
+        // Use mediaManager for image handling
+        const schema = { images, videos };
+        const finalImageId = await mediaManager.handleImage(
+          tx, 
+          { image_id, image_url, alt_text },
+          schema
+        );
 
         const [course] = await tx
           .insert(courses)
@@ -143,7 +163,11 @@ const courseController = {
 
         // Use courseService for instructor linking
         if (instructor_ids?.length > 0) {
-          await courseService.linkInstructors(tx, course.courseId, instructor_ids);
+          await courseService.linkInstructors(
+            tx,
+            course.courseId,
+            instructor_ids
+          );
         }
 
         return course;
@@ -151,9 +175,13 @@ const courseController = {
 
       res.status(201).json({ success: true, data: result });
     } catch (error) {
-      const status = error.status || (error.message === "Course name is required" ? 400 : 500);
+      const status =
+        error.status ||
+        (error.message === "Course name is required" ? 400 : 500);
       if (status !== 500) {
-        return res.status(status).json({ success: false, message: error.message });
+        return res
+          .status(status)
+          .json({ success: false, message: error.message });
       }
       next(error);
     }
@@ -176,13 +204,22 @@ const courseController = {
           instructor_ids,
         } = req.body;
 
-        const existing = await tx.select().from(courses).where(eq(courses.courseId, courseId));
+        const existing = await tx
+          .select()
+          .from(courses)
+          .where(eq(courses.courseId, courseId));
         if (existing.length === 0) {
-          return res.status(404).json({ success: false, message: "Course not found" });
+          throw new Error("Course not found");
         }
 
-        // Use courseService for image handling
-        const currentImageId = await courseService.updateCourseImage(tx, existing[0].imageId, { image_id, image_url, alt_text });
+        // Use mediaManager for image handling
+        const schema = { images, videos };
+        const currentImageId = await mediaManager.updateImage(
+          tx,
+          existing[0].imageId,
+          { image_id, image_url, alt_text },
+          schema
+        );
 
         const updateFields = { updatedAt: new Date() };
         if (course_name !== undefined) updateFields.courseName = course_name;
@@ -206,9 +243,12 @@ const courseController = {
 
       res.json({ success: true, data: result });
     } catch (error) {
-      const status = error.status || (error.message === "Course not found" ? 404 : 500);
+      const status =
+        error.status || (error.message.includes("not found") ? 404 : 500);
       if (status !== 500) {
-        return res.status(status).json({ success: false, message: error.message });
+        return res
+          .status(status)
+          .json({ success: false, message: error.message });
       }
       next(error);
     }
@@ -221,9 +261,14 @@ const courseController = {
     try {
       const { courseId } = req.params;
 
-      const existing = await db.select().from(courses).where(eq(courses.courseId, courseId));
+      const existing = await db
+        .select()
+        .from(courses)
+        .where(eq(courses.courseId, courseId));
       if (existing.length === 0) {
-        return res.status(404).json({ success: false, message: "Course not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Course not found" });
       }
 
       const [updated] = await db
@@ -250,9 +295,14 @@ const courseController = {
     try {
       const { courseId } = req.params;
 
-      const existing = await db.select().from(courses).where(eq(courses.courseId, courseId));
+      const existing = await db
+        .select()
+        .from(courses)
+        .where(eq(courses.courseId, courseId));
       if (existing.length === 0) {
-        return res.status(404).json({ success: false, message: "Course not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Course not found" });
       }
 
       const [updated] = await db
@@ -273,52 +323,91 @@ const courseController = {
   },
 
   /**
-   * DELETE /api/courses/:courseId - Schedule course for deletion
+   * DELETE /api/courses/:courseId - Delete course with automatic cascade
    */
   async deleteCourse(req, res, next) {
     try {
-      await db.transaction(async (tx) => {
+      const result = await db.transaction(async (tx) => {
         const { courseId } = req.params;
 
-        // Must exist
-        const existing = await tx.select().from(courses).where(eq(courses.courseId, courseId));
+        // Check course exists
+        const existing = await tx
+          .select()
+          .from(courses)
+          .where(eq(courses.courseId, courseId));
         if (existing.length === 0) {
           throw new Error("Course not found");
         }
 
-        // Keep the original guard
+        // Check for sections
         const sectionsCheck = await tx
           .select({ count: count() })
           .from(sections)
           .where(eq(sections.courseId, courseId));
 
         if (Number(sectionsCheck?.[0]?.count || 0) > 0) {
-          throw new Error("Cannot delete course with existing sections. Delete sections first.");
+          throw new Error(
+            "Cannot delete course with existing sections. Delete sections first."
+          );
         }
 
-        // Schedule purge (archive now + purge in 60s)
-        const now = Date.now();
-        const purgeAt = new Date(now + ONE_MINUTE_MS);
+        const course = existing[0];
+        const schema = {
+          courses,
+          images,
+          videos,
+          sections,
+          chapters,
+          tests,
+          instructors,
+          options,
+          entries,
+          optionVideos,
+          questionVideos,
+        };
 
-        await tx
-          .update(courses)
-          .set({
-            isArchived: true,
-            archivedAt: new Date(now),
-            purgeAfterAt: purgeAt,
-            updatedAt: new Date(now),
-          })
-          .where(eq(courses.courseId, courseId));
+        // Use mediaManager for deletion with cascade
+        const cascadedMedia = await mediaManager.deleteWithCascade(
+          tx,
+          course,
+          courses,
+          courses.courseId,
+          courseId,
+          schema,
+          TimeUntilDeletion
+        );
+
+        return cascadedMedia;
       });
+
+      let message = "Course scheduled for deletion in 60 seconds.";
+      const cascaded = [];
+      if (result.image) cascaded.push("image");
+      if (result.video) cascaded.push("video");
+
+      if (cascaded.length > 0) {
+        message = `Course and its exclusive ${cascaded.join(
+          " and "
+        )} scheduled for deletion in 60 seconds.`;
+      }
 
       res.json({
         success: true,
-        message: "Course scheduled for deletion in 60 seconds (archived now). Restore within a minute to cancel.",
+        message,
+        cascadedMedia: result,
       });
     } catch (error) {
-      const status = error.status || (error.message === "Course not found" ? 404 : 500);
+      const status =
+        error.status ||
+        (error.message.includes("not found")
+          ? 404
+          : error.message.includes("Cannot delete")
+          ? 400
+          : 500);
       if (status !== 500) {
-        return res.status(status).json({ success: false, message: error.message });
+        return res
+          .status(status)
+          .json({ success: false, message: error.message });
       }
       next(error);
     }
