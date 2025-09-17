@@ -1,7 +1,7 @@
-import { BookOpen, Calendar, Play } from "lucide-react";
-import ArchiveBadge from "../archive/ArchiveBadge";
-import CourseInstructors from "./CourseInstructors";
-import { formatDate } from "../../utils/formatDate";
+import { BookOpen, Calendar, Play } from 'lucide-react';
+import ArchiveBadge from '../archive/ArchiveBadge';
+import CourseInstructors from './CourseInstructors';
+import { formatDate } from '../../utils/formatDate';
 
 export default function CourseHeader({ course }) {
   const courseData = course.courses || course;
@@ -44,7 +44,7 @@ export default function CourseHeader({ course }) {
           </h1>
 
           <p className="text-text/70 text-lg mb-6">
-            {courseData.description || "No description available"}
+            {courseData.description || 'No description available'}
           </p>
 
           {/* Course Meta */}
@@ -53,9 +53,7 @@ export default function CourseHeader({ course }) {
               <Calendar className="w-5 h-5 mr-2" />
               <div>
                 <div className="font-medium">Created</div>
-                <div className="text-sm">
-                  {formatDate(courseData.createdAt)}
-                </div>
+                <div className="text-sm">{formatDate(courseData.createdAt)}</div>
               </div>
             </div>
 
@@ -64,9 +62,7 @@ export default function CourseHeader({ course }) {
                 <Calendar className="w-5 h-5 mr-2" />
                 <div>
                   <div className="font-medium">Last Updated</div>
-                  <div className="text-sm">
-                    {formatDate(courseData.updatedAt)}
-                  </div>
+                  <div className="text-sm">{formatDate(courseData.updatedAt)}</div>
                 </div>
               </div>
             )}

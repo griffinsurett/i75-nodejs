@@ -1,12 +1,17 @@
-import { useState, useEffect } from 'react';
-import { imageAPI, videoAPI } from '../services/api';
-import { Loader2, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { imageAPI, videoAPI, uploadAPI } from '../services/api';
+import { Loader2, AlertCircle, Image as ImageIcon, Plus, Upload } from 'lucide-react';
 import MediaControls from '../components/media/MediaControls';
 import MediaCard from '../components/media/MediaCard';
 import MediaListItem from '../components/media/MediaListItem';
 import MediaPreviewModal from '../components/media/MediaPreviewModal';
+import MediaUploadModal from '../components/media/MediaUploadModal';
+import ActiveArchivedTabs from '../components/archive/ActiveArchivedTabs';
+import ArchivedNotice from '../components/archive/ArchivedNotice';
+import useArchiveViewParam from '../hooks/useArchiveViewParam';
 
 const MediaLibrary = () => {
+  const [view, setView] = useArchiveViewParam(); // 'active' | 'archived'
   const [activeTab, setActiveTab] = useState('all');
   const [images, setImages] = useState([]);
   const [videos, setVideos] = useState([]);
@@ -15,44 +20,48 @@ const MediaLibrary = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+
+  const fetchMedia = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      // Pass archived parameter to API calls
+      const params = view === 'archived' ? { archived: 'true' } : {};
+      
+      const [imagesRes, videosRes] = await Promise.all([
+        imageAPI.getAllImages(params),
+        videoAPI.getAllVideos(params)
+      ]);
+
+      if (imagesRes.data?.success) {
+        setImages(imagesRes.data.data || []);
+      }
+      if (videosRes.data?.success) {
+        const videoData = videosRes.data.data.map(item => {
+          if (item.videos) {
+            return {
+              ...item.videos,
+              thumbnailUrl: item.images?.imageUrl,
+              thumbnailAlt: item.images?.altText
+            };
+          }
+          return item;
+        });
+        setVideos(videoData);
+      }
+    } catch (err) {
+      setError('Failed to load media library');
+      console.error('Error fetching media:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [view]);
 
   useEffect(() => {
-    const fetchMedia = async () => {
-      setLoading(true);
-      setError('');
-      
-      try {
-        const [imagesRes, videosRes] = await Promise.all([
-          imageAPI.getAllImages(),
-          videoAPI.getAllVideos()
-        ]);
-
-        if (imagesRes.data?.success) {
-          setImages(imagesRes.data.data || []);
-        }
-        if (videosRes.data?.success) {
-          const videoData = videosRes.data.data.map(item => {
-            if (item.videos) {
-              return {
-                ...item.videos,
-                thumbnailUrl: item.images?.imageUrl,
-                thumbnailAlt: item.images?.altText
-              };
-            }
-            return item;
-          });
-          setVideos(videoData);
-        }
-      } catch (err) {
-        setError('Failed to load media library');
-        console.error('Error fetching media:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchMedia();
-  }, []);
+  }, [fetchMedia]);
 
   const getFilteredMedia = () => {
     let media = [];
@@ -86,7 +95,13 @@ const MediaLibrary = () => {
     );
   };
 
+  const handleUploadSuccess = () => {
+    setUploadModalOpen(false);
+    fetchMedia();
+  };
+
   const filteredMedia = getFilteredMedia();
+  const isArchivedView = view === 'archived';
 
   if (loading) {
     return (
@@ -109,9 +124,37 @@ const MediaLibrary = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-heading mb-2">Media Library</h1>
-        <p className="text-text/70">Manage all images and videos in one place</p>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-heading">
+              {isArchivedView ? 'Archived Media' : 'Media Library'}
+            </h1>
+            <ActiveArchivedTabs 
+              value={view} 
+              onChange={setView}
+              activeLabel="Active"
+              archivedLabel="Archived"
+            />
+          </div>
+          
+          {!isArchivedView && (
+            <button
+              onClick={() => setUploadModalOpen(true)}
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              Upload Media
+            </button>
+          )}
+        </div>
+        <p className="text-text/70">
+          {isArchivedView 
+            ? 'View and restore archived media files' 
+            : 'Manage all images and videos in one place'}
+        </p>
       </div>
+
+      {isArchivedView && <ArchivedNotice />}
 
       <MediaControls
         activeTab={activeTab}
@@ -127,12 +170,25 @@ const MediaLibrary = () => {
       {filteredMedia.length === 0 ? (
         <div className="text-center py-12 bg-bg rounded-lg">
           <ImageIcon className="w-12 h-12 mx-auto text-text/40 mb-4" />
-          <h3 className="text-lg font-medium text-heading mb-2">No media found</h3>
-          <p className="text-text/70">
-            {searchQuery 
-              ? 'Try adjusting your search terms' 
-              : 'Upload images or videos to see them here'}
+          <h3 className="text-lg font-medium text-heading mb-2">
+            {isArchivedView ? 'No archived media' : 'No media found'}
+          </h3>
+          <p className="text-text/70 mb-4">
+            {isArchivedView 
+              ? 'Archived media files will appear here'
+              : searchQuery 
+                ? 'Try adjusting your search terms' 
+                : 'Upload images or videos to see them here'}
           </p>
+          {!isArchivedView && !searchQuery && (
+            <button
+              onClick={() => setUploadModalOpen(true)}
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Upload Your First Media
+            </button>
+          )}
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -141,6 +197,7 @@ const MediaLibrary = () => {
               key={item.imageId || item.videoId}
               item={item}
               onClick={() => setSelectedItem(item)}
+              onChanged={fetchMedia}
             />
           ))}
         </div>
@@ -164,6 +221,7 @@ const MediaLibrary = () => {
                   key={item.imageId || item.videoId}
                   item={item}
                   onClick={() => setSelectedItem(item)}
+                  onChanged={fetchMedia}
                 />
               ))}
             </tbody>
@@ -174,6 +232,12 @@ const MediaLibrary = () => {
       <MediaPreviewModal
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+      />
+      
+      <MediaUploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onSuccess={handleUploadSuccess}
       />
     </div>
   );

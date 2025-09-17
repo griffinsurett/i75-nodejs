@@ -1,14 +1,49 @@
-import { useState } from "react";
-import { Eye, Film, Image as ImageIcon } from "lucide-react";
-import { formatDate } from "../../utils/formatDate";
-import { formatFileSize } from "../../utils/formatFileSize";
-import { formatFileType } from "../../utils/formatFileType";
+import { useState } from 'react';
+import { Eye, Film, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { formatDate } from '../../utils/formatDate';
+import { formatFileSize } from '../../utils/formatFileSize';
+import { formatFileType } from '../../utils/formatFileType';
+import EditActions from '../archive/EditActions';
+import ArchiveBadge from '../archive/ArchiveBadge';
+import ConfirmModal from '../ConfirmModal';
+import { imageAPI, videoAPI } from '../../services/api';
 
-export default function MediaCard({ item, onClick }) {
-  const isVideo = item.type === "video";
+export default function MediaCard({ item, onClick, onChanged }) {
+  const isVideo = item.type === 'video';
   const [thumbnailError, setThumbnailError] = useState(false);
   const [videoPreviewError, setVideoPreviewError] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const fileFormat = formatFileType(item.mimeType);
+
+  // Get the appropriate API based on media type
+  const api = isVideo
+    ? {
+        archive: (id) => videoAPI.archiveVideo(id),
+        restore: (id) => videoAPI.restoreVideo(id),
+        delete: (id) => videoAPI.deleteVideo(id)
+      }
+    : {
+        archive: (id) => imageAPI.archiveImage(id),
+        restore: (id) => imageAPI.restoreImage(id),
+        delete: (id) => imageAPI.deleteImage(id)
+      };
+
+  const handleQuickDelete = async () => {
+    setDeleting(true);
+    setDeleteError('');
+    
+    try {
+      await api.delete(item.imageId || item.videoId);
+      onChanged();
+      setDeleteModalOpen(false);
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || 'Failed to delete');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const VideoContent = () => {
     const videoUrl = item.url;
@@ -18,7 +53,7 @@ export default function MediaCard({ item, onClick }) {
       return (
         <img
           src={thumbnailUrl}
-          alt={item.title || "Video thumbnail"}
+          alt={item.title || 'Video thumbnail'}
           className="w-full h-full object-cover"
           loading="lazy"
           onError={() => setThumbnailError(true)}
@@ -52,78 +87,132 @@ export default function MediaCard({ item, onClick }) {
   };
 
   return (
-    <div
-      className="bg-bg rounded-lg overflow-hidden border border-border-primary hover:shadow-lg transition-shadow cursor-pointer group"
-      onClick={onClick}
-    >
-      <div className="aspect-square relative overflow-hidden bg-bg2">
-        {isVideo ? (
-          <>
-            <VideoContent />
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-black/50 rounded-full p-3 backdrop-blur-sm">
-                <svg
-                  className="w-10 h-10 text-white drop-shadow-lg"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M8 5v14l11-7z" />
-                </svg>
+    <>
+      <div
+        className="bg-bg rounded-lg overflow-hidden border border-border-primary hover:shadow-lg transition-shadow cursor-pointer group relative"
+      >
+        {/* Quick Actions on Hover */}
+        <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {!item.isArchived && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteModalOpen(true);
+              }}
+              className="p-2 bg-red-500/80 backdrop-blur-sm hover:bg-red-600 rounded text-white"
+              title="Quick Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+          <EditActions
+            id={item.imageId || item.videoId}
+            isArchived={item.isArchived}
+            api={api}
+            onChanged={onChanged}
+            buttonClassName="w-8 h-8 bg-black/50 backdrop-blur-sm hover:bg-black/70"
+          />
+        </div>
+
+        <div 
+          className="aspect-square relative overflow-hidden bg-bg2"
+          onClick={onClick}
+        >
+          {isVideo ? (
+            <>
+              <VideoContent />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="bg-black/50 rounded-full p-3 backdrop-blur-sm">
+                  <svg
+                    className="w-10 h-10 text-white drop-shadow-lg"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
               </div>
-            </div>
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              <Eye className="w-8 h-8 text-white" />
-            </div>
-          </>
-        ) : (
-          <>
-            {item.url ? (
-              <img
-                src={item.url}
-                alt={item.altText || "Image"}
-                className="w-full h-full object-cover"
-                loading="lazy"
-                onError={(e) => {
-                  console.error("Image failed to load:", item.url);
-                  e.target.style.display = "none";
-                  e.target.parentElement.innerHTML =
-                    '<div class="w-full h-full flex items-center justify-center"><svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
-                }}
+            </>
+          ) : (
+            <>
+              {item.url ? (
+                <img
+                  src={item.url}
+                  alt={item.altText || 'Image'}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    console.error('Image failed to load:', item.url);
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML =
+                      '<div class="w-full h-full flex items-center justify-center"><svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="w-12 h-12 text-text/40" />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Archive Badge */}
+          {item.isArchived && (
+            <span className="absolute bottom-2 left-2">
+              <ArchiveBadge
+                archivedAt={item.archivedAt}
+                scheduledDeleteAt={item.purgeAfterAt}
               />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ImageIcon className="w-12 h-12 text-text/40" />
-              </div>
-            )}
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Eye className="w-8 h-8 text-white" />
+            </span>
+          )}
+
+          {/* Hover overlay */}
+          <div 
+            className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Eye className="w-8 h-8 text-white" />
+          </div>
+        </div>
+
+        <div className="p-3">
+          <p className="text-sm font-medium text-heading truncate">
+            {isVideo
+              ? item.title || 'Untitled Video'
+              : item.altText || 'Untitled Image'}
+          </p>
+          <div className="flex items-center justify-between text-xs text-text/70 mt-1">
+            <span>
+              {formatDate(item.createdAt, {
+                variant: 'short',
+                empty: 'Unknown date',
+              })}
+            </span>
+            <div className="flex items-center gap-2">
+              <span>{formatFileSize(item.fileSize)}</span>
+              {fileFormat !== 'Unknown' && (
+                <span className="bg-bg2 text-text px-2 py-0.5 rounded text-xs font-medium">
+                  {fileFormat}
+                </span>
+              )}
             </div>
-          </>
-        )}
-      </div>
-      <div className="p-3">
-        <p className="text-sm font-medium text-heading truncate">
-          {isVideo
-            ? item.title || "Untitled Video"
-            : item.altText || "Untitled Image"}
-        </p>
-        <div className="flex items-center justify-between text-xs text-text/70 mt-1">
-          <span>
-            {formatDate(item.createdAt, {
-              variant: "short",
-              empty: "Unknown date",
-            })}
-          </span>
-          <div className="flex items-center gap-2">
-            <span>{formatFileSize(item.fileSize)}</span>
-            {fileFormat !== "Unknown" && (
-              <span className="bg-bg2 text-text px-2 py-0.5 rounded text-xs font-medium">
-                {fileFormat}
-              </span>
-            )}
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Quick Delete Confirmation */}
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title={`Delete ${isVideo ? 'Video' : 'Image'}?`}
+        description={`Are you sure you want to permanently delete "${
+          isVideo ? item.title : item.altText
+        }"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        confirmClass="bg-red-600"
+        onConfirm={handleQuickDelete}
+        busy={deleting}
+        error={deleteError}
+      />
+    </>
   );
 }

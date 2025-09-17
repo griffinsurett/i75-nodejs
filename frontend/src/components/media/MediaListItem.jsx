@@ -1,13 +1,29 @@
-import { useState } from "react";
-import { Eye, Film, Download, Image as ImageIcon } from "lucide-react";
-import { formatDate } from "../../utils/formatDate";
-import { formatFileSize } from "../../utils/formatFileSize";
-import { formatFileType } from "../../utils/formatFileType";
+import { useState } from 'react';
+import { Eye, Film, Download, Image as ImageIcon } from 'lucide-react';
+import { formatDate } from '../../utils/formatDate';
+import { formatFileSize } from '../../utils/formatFileSize';
+import { formatFileType } from '../../utils/formatFileType';
+import EditActions from '../archive/EditActions';
+import ArchiveBadge from '../archive/ArchiveBadge';
+import { imageAPI, videoAPI } from '../../services/api';
 
-export default function MediaListItem({ item, onClick }) {
-  const isVideo = item.type === "video";
+export default function MediaListItem({ item, onClick, onChanged }) {
+  const isVideo = item.type === 'video';
   const [thumbnailError, setThumbnailError] = useState(false);
   const fileFormat = formatFileType(item.mimeType);
+
+  // Get the appropriate API based on media type
+  const api = isVideo
+    ? {
+        archive: (id) => videoAPI.archiveVideo(id),
+        restore: (id) => videoAPI.restoreVideo(id),
+        delete: (id) => videoAPI.deleteVideo(id)
+      }
+    : {
+        archive: (id) => imageAPI.archiveImage(id),
+        restore: (id) => imageAPI.restoreImage(id),
+        delete: (id) => imageAPI.deleteImage(id)
+      };
 
   const ListPreview = () => {
     if (isVideo) {
@@ -19,7 +35,7 @@ export default function MediaListItem({ item, onClick }) {
           <div className="relative w-full h-full">
             <img
               src={thumbnailUrl}
-              alt={item.title || "Video thumbnail"}
+              alt={item.title || 'Video thumbnail'}
               className="w-full h-full object-cover"
               loading="lazy"
               onError={() => setThumbnailError(true)}
@@ -54,7 +70,7 @@ export default function MediaListItem({ item, onClick }) {
                 }
               }}
               onError={() => {
-                e.target.style.display = "none";
+                e.target.style.display = 'none';
               }}
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -78,11 +94,11 @@ export default function MediaListItem({ item, onClick }) {
         return (
           <img
             src={item.url}
-            alt={item.altText || "Image"}
+            alt={item.altText || 'Image'}
             className="w-full h-full object-cover"
             loading="lazy"
             onError={(e) => {
-              e.target.style.display = "none";
+              e.target.style.display = 'none';
               e.target.parentElement.innerHTML =
                 '<svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
             }}
@@ -94,23 +110,31 @@ export default function MediaListItem({ item, onClick }) {
   };
 
   return (
-    <tr className="hover:bg-bg2/50 cursor-pointer" onClick={onClick}>
+    <tr className="hover:bg-bg2/50">
       <td className="px-4 py-3">
         <div className="w-12 h-12 rounded overflow-hidden bg-bg2 flex items-center justify-center">
           <ListPreview />
         </div>
       </td>
       <td className="px-4 py-3">
-        <span className="text-sm text-heading">
-          {isVideo ? item.title : item.altText || "Untitled"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-heading">
+            {isVideo ? item.title : item.altText || 'Untitled'}
+          </span>
+          {item.isArchived && (
+            <ArchiveBadge
+              archivedAt={item.archivedAt}
+              scheduledDeleteAt={item.purgeAfterAt}
+            />
+          )}
+        </div>
       </td>
       <td className="px-4 py-3">
         <span
           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
             isVideo
-              ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
-              : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
           }`}
         >
           {isVideo ? (
@@ -118,7 +142,7 @@ export default function MediaListItem({ item, onClick }) {
           ) : (
             <ImageIcon className="w-3 h-3" />
           )}
-          {isVideo ? "Video" : "Image"}
+          {isVideo ? 'Video' : 'Image'}
         </span>
       </td>
       <td className="px-4 py-3">
@@ -128,16 +152,13 @@ export default function MediaListItem({ item, onClick }) {
         {formatFileSize(item.fileSize)}
       </td>
       <td className="px-4 py-3 text-sm text-text">
-        {formatDate(item.createdAt, { variant: "short", empty: "-" })}
+        {formatDate(item.createdAt, { variant: 'short', empty: '-' })}
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <button
             className="text-primary hover:text-primary/80"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick();
-            }}
+            onClick={() => onClick()}
           >
             <Eye className="w-4 h-4" />
           </button>
@@ -149,6 +170,13 @@ export default function MediaListItem({ item, onClick }) {
           >
             <Download className="w-4 h-4" />
           </a>
+          <EditActions
+            id={item.imageId || item.videoId}
+            isArchived={item.isArchived}
+            api={api}
+            onChanged={onChanged}
+            buttonClassName="w-8 h-8"
+          />
         </div>
       </td>
     </tr>

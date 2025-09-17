@@ -125,32 +125,35 @@ export const questionAPI = {
 
 // Image API functions
 export const imageAPI = {
-  getAllImages: () => api.get("/images"),
+  getAllImages: (params = {}) => api.get('/images', { params }),
   getImage: (imageId) => api.get(`/images/${imageId}`),
   getImageUsage: (imageId) => api.get(`/images/${imageId}/usage`),
-  createImage: (imageData) => api.post("/images", imageData),
-  bulkCreateImages: (imagesData) => api.post("/images/bulk", imagesData),
+  createImage: (imageData) => api.post('/images', imageData),
+  bulkCreateImages: (imagesData) => api.post('/images/bulk', imagesData),
   updateImage: (imageId, imageData) => api.put(`/images/${imageId}`, imageData),
   deleteImage: (imageId) => api.delete(`/images/${imageId}`),
+  archiveImage: (imageId) => api.post(`/images/${imageId}/archive`),
+  restoreImage: (imageId) => api.post(`/images/${imageId}/restore`),
 };
 
 // Video API functions
 export const videoAPI = {
-  getAllVideos: () => api.get("/videos"),
+  getAllVideos: (params = {}) => api.get('/videos', { params }),
   getVideo: (videoId) => api.get(`/videos/${videoId}`),
-  createVideo: (videoData) => api.post("/videos", videoData),
+  createVideo: (videoData) => api.post('/videos', videoData),
   updateVideo: (videoId, videoData) => api.put(`/videos/${videoId}`, videoData),
   deleteVideo: (videoId) => api.delete(`/videos/${videoId}`),
-  // NEW: Upload video
+  archiveVideo: (videoId) => api.post(`/videos/${videoId}/archive`),
+  restoreVideo: (videoId) => api.post(`/videos/${videoId}/restore`),
   uploadVideo: (file, title, description) => {
     const form = new FormData();
-    form.append("file", file);
-    form.append("title", title);
-    if (description) form.append("description", description);
-
-    return api.post("/videos/upload", form, {
+    form.append('file', file);
+    form.append('title', title);
+    if (description) form.append('description', description);
+    
+    return api.post('/videos/upload', form, {
       onUploadProgress: (progressEvent) => {
-        console.log("Video upload progress:", progressEvent);
+        console.log('Video upload progress:', progressEvent);
       },
     });
   },
