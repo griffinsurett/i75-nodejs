@@ -23,7 +23,7 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
     { name: "Dashboard", href: "/", icon: BarChart3, current: location.pathname === "/" },
     { name: "Courses", href: "/courses", icon: BookOpen, current: location.pathname.startsWith("/courses") },
     { name: "Instructors", href: "/instructors", icon: Users, current: location.pathname === "/instructors" },
-    { name: "Content Library", href: "/content", icon: FileText, current: location.pathname === "/content" },
+    { name: "Media Library", href: "/media-library", icon: FileText, current: location.pathname === "/media-library" },
     { name: "Assessments", href: "/assessments", icon: ClipboardList, current: location.pathname === "/assessments" },
   ];
 

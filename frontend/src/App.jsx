@@ -68,7 +68,7 @@ function App() {
               <Route path="/courses/new" element={<CourseUpsertPage />} />
               <Route path="/courses/:courseId/edit" element={<CourseUpsertPage />} />
               <Route path="/instructors" element={<PlaceholderPage title="Instructors" />} />
-              <Route path="/content" element={<MediaLibrary />} />
+              <Route path="/media-library" element={<MediaLibrary />} />
               <Route path="/assessments" element={<PlaceholderPage title="Assessments" />} />
               <Route path="/sections/:sectionId/chapters" element={<PlaceholderPage title="Chapters" />} />
               <Route path="*" element={<NotFoundPage />} />
