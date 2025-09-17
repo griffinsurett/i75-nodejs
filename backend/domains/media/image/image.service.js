@@ -1,60 +1,37 @@
-// ==================== domains/media/image/image.service.js ====================
-const { db } = require("../../../config/database");
+// backend/domains/media/image/image.service.js
 const { images } = require("../../../config/schema");
 const { eq, count } = require("drizzle-orm");
 
-/**
- * Standard field mappings for images - use everywhere to avoid duplication
- */
-const IMAGE_FIELDS = {
-  image_id: images.imageId,
-  image_url: images.imageUrl,
-  alt_text: images.altText,
-  file_size: images.fileSize,
-  mime_type: images.mimeType,
-  is_archived: images.isArchived,
-  archived_at: images.archivedAt,
-  purge_after_at: images.purgeAfterAt,
-  created_at: images.createdAt,
-  updated_at: images.updatedAt,
-};
-
 const imageService = {
-  // Export field mappings for reuse
-  IMAGE_FIELDS,
-
   /**
    * Create an image from uploaded file data
    */
-  async createFromUpload(fileData, altText = null) {
-    const [row] = await db
+  async createFromUpload(tx, fileData, altText = null) {
+    const [row] = await tx
       .insert(images)
       .values({ 
         imageUrl: fileData.publicUrl, 
         altText: altText 
       })
-      .returning(IMAGE_FIELDS);
+      .returning();
     
     return row;
   },
 
   /**
    * Handle image creation logic - used by any domain that needs images
-   * Can be called with either image_id (existing) or image_url (create new)
    */
   async handleImageCreation(tx, { image_id, image_url, alt_text }) {
     if (image_id) {
-      // Validate existing image
       await this.validateImageExists(tx, image_id);
       return image_id;
     } 
     
     if (image_url) {
-      // Create new image
       const [imgRow] = await tx
         .insert(images)
         .values({ imageUrl: image_url, altText: alt_text || null })
-        .returning({ imageId: images.imageId });
+        .returning();
       return imgRow.imageId;
     }
     
@@ -69,7 +46,6 @@ const imageService = {
       if (image_id === null) {
         return null;
       } else {
-        // Validate new image exists
         await this.validateImageExists(tx, image_id);
         return image_id;
       }
@@ -77,7 +53,6 @@ const imageService = {
     
     if (image_url !== undefined && image_url !== null && image_url !== "") {
       if (currentImageId) {
-        // Update existing image
         await tx
           .update(images)
           .set({ 
@@ -88,11 +63,10 @@ const imageService = {
           .where(eq(images.imageId, currentImageId));
         return currentImageId;
       } else {
-        // Create new image
         const [imgRow] = await tx
           .insert(images)
           .values({ imageUrl: image_url, altText: alt_text || null })
-          .returning({ imageId: images.imageId });
+          .returning();
         return imgRow.imageId;
       }
     }
@@ -116,9 +90,8 @@ const imageService = {
 
   /**
    * Check if an image is used by a specific table/field
-   * Usage: await imageService.checkImageUsage(imageId, courses, courses.imageId)
    */
-  async checkImageUsage(imageId, table, field, tx = db) {
+  async checkImageUsage(imageId, table, field, tx) {
     const [result] = await tx
       .select({ count: count() })
       .from(table)
@@ -129,12 +102,8 @@ const imageService = {
 
   /**
    * Generic helper to check if image can be deleted from a domain's perspective
-   * Usage: await imageService.canDeleteFromDomain(imageId, [
-   *   { table: courses, field: courses.imageId },
-   *   { table: sections, field: sections.imageId }
-   * ])
    */
-  async canDeleteFromDomain(imageId, tableFieldPairs, tx = db) {
+  async canDeleteFromDomain(imageId, tableFieldPairs, tx) {
     let totalUsage = 0;
     
     for (const { table, field } of tableFieldPairs) {
@@ -157,37 +126,37 @@ const imageService = {
   /**
    * Basic CRUD operations for internal use
    */
-  async createImage(tx, { image_url, alt_text }) {
-    if (!image_url) {
+  async createImage(tx, { imageUrl, altText }) {
+    if (!imageUrl) {
       throw this.createError("Image URL is required", 400);
     }
 
     const [result] = await tx
       .insert(images)
       .values({
-        imageUrl: image_url,
-        altText: alt_text,
+        imageUrl: imageUrl,
+        altText: altText,
         isArchived: false,
         createdAt: new Date(),
       })
-      .returning(IMAGE_FIELDS);
+      .returning();
 
     return result;
   },
 
-  async updateImage(tx, imageId, { image_url, alt_text }) {
+  async updateImage(tx, imageId, { imageUrl, altText }) {
     const updateData = {
       updatedAt: new Date()
     };
 
-    if (image_url !== undefined) updateData.imageUrl = image_url;
-    if (alt_text !== undefined) updateData.altText = alt_text;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+    if (altText !== undefined) updateData.altText = altText;
 
     const result = await tx
       .update(images)
       .set(updateData)
       .where(eq(images.imageId, imageId))
-      .returning(IMAGE_FIELDS);
+      .returning();
 
     if (result.length === 0) {
       throw this.createError("Image not found", 404);
@@ -200,7 +169,7 @@ const imageService = {
     const result = await tx
       .delete(images)
       .where(eq(images.imageId, imageId))
-      .returning(IMAGE_FIELDS);
+      .returning();
 
     if (result.length === 0) {
       throw this.createError("Image not found", 404);
@@ -211,7 +180,7 @@ const imageService = {
 
   async getImageById(tx, imageId) {
     const [result] = await tx
-      .select(IMAGE_FIELDS)
+      .select()
       .from(images)
       .where(eq(images.imageId, imageId));
 
@@ -224,7 +193,7 @@ const imageService = {
 
   async getAllImages(tx, showArchived = false) {
     return await tx
-      .select(IMAGE_FIELDS)
+      .select()
       .from(images)
       .where(eq(images.isArchived, showArchived))
       .orderBy(images.imageUrl);

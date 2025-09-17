@@ -118,7 +118,7 @@ const CourseList = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
-            <CourseCard key={course.course_id} course={course} onChanged={fetchCourses} />
+            <CourseCard key={course.courses?.courseId || course.courseId} course={course} onChanged={fetchCourses} />
           ))}
         </div>
       )}
@@ -127,15 +127,20 @@ const CourseList = () => {
 };
 
 const CourseCard = ({ course, onChanged }) => {
+  // Handle both nested and flat structure
+  const courseData = course.courses || course;
+  const imageData = course.images;
+  const videoData = course.videos;
+
   return (
     <div className="bg-bg rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden">
       <div className="h-48 bg-gradient-to-r from-blue-500 to-purple-600 relative">
         {/* Actions */}
         <div className="absolute top-2 right-2 z-10">
           <EditActions
-            id={course.course_id}
-            isArchived={course.is_archived}
-            editTo={`/courses/${course.course_id}/edit`}
+            id={courseData.courseId}
+            isArchived={courseData.isArchived}
+            editTo={`/courses/${courseData.courseId}/edit`}
             api={{
               archive: courseAPI.archiveCourse,
               restore: courseAPI.restoreCourse,
@@ -145,10 +150,10 @@ const CourseCard = ({ course, onChanged }) => {
           />
         </div>
 
-        {course.course_image ? (
+        {imageData?.imageUrl ? (
           <img
-            src={course.course_image}
-            alt={course.course_name}
+            src={imageData.imageUrl}
+            alt={imageData.altText || courseData.courseName}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -157,11 +162,11 @@ const CourseCard = ({ course, onChanged }) => {
           </div>
         )}
 
-        {course?.is_archived && (
+        {courseData.isArchived && (
           <span className="absolute bottom-2 left-2">
             <ArchiveBadge
-              archivedAt={course.archived_at}
-              scheduledDeleteAt={course.scheduled_delete_at}
+              archivedAt={courseData.archivedAt}
+              scheduledDeleteAt={courseData.purgeAfterAt}
             />
           </span>
         )}
@@ -169,41 +174,41 @@ const CourseCard = ({ course, onChanged }) => {
 
       <div className="p-6">
         <h3 className="text-xl font-semibold text-heading mb-2 line-clamp-2">
-          {course.course_name}
+          {courseData.courseName}
         </h3>
 
         <p className="text-text mb-4 line-clamp-3">
-          {course.description || 'No description available'}
+          {courseData.description || 'No description available'}
         </p>
 
         <div className="space-y-2 mb-4">
-          {course.video_title && (
+          {videoData?.title && (
             <div className="flex items-center text-sm text-text">
               <User className="w-4 h-4 mr-2" />
-              <span>Video: {course.video_title}</span>
+              <span>Video: {videoData.title}</span>
             </div>
           )}
           <div className="flex items-center text-sm text-text">
             <Calendar className="w-4 h-4 mr-2" />
-            <span>Created: <FormattedDate value={course.created_at} variant="short" /></span>
+            <span>Created: <FormattedDate value={courseData.createdAt} variant="short" /></span>
           </div>
-          {course.updated_at && (
+          {courseData.updatedAt && (
             <div className="flex items-center text-sm text-text">
               <Calendar className="w-4 h-4 mr-2" />
-              <span>Updated: <FormattedDate value={course.updated_at} variant="short" /></span>
+              <span>Updated: <FormattedDate value={courseData.updatedAt} variant="short" /></span>
             </div>
           )}
         </div>
 
         <div className="flex gap-2">
           <Link
-            to={`/courses/${course.course_id}`}
+            to={`/courses/${courseData.courseId}`}
             className="flex-1 bg-primary hover:bg-primary/65 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors text-center"
           >
             View Details
           </Link>
           <Link
-            to={`/courses/${course.course_id}/sections`}
+            to={`/courses/${courseData.courseId}/sections`}
             className="flex-1 bg-text text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors text-center"
           >
             View Sections

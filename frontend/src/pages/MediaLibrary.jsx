@@ -101,39 +101,39 @@ const MediaLibrary = () => {
     fetchMedia();
   }, []);
 
-  const getFilteredMedia = () => {
-    let media = [];
-    
-    if (activeTab === 'all') {
-      media = [
-        ...images.map(img => ({ ...img, type: 'image', url: img.image_url })),
-        ...videos.map(vid => ({ ...vid, type: 'video', url: vid.slides_url }))
-      ];
-    } else if (activeTab === 'images') {
-      media = images.map(img => ({ ...img, type: 'image', url: img.image_url }));
-    } else {
-      media = videos.map(vid => ({ ...vid, type: 'video', url: vid.slides_url }));
-    }
+ const getFilteredMedia = () => {
+  let media = [];
+  
+  if (activeTab === 'all') {
+    media = [
+      ...images.map(img => ({ ...img, type: 'image', url: img.imageUrl })),
+      ...videos.map(vid => ({ ...vid, type: 'video', url: vid.slidesUrl }))
+    ];
+  } else if (activeTab === 'images') {
+    media = images.map(img => ({ ...img, type: 'image', url: img.imageUrl }));
+  } else {
+    media = videos.map(vid => ({ ...vid, type: 'video', url: vid.slidesUrl }));
+  }
 
-    // Apply search filter
-    if (searchQuery) {
-      media = media.filter(item => {
-        const searchFields = [
-          item.alt_text,
-          item.title,
-          item.description,
-          item.url
-        ].filter(Boolean).join(' ').toLowerCase();
-        
-        return searchFields.includes(searchQuery.toLowerCase());
-      });
-    }
+  // Apply search filter
+  if (searchQuery) {
+    media = media.filter(item => {
+      const searchFields = [
+        item.altText,
+        item.title,
+        item.description,
+        item.url
+      ].filter(Boolean).join(' ').toLowerCase();
+      
+      return searchFields.includes(searchQuery.toLowerCase());
+    });
+  }
 
-    // Sort by created_at (newest first)
-    return media.sort((a, b) => 
-      new Date(b.created_at || 0) - new Date(a.created_at || 0)
-    );
-  };
+  // Sort by createdAt (newest first)
+  return media.sort((a, b) => 
+    new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+  );
+};
 
   const filteredMedia = getFilteredMedia();
 

@@ -34,37 +34,22 @@ class VideoController extends BaseController {
   /**
    * GET /api/videos
    */
- async getAllVideos(req, res, next) {
-  try {
-    const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+  async getAllVideos(req, res, next) {
+    try {
+      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
 
-    const result = await db
-      .select({
-        video_id: videos.videoId,
-        title: videos.title,
-        description: videos.description,
-        slides_url: videos.slidesUrl,
-        file_size: videos.fileSize, // Add this
-        mime_type: videos.mimeType, // Add this
-        thumbnail_image_id: videos.thumbnailImageId,
-        thumbnail_url: images.imageUrl,
-        thumbnail_alt: images.altText,
-        is_archived: videos.isArchived,
-        archived_at: videos.archivedAt,
-        purge_after_at: videos.purgeAfterAt,
-        created_at: videos.createdAt,
-        updated_at: videos.updatedAt,
-      })
-      .from(videos)
-      .leftJoin(images, eq(videos.thumbnailImageId, images.imageId))
-      .where(eq(videos.isArchived, showArchived))
-      .orderBy(videos.title);
+      const result = await db
+        .select()
+        .from(videos)
+        .leftJoin(images, eq(videos.thumbnailImageId, images.imageId))
+        .where(eq(videos.isArchived, showArchived))
+        .orderBy(videos.title);
 
-    this.success(res, result);
-  } catch (error) {
-    this.handleError(error, res, next);
+      this.success(res, result);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
   }
-}
 
   /**
    * GET /api/videos/:videoId
@@ -74,20 +59,7 @@ class VideoController extends BaseController {
       const { videoId } = req.params;
 
       const result = await db
-        .select({
-          video_id: videos.videoId,
-          title: videos.title,
-          description: videos.description,
-          slides_url: videos.slidesUrl,
-          thumbnail_image_id: videos.thumbnailImageId,
-          thumbnail_url: images.imageUrl,
-          thumbnail_alt: images.altText,
-          is_archived: videos.isArchived,
-          archived_at: videos.archivedAt,
-          purge_after_at: videos.purgeAfterAt,
-          created_at: videos.createdAt,
-          updated_at: videos.updatedAt,
-        })
+        .select()
         .from(videos)
         .leftJoin(images, eq(videos.thumbnailImageId, images.imageId))
         .where(eq(videos.videoId, videoId));
@@ -108,20 +80,20 @@ class VideoController extends BaseController {
   async createVideo(req, res, next) {
     try {
       const result = await this.withTransaction(db, async (tx) => {
-        const { title, description, slides_url, thumbnail_url, thumbnail_alt } = req.body;
+        const { title, description, slidesUrl, thumbnailUrl, thumbnailAlt } = req.body;
 
         this.validateRequired(title, "Title");
 
-        let thumbnail_image_id = null;
-        if (thumbnail_url) {
+        let thumbnailImageId = null;
+        if (thumbnailUrl) {
           const imageResult = await tx
             .insert(images)
             .values({
-              imageUrl: thumbnail_url,
-              altText: thumbnail_alt,
+              imageUrl: thumbnailUrl,
+              altText: thumbnailAlt,
             })
-            .returning({ imageId: images.imageId });
-          thumbnail_image_id = imageResult[0].imageId;
+            .returning();
+          thumbnailImageId = imageResult[0].imageId;
         }
 
         const videoResult = await tx
@@ -129,8 +101,8 @@ class VideoController extends BaseController {
           .values({
             title,
             description,
-            slidesUrl: slides_url,
-            thumbnailImageId: thumbnail_image_id,
+            slidesUrl: slidesUrl,
+            thumbnailImageId: thumbnailImageId,
             isArchived: false,
             createdAt: new Date(),
           })
@@ -152,38 +124,38 @@ class VideoController extends BaseController {
     try {
       const result = await this.withTransaction(db, async (tx) => {
         const { videoId } = req.params;
-        const { title, description, slides_url, thumbnail_url, thumbnail_alt } = req.body;
+        const { title, description, slidesUrl, thumbnailUrl, thumbnailAlt } = req.body;
 
         const existingVideo = await this.getOrThrow(tx, videos, videos.videoId, videoId, "Video");
 
-        let thumbnail_image_id = existingVideo.thumbnailImageId;
-        if (thumbnail_url) {
-          if (thumbnail_image_id) {
+        let thumbnailImageId = existingVideo.thumbnailImageId;
+        if (thumbnailUrl) {
+          if (thumbnailImageId) {
             await tx
               .update(images)
               .set({
-                imageUrl: thumbnail_url,
-                altText: thumbnail_alt,
+                imageUrl: thumbnailUrl,
+                altText: thumbnailAlt,
                 updatedAt: new Date(),
               })
-              .where(eq(images.imageId, thumbnail_image_id));
+              .where(eq(images.imageId, thumbnailImageId));
           } else {
             const imageResult = await tx
               .insert(images)
               .values({
-                imageUrl: thumbnail_url,
-                altText: thumbnail_alt,
+                imageUrl: thumbnailUrl,
+                altText: thumbnailAlt,
               })
-              .returning({ imageId: images.imageId });
-            thumbnail_image_id = imageResult[0].imageId;
+              .returning();
+            thumbnailImageId = imageResult[0].imageId;
           }
         }
 
         const updateData = { updatedAt: new Date() };
         if (title !== undefined) updateData.title = title;
         if (description !== undefined) updateData.description = description;
-        if (slides_url !== undefined) updateData.slidesUrl = slides_url;
-        if (thumbnail_image_id !== undefined) updateData.thumbnailImageId = thumbnail_image_id;
+        if (slidesUrl !== undefined) updateData.slidesUrl = slidesUrl;
+        if (thumbnailImageId !== undefined) updateData.thumbnailImageId = thumbnailImageId;
 
         const [updated] = await tx
           .update(videos)
@@ -203,50 +175,43 @@ class VideoController extends BaseController {
   /**
    * POST /api/videos/upload
    */
- async uploadVideo(req, res, next) {
-  try {
-    if (!req.file) {
-      throw this.createError("No video file uploaded", 400);
-    }
-
-    const { title, description } = req.body;
-    const uploadService = require('../upload/upload.service');
-
+  async uploadVideo(req, res, next) {
     try {
-      this.validateRequired(title, "Video title");
-      
-      const fileData = uploadService.processFile(req.file, req, "videos");
+      if (!req.file) {
+        throw this.createError("No video file uploaded", 400);
+      }
 
-      const [row] = await db
-        .insert(videos)
-        .values({
-          title,
-          description: description || null,
-          slidesUrl: fileData.publicUrl,
-          fileSize: req.file.size, // Add this
-          mimeType: req.file.mimetype, // Add this
-          thumbnailImageId: null,
-          isArchived: false,
-          createdAt: new Date(),
-        })
-        .returning({
-          video_id: videos.videoId,
-          title: videos.title,
-          description: videos.description,
-          slides_url: videos.slidesUrl,
-          file_size: videos.fileSize,
-          mime_type: videos.mimeType,
-        });
+      const { title, description } = req.body;
+      const uploadService = require('../upload/upload.service');
 
-      this.success(res, row, null, 201);
+      try {
+        this.validateRequired(title, "Video title");
+        
+        const fileData = uploadService.processFile(req.file, req, "videos");
+
+        const [row] = await db
+          .insert(videos)
+          .values({
+            title,
+            description: description || null,
+            slidesUrl: fileData.publicUrl,
+            fileSize: req.file.size,
+            mimeType: req.file.mimetype,
+            thumbnailImageId: null,
+            isArchived: false,
+            createdAt: new Date(),
+          })
+          .returning();
+
+        this.success(res, row, null, 201);
+      } catch (error) {
+        await uploadService.deleteFile(req.file.path);
+        throw error;
+      }
     } catch (error) {
-      await uploadService.deleteFile(req.file.path);
-      throw error;
+      this.handleError(error, res, next);
     }
-  } catch (error) {
-    this.handleError(error, res, next);
   }
-}
 
   /**
    * POST /api/videos/:videoId/archive

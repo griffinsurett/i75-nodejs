@@ -100,6 +100,11 @@ const CourseDetail = () => {
     );
   }
 
+  // Extract nested data from joined tables
+  const courseData = course.courses || course;
+  const imageData = course.images;
+  const videoData = course.videos;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Top bar */}
@@ -110,9 +115,9 @@ const CourseDetail = () => {
         </Link>
 
         <EditActions
-          id={courseId}
-          isArchived={course?.is_archived}
-          editTo={`/courses/${courseId}/edit`}
+          id={courseData.courseId}
+          isArchived={courseData.isArchived}
+          editTo={`/courses/${courseData.courseId}/edit`}
           api={{
             archive: courseAPI.archiveCourse,
             restore: courseAPI.restoreCourse,
@@ -128,10 +133,10 @@ const CourseDetail = () => {
           {/* Course Image */}
           <div className="md:w-1/3 relative">
             <div className="h-64 md:h-full bg-gradient-to-r from-blue-500 to-purple-600">
-              {course.course_image ? (
+              {imageData?.imageUrl ? (
                 <img
-                  src={course.course_image}
-                  alt={course.course_name}
+                  src={imageData.imageUrl}
+                  alt={imageData.altText || courseData.courseName}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -141,11 +146,11 @@ const CourseDetail = () => {
               )}
             </div>
 
-            {course?.is_archived && (
+            {courseData.isArchived && (
               <span className="absolute top-2 left-2">
                 <ArchiveBadge
-                  archivedAt={course.archived_at}
-                  scheduledDeleteAt={course.scheduled_delete_at}
+                  archivedAt={courseData.archivedAt}
+                  scheduledDeleteAt={courseData.purgeAfterAt}
                 />
               </span>
             )}
@@ -154,11 +159,11 @@ const CourseDetail = () => {
           {/* Course Info */}
           <div className="md:w-2/3 p-6">
             <h1 className="text-3xl font-bold text-heading mb-4">
-              {course.course_name}
+              {courseData.courseName}
             </h1>
 
             <p className="text-text/70 text-lg mb-6">
-              {course.description || 'No description available'}
+              {courseData.description || 'No description available'}
             </p>
 
             {/* Course Meta */}
@@ -167,60 +172,65 @@ const CourseDetail = () => {
                 <Calendar className="w-5 h-5 mr-2" />
                 <div>
                   <div className="font-medium">Created</div>
-                  <div className="text-sm"><FormattedDate value={course.created_at} /></div>
+                  <div className="text-sm"><FormattedDate value={courseData.createdAt} /></div>
                 </div>
               </div>
 
-              {course.updated_at && (
+              {courseData.updatedAt && (
                 <div className="flex items-center text-text/70">
                   <Calendar className="w-5 h-5 mr-2" />
                   <div>
                     <div className="font-medium">Last Updated</div>
-                    <div className="text-sm"><FormattedDate value={course.updated_at} /></div>
+                    <div className="text-sm"><FormattedDate value={courseData.updatedAt} /></div>
                   </div>
                 </div>
               )}
 
-              {course.video_title && (
+              {videoData?.title && (
                 <div className="flex items-center text-text/70">
                   <Play className="w-5 h-5 mr-2" />
                   <div>
                     <div className="font-medium">Course Video</div>
-                    <div className="text-sm">{course.video_title}</div>
+                    <div className="text-sm">{videoData.title}</div>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Instructors */}
-            {course.instructors && course.instructors.length > 0 && (
+            {courseData.instructors && courseData.instructors.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-heading mb-3 flex items-center">
                   <Users className="w-5 h-5 mr-2" />
                   Instructors
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {course.instructors.map((instructor) => (
-                    <div key={instructor.instructor_id} className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-bg2 rounded-full flex items-center justify-center">
-                        {instructor.instructor_image ? (
-                          <img
-                            src={instructor.instructor_image}
-                            alt={instructor.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <User className="w-5 h-5 text-text" />
-                        )}
+                  {courseData.instructors.map((instructor) => {
+                    const inst = instructor.instructors || instructor;
+                    const instImage = instructor.images;
+                    
+                    return (
+                      <div key={inst.instructorId} className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-bg2 rounded-full flex items-center justify-center">
+                          {instImage?.imageUrl ? (
+                            <img
+                              src={instImage.imageUrl}
+                              alt={inst.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <User className="w-5 h-5 text-text" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-heading">{inst.name}</div>
+                          {inst.bio && (
+                            <div className="text-sm text-text truncate">{inst.bio}</div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-medium text-heading">{instructor.name}</div>
-                        {instructor.bio && (
-                          <div className="text-sm text-text truncate">{instructor.bio}</div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -237,31 +247,36 @@ const CourseDetail = () => {
 
         {sections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sections.map((section) => (
-              <div key={section.section_id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                <h3 className="font-semibold text-lg text-heading mb-2">
-                  {section.title}
-                </h3>
+            {sections.map((section) => {
+              const sectionData = section.sections || section;
+              const sectionVideo = section.videos;
+              
+              return (
+                <div key={sectionData.sectionId} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <h3 className="font-semibold text-lg text-heading mb-2">
+                    {sectionData.title}
+                  </h3>
 
-                <p className="text-text text-sm mb-4 line-clamp-3">
-                  {section.description || 'No description available'}
-                </p>
+                  <p className="text-text text-sm mb-4 line-clamp-3">
+                    {sectionData.description || 'No description available'}
+                  </p>
 
-                {section.video_title && (
-                  <div className="flex items-center text-sm text-text/70 mb-3">
-                    <Play className="w-4 h-4 mr-1" />
-                    <span>{section.video_title}</span>
-                  </div>
-                )}
+                  {sectionVideo?.title && (
+                    <div className="flex items-center text-sm text-text/70 mb-3">
+                      <Play className="w-4 h-4 mr-1" />
+                      <span>{sectionVideo.title}</span>
+                    </div>
+                  )}
 
-                <Link
-                  to={`/sections/${section.section_id}/chapters`}
-                  className="inline-block bg-primary hover:bg-primary/50 text-text px-4 py-2 rounded text-sm font-medium transition-colors"
-                >
-                  View Chapters
-                </Link>
-              </div>
-            ))}
+                  <Link
+                    to={`/sections/${sectionData.sectionId}/chapters`}
+                    className="inline-block bg-primary hover:bg-primary/50 text-text px-4 py-2 rounded text-sm font-medium transition-colors"
+                  >
+                    View Chapters
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8">

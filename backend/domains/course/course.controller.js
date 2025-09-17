@@ -7,12 +7,6 @@ const {
   instructors,
   courseInstructors,
   sections,
-  chapters,
-  tests,
-  options,
-  entries,
-  optionVideos,
-  questionVideos,
 } = require("../../config/schema");
 const { eq, desc } = require("drizzle-orm");
 const courseService = require("./course.service");
@@ -29,13 +23,7 @@ class CourseController extends BaseController {
       images,
       videos,
       sections,
-      chapters,
-      tests,
       instructors,
-      options,
-      entries,
-      optionVideos,
-      questionVideos,
     };
   }
 
@@ -52,7 +40,7 @@ class CourseController extends BaseController {
       const showArchived = String(req.query.archived || "").toLowerCase() === "true";
 
       const result = await db
-        .select(courseService.COURSE_FIELDS)
+        .select()
         .from(courses)
         .leftJoin(images, eq(courses.imageId, images.imageId))
         .leftJoin(videos, eq(courses.videoId, videos.videoId))
@@ -73,7 +61,7 @@ class CourseController extends BaseController {
       const { courseId } = req.params;
 
       const courseResult = await db
-        .select(courseService.COURSE_FIELDS)
+        .select()
         .from(courses)
         .leftJoin(images, eq(courses.imageId, images.imageId))
         .leftJoin(videos, eq(courses.videoId, videos.videoId))
@@ -84,7 +72,7 @@ class CourseController extends BaseController {
       }
 
       const instructorsResult = await db
-        .select(courseService.INSTRUCTOR_FIELDS)
+        .select()
         .from(instructors)
         .innerJoin(
           courseInstructors,
@@ -94,7 +82,7 @@ class CourseController extends BaseController {
         .where(eq(courseInstructors.courseId, courseId));
 
       const course = courseResult[0];
-      course.instructors = instructorsResult;
+      course.courses.instructors = instructorsResult;
 
       this.success(res, course);
     } catch (error) {
@@ -121,16 +109,7 @@ class CourseController extends BaseController {
       }
 
       const result = await db
-        .select({
-          section_id: sections.sectionId,
-          course_id: sections.courseId,
-          title: sections.title,
-          description: sections.description,
-          image_id: sections.imageId,
-          video_id: sections.videoId,
-          section_image: images.imageUrl,
-          video_title: videos.title,
-        })
+        .select()
         .from(sections)
         .leftJoin(images, eq(sections.imageId, images.imageId))
         .leftJoin(videos, eq(sections.videoId, videos.videoId))
@@ -150,35 +129,35 @@ class CourseController extends BaseController {
     try {
       const result = await this.withTransaction(db, async (tx) => {
         const {
-          course_name,
+          courseName,
           description,
-          image_id,
-          image_url,
-          alt_text,
-          video_id,
-          instructor_ids,
+          imageId,
+          imageUrl,
+          altText,
+          videoId,
+          instructorIds,
         } = req.body;
 
-        const courseName = this.validateRequired(course_name, "Course name");
+        const validatedCourseName = this.validateRequired(courseName, "Course name");
 
         const finalImageId = await mediaManager.handleImage(
           tx,
-          { image_id, image_url, alt_text },
+          { image_id: imageId, image_url: imageUrl, alt_text: altText },
           this.imageSchema
         );
 
         const [course] = await tx
           .insert(courses)
           .values({
-            courseName,
+            courseName: validatedCourseName,
             description: description || null,
             imageId: finalImageId,
-            videoId: video_id || null,
+            videoId: videoId || null,
           })
           .returning();
 
-        if (instructor_ids?.length > 0) {
-          await courseService.linkInstructors(tx, course.courseId, instructor_ids);
+        if (instructorIds?.length > 0) {
+          await courseService.linkInstructors(tx, course.courseId, instructorIds);
         }
 
         return course;
@@ -198,13 +177,13 @@ class CourseController extends BaseController {
       const result = await this.withTransaction(db, async (tx) => {
         const { courseId } = req.params;
         const {
-          course_name,
+          courseName,
           description,
-          image_id,
-          image_url,
-          alt_text,
-          video_id,
-          instructor_ids,
+          imageId,
+          imageUrl,
+          altText,
+          videoId,
+          instructorIds,
         } = req.body;
 
         const existing = await this.getOrThrow(tx, courses, courses.courseId, courseId, "Course");
@@ -212,14 +191,14 @@ class CourseController extends BaseController {
         const currentImageId = await mediaManager.updateImage(
           tx,
           existing.imageId,
-          { image_id, image_url, alt_text },
+          { image_id: imageId, image_url: imageUrl, alt_text: altText },
           this.imageSchema
         );
 
         const updateFields = { updatedAt: new Date() };
-        if (course_name !== undefined) updateFields.courseName = course_name;
+        if (courseName !== undefined) updateFields.courseName = courseName;
         if (description !== undefined) updateFields.description = description;
-        if (video_id !== undefined) updateFields.videoId = video_id;
+        if (videoId !== undefined) updateFields.videoId = videoId;
         if (currentImageId !== undefined) updateFields.imageId = currentImageId;
 
         const [updated] = await tx
@@ -228,8 +207,8 @@ class CourseController extends BaseController {
           .where(eq(courses.courseId, courseId))
           .returning();
 
-        if (instructor_ids !== undefined) {
-          await courseService.updateInstructors(tx, courseId, instructor_ids);
+        if (instructorIds !== undefined) {
+          await courseService.updateInstructors(tx, courseId, instructorIds);
         }
 
         return updated;

@@ -2,20 +2,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { courseAPI, instructorAPI, uploadAPI, imageAPI, videoAPI } from "../services/api";
-import { Loader2, Upload, X, Film, Image } from "lucide-react";
+import { Loader2, X, Film, Image } from "lucide-react";
 
 export default function CourseForm({ mode = "create", course }) {
   const navigate = useNavigate();
   const isEdit = mode === "edit";
 
   const [form, setForm] = useState({
-    course_name: "",
+    courseName: "",
     description: "",
-    alt_text: "",
-    video_title: "",
-    video_description: "",
-    video_id: "",
-    instructor_ids: [],
+    altText: "",
+    videoTitle: "",
+    videoDescription: "",
+    videoId: "",
+    instructorIds: [],
   });
   
   // Image handling
@@ -34,27 +34,18 @@ export default function CourseForm({ mode = "create", course }) {
 
   // Track original image/video for updates
   const [original, setOriginal] = useState({ 
-    image_id: null, 
-    alt_text: "",
-    video_id: null,
-    video_url: "",
-    video_title: "",
-    video_description: ""
+    imageId: null, 
+    altText: "",
+    videoId: null,
+    videoUrl: "",
+    videoTitle: "",
+    videoDescription: ""
   });
 
   const canSubmit = useMemo(
-    () => form.course_name.trim().length > 0 && !submitting,
-    [form.course_name, submitting]
+    () => form.courseName.trim().length > 0 && !submitting,
+    [form.courseName, submitting]
   );
-
-  const resolveAlt = (c) =>
-    c?.image_alt_text ??
-    c?.alt_text ??
-    c?.altText ??
-    c?.image?.alt_text ??
-    c?.image?.altText ??
-    c?.imageAltText ??
-    "";
 
   useEffect(() => {
     (async () => {
@@ -63,65 +54,46 @@ export default function CourseForm({ mode = "create", course }) {
         setLoading(true);
 
         if (isEdit && course) {
-          const initialAlt = resolveAlt(course);
-          const imageUrl = course?.course_image ?? course?.image?.url ?? "";
-          const imageId = course?.image_id ?? course?.image?.image_id ?? null;
-          const videoId = course?.video_id ?? null;
-          const videoTitle = course?.video_title ?? "";
-          const videoDescription = course?.video_description ?? "";
-
+          // Extract nested data
+          const courseData = course.courses || course;
+          const imageData = course.images;
+          const videoData = course.videos;
+          
           setForm({
-            course_name: course.course_name || "",
-            description: course.description || "",
-            alt_text: initialAlt || "",
-            video_id: videoId || "",
-            video_title: videoTitle || "",
-            video_description: videoDescription || "",
-            instructor_ids: course.instructors?.map((i) => i.instructor_id) || [],
+            courseName: courseData.courseName || "",
+            description: courseData.description || "",
+            altText: imageData?.altText || "",
+            videoId: courseData.videoId || "",
+            videoTitle: videoData?.title || "",
+            videoDescription: videoData?.description || "",
+            instructorIds: courseData.instructors?.map((i) => (i.instructors || i).instructorId) || [],
           });
           
-          setImagePreview(imageUrl);
+          setImagePreview(imageData?.imageUrl || "");
           setOriginal({ 
-            image_id: imageId, 
-            alt_text: initialAlt || "",
-            video_id: videoId,
-            video_title: videoTitle,
-            video_description: videoDescription
+            imageId: courseData.imageId, 
+            altText: imageData?.altText || "",
+            videoId: courseData.videoId,
+            videoTitle: videoData?.title || "",
+            videoDescription: videoData?.description || ""
           });
-
-          // If alt is still unknown but we have an image id, try fetching it
-          if (!initialAlt && imageId) {
-            try {
-              const imgRes = await imageAPI.getImage(imageId);
-              const fetchedAlt =
-                imgRes?.data?.data?.alt_text ??
-                imgRes?.data?.data?.altText ??
-                "";
-              if (fetchedAlt) {
-                setForm((f) => ({ ...f, alt_text: fetchedAlt }));
-                setOriginal((o) => ({ ...o, alt_text: fetchedAlt }));
-              }
-            } catch {
-              /* ignore */
-            }
-          }
         } else {
           setForm({
-            course_name: "",
+            courseName: "",
             description: "",
-            alt_text: "",
-            video_id: "",
-            video_title: "",
-            video_description: "",
-            instructor_ids: [],
+            altText: "",
+            videoId: "",
+            videoTitle: "",
+            videoDescription: "",
+            instructorIds: [],
           });
           setImagePreview("");
           setOriginal({ 
-            image_id: null, 
-            alt_text: "",
-            video_id: null,
-            video_title: "",
-            video_description: ""
+            imageId: null, 
+            altText: "",
+            videoId: null,
+            videoTitle: "",
+            videoDescription: ""
           });
         }
 
@@ -175,17 +147,17 @@ export default function CourseForm({ mode = "create", course }) {
   const clearVideo = () => {
     setVideoFile(null);
     setVideoPreview("");
-    setForm(f => ({ ...f, video_title: "", video_description: "" }));
+    setForm(f => ({ ...f, videoTitle: "", videoDescription: "" }));
   };
 
   const toggleInstructor = (id) => {
     setForm((f) => {
-      const exists = f.instructor_ids.includes(id);
+      const exists = f.instructorIds.includes(id);
       return {
         ...f,
-        instructor_ids: exists
-          ? f.instructor_ids.filter((x) => x !== id)
-          : [...f.instructor_ids, id],
+        instructorIds: exists
+          ? f.instructorIds.filter((x) => x !== id)
+          : [...f.instructorIds, id],
       };
     });
   };
@@ -201,68 +173,68 @@ export default function CourseForm({ mode = "create", course }) {
       let uploadedImageId;
       let uploadedVideoId;
 
-      // 1) Upload new image file (if chosen)
+      // Upload new image file (if chosen)
       if (imageFile) {
-        const up = await uploadAPI.uploadImage(imageFile, form.alt_text);
-        uploadedImageId = up.data?.data?.image_id;
+        const up = await uploadAPI.uploadImage(imageFile, form.altText);
+        uploadedImageId = up.data?.data?.imageId;
       }
 
-      // 2) Upload new video file (if chosen)
-      if (videoFile && form.video_title) {
-        const videoUp = await uploadAPI.uploadVideo(videoFile, form.video_title, form.video_description);
-        uploadedVideoId = videoUp.data?.data?.video_id;
+      // Upload new video file (if chosen)
+      if (videoFile && form.videoTitle) {
+        const videoUp = await uploadAPI.uploadVideo(videoFile, form.videoTitle, form.videoDescription);
+        uploadedVideoId = videoUp.data?.data?.videoId;
       }
 
       if (!isEdit) {
-        // CREATE course
+        // CREATE course - use camelCase
         const payload = {
-          course_name: form.course_name.trim(),
+          courseName: form.courseName.trim(),
           description: form.description || undefined,
-          image_id: uploadedImageId !== undefined ? uploadedImageId : undefined,
-          video_id: uploadedVideoId !== undefined ? uploadedVideoId : (useExistingVideo && form.video_id ? form.video_id : undefined),
-          instructor_ids: form.instructor_ids?.length ? form.instructor_ids : undefined,
+          imageId: uploadedImageId !== undefined ? uploadedImageId : undefined,
+          videoId: uploadedVideoId !== undefined ? uploadedVideoId : (useExistingVideo && form.videoId ? form.videoId : undefined),
+          instructorIds: form.instructorIds?.length ? form.instructorIds : undefined,
         };
 
         const res = await courseAPI.createCourse(payload);
         const created = res.data?.data;
-        const id = created?.courseId ?? created?.course_id;
+        const id = created?.courseId;
         if (id) navigate(`/courses/${id}`);
       } else {
-        // UPDATE course
-        const id = course.course_id ?? course.courseId;
+        // UPDATE course - use camelCase
+        const courseData = course.courses || course;
+        const id = courseData.courseId;
         const payload = {
-          course_name: form.course_name.trim() || undefined,
+          courseName: form.courseName.trim() || undefined,
           description: form.description || undefined,
-          image_id: imageFile ? uploadedImageId : undefined,
-          video_id: videoFile ? uploadedVideoId : (useExistingVideo && form.video_id ? form.video_id : undefined),
-          alt_text: form.alt_text || undefined,
-          instructor_ids: form.instructor_ids?.length ? form.instructor_ids : [],
+          imageId: imageFile ? uploadedImageId : undefined,
+          videoId: videoFile ? uploadedVideoId : (useExistingVideo && form.videoId ? form.videoId : undefined),
+          altText: form.altText || undefined,
+          instructorIds: form.instructorIds?.length ? form.instructorIds : [],
         };
 
         // If video details changed but no new file uploaded, update existing video
-        if (!videoFile && original.video_id && 
-            (form.video_title !== original.video_title || 
-             form.video_description !== original.video_description)) {
-          await videoAPI.updateVideo(original.video_id, {
-            title: form.video_title,
-            description: form.video_description
+        if (!videoFile && original.videoId && 
+            (form.videoTitle !== original.videoTitle || 
+             form.videoDescription !== original.videoDescription)) {
+          await videoAPI.updateVideo(original.videoId, {
+            title: form.videoTitle,
+            description: form.videoDescription
           });
         }
 
         await courseAPI.updateCourse(id, payload);
 
         // Update existing image alt text if needed
-        const trimmedNew = (form.alt_text ?? "").trim();
-        const trimmedOld = (original.alt_text ?? "").trim();
+        const trimmedNew = (form.altText ?? "").trim();
+        const trimmedOld = (original.altText ?? "").trim();
         const mustUpdateExistingImageAlt =
           !imageFile &&
-          original.image_id &&
+          original.imageId &&
           trimmedNew !== trimmedOld;
 
         if (mustUpdateExistingImageAlt) {
           try {
-            await imageAPI.updateImage(original.image_id, {
-              alt_text: trimmedNew,
+            await imageAPI.updateImage(original.imageId, {
               altText: trimmedNew,
             });
           } catch (err) {
@@ -303,8 +275,8 @@ export default function CourseForm({ mode = "create", course }) {
       <div>
         <label className="block text-sm text-text mb-1">Course name *</label>
         <input
-          name="course_name"
-          value={form.course_name}
+          name="courseName"
+          value={form.courseName}
           onChange={handleChange}
           className="w-full rounded-lg border border-border-primary bg-bg2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="e.g. Introduction to Programming"
@@ -344,7 +316,7 @@ export default function CourseForm({ mode = "create", course }) {
               <div className="mt-2">
                 <img
                   src={imagePreview}
-                  alt={form.alt_text || "Course image preview"}
+                  alt={form.altText || "Course image preview"}
                   className="w-full h-32 object-cover rounded-md border border-border-primary"
                 />
               </div>
@@ -353,8 +325,8 @@ export default function CourseForm({ mode = "create", course }) {
           <div>
             <label className="block text-sm text-text mb-1">Image Alt Text</label>
             <input
-              name="alt_text"
-              value={form.alt_text}
+              name="altText"
+              value={form.altText}
               onChange={handleChange}
               className="w-full rounded-lg border border-border-primary bg-bg2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Describe the image"
@@ -423,13 +395,13 @@ export default function CourseForm({ mode = "create", course }) {
               </div>
             )}
 
-            {(videoFile || original.video_id) && (
+            {(videoFile || original.videoId) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm text-text mb-1">Video Title *</label>
                   <input
-                    name="video_title"
-                    value={form.video_title}
+                    name="videoTitle"
+                    value={form.videoTitle}
                     onChange={handleChange}
                     className="w-full rounded-lg border border-border-primary bg-bg2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="e.g. Course Introduction"
@@ -439,8 +411,8 @@ export default function CourseForm({ mode = "create", course }) {
                 <div>
                   <label className="block text-sm text-text mb-1">Video Description</label>
                   <input
-                    name="video_description"
-                    value={form.video_description}
+                    name="videoDescription"
+                    value={form.videoDescription}
                     onChange={handleChange}
                     className="w-full rounded-lg border border-border-primary bg-bg2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Brief description of the video"
@@ -453,8 +425,8 @@ export default function CourseForm({ mode = "create", course }) {
           <div>
             <label className="block text-sm text-text mb-1">Video ID (optional)</label>
             <input
-              name="video_id"
-              value={form.video_id}
+              name="videoId"
+              value={form.videoId}
               onChange={handleChange}
               className="w-full rounded-lg border border-border-primary bg-bg2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="UUID of an existing video"
@@ -471,20 +443,23 @@ export default function CourseForm({ mode = "create", course }) {
             <p className="text-xs text-text/70 px-1">No instructors yet</p>
           ) : (
             <ul className="space-y-1">
-              {instructors.map((i) => (
-                <li key={i.instructor_id} className="flex items-center gap-2">
-                  <input
-                    id={`inst-${i.instructor_id}`}
-                    type="checkbox"
-                    className="accent-primary"
-                    checked={form.instructor_ids.includes(i.instructor_id)}
-                    onChange={() => toggleInstructor(i.instructor_id)}
-                  />
-                  <label htmlFor={`inst-${i.instructor_id}`} className="text-sm text-text">
-                    {i.name}
-                  </label>
-                </li>
-              ))}
+              {instructors.map((i) => {
+                const instructorData = i.instructors || i;
+                return (
+                  <li key={instructorData.instructorId} className="flex items-center gap-2">
+                    <input
+                      id={`inst-${instructorData.instructorId}`}
+                      type="checkbox"
+                      className="accent-primary"
+                      checked={form.instructorIds.includes(instructorData.instructorId)}
+                      onChange={() => toggleInstructor(instructorData.instructorId)}
+                    />
+                    <label htmlFor={`inst-${instructorData.instructorId}`} className="text-sm text-text">
+                      {instructorData.name}
+                    </label>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

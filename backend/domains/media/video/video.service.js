@@ -1,30 +1,8 @@
-// ==================== domains/media/video/video.service.js ====================
-const { db } = require("../../../config/database");
+// backend/domains/media/video/video.service.js
 const { videos } = require("../../../config/schema");
 const { eq, count } = require("drizzle-orm");
 
-/**
- * Standard field mappings for videos
- */
-const VIDEO_FIELDS = {
-  video_id: videos.videoId,
-  title: videos.title,
-  description: videos.description,
-  slides_url: videos.slidesUrl,
-  file_size: videos.fileSize, // Add this
-  mime_type: videos.mimeType, // Add this
-  thumbnail_image_id: videos.thumbnailImageId,
-  is_archived: videos.isArchived,
-  archived_at: videos.archivedAt,
-  purge_after_at: videos.purgeAfterAt,
-  created_at: videos.createdAt,
-  updated_at: videos.updatedAt,
-};
-
 const videoService = {
-  // Export field mappings for reuse
-  VIDEO_FIELDS,
-
   /**
    * Create standardized error
    */
@@ -36,17 +14,14 @@ const videoService = {
 
   /**
    * Handle video creation logic - used by any domain that needs videos
-   * Can be called with either video_id (existing) or video_url/title (create new)
    */
   async handleVideoCreation(tx, { video_id, video_url, title, description, thumbnail_image_id }) {
     if (video_id) {
-      // Validate existing video
       await this.validateVideoExists(tx, video_id);
       return video_id;
     }
     
     if (video_url && title) {
-      // Create new video
       const [videoRow] = await tx
         .insert(videos)
         .values({ 
@@ -57,7 +32,7 @@ const videoService = {
           isArchived: false,
           createdAt: new Date(),
         })
-        .returning({ videoId: videos.videoId });
+        .returning();
       return videoRow.videoId;
     }
     
@@ -72,7 +47,6 @@ const videoService = {
       if (video_id === null) {
         return null;
       } else {
-        // Validate new video exists
         await this.validateVideoExists(tx, video_id);
         return video_id;
       }
@@ -80,7 +54,6 @@ const videoService = {
     
     if (video_url !== undefined && video_url !== null && video_url !== "" && title) {
       if (currentVideoId) {
-        // Update existing video
         await tx
           .update(videos)
           .set({ 
@@ -93,7 +66,6 @@ const videoService = {
           .where(eq(videos.videoId, currentVideoId));
         return currentVideoId;
       } else {
-        // Create new video
         const [videoRow] = await tx
           .insert(videos)
           .values({ 
@@ -104,7 +76,7 @@ const videoService = {
             isArchived: false,
             createdAt: new Date(),
           })
-          .returning({ videoId: videos.videoId });
+          .returning();
         return videoRow.videoId;
       }
     }
@@ -129,7 +101,7 @@ const videoService = {
   /**
    * Check if video is used in other tables
    */
-  async checkVideoUsage(videoId, table, field, tx = db) {
+  async checkVideoUsage(videoId, table, field, tx) {
     const [result] = await tx
       .select({ count: count() })
       .from(table)
@@ -143,7 +115,7 @@ const videoService = {
    */
   async getAllVideos(tx, showArchived = false) {
     return await tx
-      .select(VIDEO_FIELDS)
+      .select()
       .from(videos)
       .where(eq(videos.isArchived, showArchived))
       .orderBy(videos.title);
@@ -154,7 +126,7 @@ const videoService = {
    */
   async getVideoById(tx, videoId) {
     const [result] = await tx
-      .select(VIDEO_FIELDS)
+      .select()
       .from(videos)
       .where(eq(videos.videoId, videoId));
 
@@ -168,7 +140,7 @@ const videoService = {
   /**
    * Create new video
    */
-  async createVideo(tx, { title, description, slides_url, thumbnail_image_id }) {
+  async createVideo(tx, { title, description, slidesUrl, thumbnailImageId }) {
     if (!title) {
       throw this.createError("Title is required", 400);
     }
@@ -178,12 +150,12 @@ const videoService = {
       .values({
         title,
         description: description || null,
-        slidesUrl: slides_url || null,
-        thumbnailImageId: thumbnail_image_id || null,
+        slidesUrl: slidesUrl || null,
+        thumbnailImageId: thumbnailImageId || null,
         isArchived: false,
         createdAt: new Date(),
       })
-      .returning(VIDEO_FIELDS);
+      .returning();
 
     return result;
   },
@@ -191,21 +163,21 @@ const videoService = {
   /**
    * Update existing video
    */
-  async updateVideo(tx, videoId, { title, description, slides_url, thumbnail_image_id }) {
+  async updateVideo(tx, videoId, { title, description, slidesUrl, thumbnailImageId }) {
     const updateData = {
       updatedAt: new Date()
     };
 
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
-    if (slides_url !== undefined) updateData.slidesUrl = slides_url;
-    if (thumbnail_image_id !== undefined) updateData.thumbnailImageId = thumbnail_image_id;
+    if (slidesUrl !== undefined) updateData.slidesUrl = slidesUrl;
+    if (thumbnailImageId !== undefined) updateData.thumbnailImageId = thumbnailImageId;
 
     const result = await tx
       .update(videos)
       .set(updateData)
       .where(eq(videos.videoId, videoId))
-      .returning(VIDEO_FIELDS);
+      .returning();
 
     if (result.length === 0) {
       throw this.createError("Video not found", 404);
@@ -221,7 +193,7 @@ const videoService = {
     const result = await tx
       .delete(videos)
       .where(eq(videos.videoId, videoId))
-      .returning(VIDEO_FIELDS);
+      .returning();
 
     if (result.length === 0) {
       throw this.createError("Video not found", 404);

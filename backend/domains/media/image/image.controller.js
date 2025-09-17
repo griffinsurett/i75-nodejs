@@ -4,7 +4,6 @@ const imageService = require('./image.service');
 const { images, courses, sections, chapters, tests, instructors, videos } = require("../../../config/schema");
 const { eq } = require("drizzle-orm");
 const BaseController = require("../../../shared/utils/baseController");
-const mediaManager = require("../../../shared/utils/mediaManager");
 
 const TimeUntilDeletion = 60000;
 
@@ -60,10 +59,10 @@ class ImageController extends BaseController {
    */
   async createImage(req, res, next) {
     try {
-      const { image_url, alt_text } = req.body;
+      const { imageUrl, altText } = req.body;
 
       const result = await this.withTransaction(db, async (tx) => {
-        return await imageService.createImage(tx, { image_url, alt_text });
+        return await imageService.createImage(tx, { imageUrl, altText });
       });
 
       this.success(res, result, null, 201);
@@ -78,10 +77,10 @@ class ImageController extends BaseController {
   async updateImage(req, res, next) {
     try {
       const { imageId } = req.params;
-      const { image_url, alt_text } = req.body;
+      const { imageUrl, altText } = req.body;
 
       const result = await this.withTransaction(db, async (tx) => {
-        return await imageService.updateImage(tx, imageId, { image_url, alt_text });
+        return await imageService.updateImage(tx, imageId, { imageUrl, altText });
       });
 
       this.success(res, result);
@@ -104,8 +103,8 @@ class ImageController extends BaseController {
 
         const results = [];
         for (const imageItem of imageData) {
-          const { image_url, alt_text } = imageItem;
-          const result = await imageService.createImage(tx, { image_url, alt_text });
+          const { imageUrl, altText } = imageItem;
+          const result = await imageService.createImage(tx, { imageUrl, altText });
           results.push(result);
         }
 
@@ -121,44 +120,38 @@ class ImageController extends BaseController {
   /**
    * POST /api/images/upload
    */
-async uploadImage(req, res, next) {
-  try {
-    if (!req.file) {
-      throw this.createError("No image file uploaded", 400);
-    }
+  async uploadImage(req, res, next) {
+    try {
+      if (!req.file) {
+        throw this.createError("No image file uploaded", 400);
+      }
 
-    const alt_text = req.body?.alt_text || null;
-    const uploadService = require('../upload/upload.service');
-    
-    const fileData = uploadService.processFile(req.file, req, "images");
-
-    const [row] = await db
-      .insert(images)
-      .values({
-        imageUrl: fileData.publicUrl,
-        altText: alt_text,
-        fileSize: req.file.size, // Add this - automatically captured
-        mimeType: req.file.mimetype, // Add this - automatically captured
-        isArchived: false,
-        createdAt: new Date(),
-      })
-      .returning({
-        image_id: images.imageId,
-        image_url: images.imageUrl,
-        alt_text: images.altText,
-        file_size: images.fileSize,
-        mime_type: images.mimeType,
-      });
-
-    this.success(res, row, null, 201);
-  } catch (error) {
-    if (req.file) {
+      const altText = req.body?.alt_text || req.body?.altText || null;
       const uploadService = require('../upload/upload.service');
-      await uploadService.deleteFile(req.file.path);
+      
+      const fileData = uploadService.processFile(req.file, req, "images");
+
+      const [row] = await db
+        .insert(images)
+        .values({
+          imageUrl: fileData.publicUrl,
+          altText: altText,
+          fileSize: req.file.size,
+          mimeType: req.file.mimetype,
+          isArchived: false,
+          createdAt: new Date(),
+        })
+        .returning();
+
+      this.success(res, row, null, 201);
+    } catch (error) {
+      if (req.file) {
+        const uploadService = require('../upload/upload.service');
+        await uploadService.deleteFile(req.file.path);
+      }
+      this.handleError(error, res, next);
     }
-    this.handleError(error, res, next);
   }
-}
 
   /**
    * POST /api/images/:imageId/archive

@@ -6,7 +6,6 @@ import {
   BookOpen,
   Users,
   FileText,
-  ClipboardList,
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
@@ -37,8 +36,19 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
     courseAPI
       .getAllCourses()
       .then((res) => {
-        if (res.data?.success) setCourses(res.data.data || []);
-        else setCoursesError("Failed to load courses");
+        if (res.data?.success) {
+          const courseList = res.data.data.map(item => {
+            // Handle both nested and flat structure
+            const courseData = item.courses || item;
+            return {
+              courseId: courseData.courseId,
+              courseName: courseData.courseName
+            };
+          });
+          setCourses(courseList);
+        } else {
+          setCoursesError("Failed to load courses");
+        }
       })
       .catch((e) => setCoursesError(e?.response?.data?.message || "Failed to load courses"))
       .finally(() => setCoursesLoading(false));
@@ -167,19 +177,19 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
                         !coursesError &&
                         courses.map((c) => (
                           <Link
-                            key={c.course_id}
-                            to={`/courses/${c.course_id}`}
-                            title={c.course_name}
+                            key={c.courseId}
+                            to={`/courses/${c.courseId}`}
+                            title={c.courseName}
                             className={`
                               block px-3 py-2 text-sm rounded-md truncate transition-colors
                               ${
-                                isCourseActive(c.course_id)
+                                isCourseActive(c.courseId)
                                   ? "bg-primary/10 text-primary"
                                   : "text-text hover:text-heading hover:bg-bg2"
                               }
                             `}
                           >
-                            {c.course_name}
+                            {c.courseName}
                           </Link>
                         ))}
                     </div>
