@@ -1,7 +1,7 @@
 import { Edit, RotateCcw, Archive as ArchiveIcon, Trash2 } from "lucide-react";
-import ActionsMenu from "./ActionsMenu";
-import ConfirmModal from "./ConfirmModal";
-import useArchive from "../hooks/useArchive";
+import ActionsMenu from "../ActionsMenu";
+import ConfirmModal from "../ConfirmModal";
+import useArchive from "../../hooks/useArchive";
 
 /**
  * EditActions

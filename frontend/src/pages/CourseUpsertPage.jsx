@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Edit, Plus, Loader2, AlertCircle } from "lucide-react";
 import { courseAPI } from "../services/api";
-import CourseForm from "../components/CourseForm";
+import CourseForm from "../components/course/CourseForm";
 
 export default function CourseUpsertPage() {
   const { courseId } = useParams();
@@ -47,7 +47,10 @@ export default function CourseUpsertPage() {
           <AlertCircle className="w-5 h-5 mr-2" />
           <span>{err || "Course not found"}</span>
         </div>
-        <Link to="/courses" className="inline-flex items-center text-primary hover:text-primary/65">
+        <Link
+          to="/courses"
+          className="inline-flex items-center text-primary hover:text-primary/65"
+        >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Courses
         </Link>
@@ -69,13 +72,20 @@ export default function CourseUpsertPage() {
 
       <div className="bg-bg rounded-lg shadow-lg p-6">
         <div className="flex items-center gap-2 mb-4">
-          {isEdit ? <Edit className="w-5 h-5 text-primary" /> : <Plus className="w-5 h-5 text-primary" />}
+          {isEdit ? (
+            <Edit className="w-5 h-5 text-primary" />
+          ) : (
+            <Plus className="w-5 h-5 text-primary" />
+          )}
           <h1 className="text-2xl font-bold text-heading">
             {isEdit ? "Edit Course" : "Add Course"}
           </h1>
         </div>
 
-        <CourseForm mode={isEdit ? "edit" : "create"} course={isEdit ? course : undefined} />
+        <CourseForm
+          mode={isEdit ? "edit" : "create"}
+          course={isEdit ? course : undefined}
+        />
       </div>
     </div>
   );

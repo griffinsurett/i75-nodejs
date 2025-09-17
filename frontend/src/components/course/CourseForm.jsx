@@ -1,7 +1,13 @@
 // CourseForm.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { courseAPI, instructorAPI, uploadAPI, imageAPI, videoAPI } from "../services/api";
+import {
+  courseAPI,
+  instructorAPI,
+  uploadAPI,
+  imageAPI,
+  videoAPI,
+} from "../../services/api";
 import { Loader2, X, Film, Image } from "lucide-react";
 
 export default function CourseForm({ mode = "create", course }) {
@@ -17,29 +23,29 @@ export default function CourseForm({ mode = "create", course }) {
     videoId: "",
     instructorIds: [],
   });
-  
+
   // Image handling
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
-  
+
   // Video handling
   const [videoFile, setVideoFile] = useState(null);
   const [videoPreview, setVideoPreview] = useState("");
   const [useExistingVideo, setUseExistingVideo] = useState(false);
-  
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Track original image/video for updates
-  const [original, setOriginal] = useState({ 
-    imageId: null, 
+  const [original, setOriginal] = useState({
+    imageId: null,
     altText: "",
     videoId: null,
     videoUrl: "",
     videoTitle: "",
-    videoDescription: ""
+    videoDescription: "",
   });
 
   const canSubmit = useMemo(
@@ -58,7 +64,7 @@ export default function CourseForm({ mode = "create", course }) {
           const courseData = course.courses || course;
           const imageData = course.images;
           const videoData = course.videos;
-          
+
           setForm({
             courseName: courseData.courseName || "",
             description: courseData.description || "",
@@ -66,16 +72,19 @@ export default function CourseForm({ mode = "create", course }) {
             videoId: courseData.videoId || "",
             videoTitle: videoData?.title || "",
             videoDescription: videoData?.description || "",
-            instructorIds: courseData.instructors?.map((i) => (i.instructors || i).instructorId) || [],
+            instructorIds:
+              courseData.instructors?.map(
+                (i) => (i.instructors || i).instructorId
+              ) || [],
           });
-          
+
           setImagePreview(imageData?.imageUrl || "");
-          setOriginal({ 
-            imageId: courseData.imageId, 
+          setOriginal({
+            imageId: courseData.imageId,
             altText: imageData?.altText || "",
             videoId: courseData.videoId,
             videoTitle: videoData?.title || "",
-            videoDescription: videoData?.description || ""
+            videoDescription: videoData?.description || "",
           });
         } else {
           setForm({
@@ -88,12 +97,12 @@ export default function CourseForm({ mode = "create", course }) {
             instructorIds: [],
           });
           setImagePreview("");
-          setOriginal({ 
-            imageId: null, 
+          setOriginal({
+            imageId: null,
             altText: "",
             videoId: null,
             videoTitle: "",
-            videoDescription: ""
+            videoDescription: "",
           });
         }
 
@@ -147,7 +156,7 @@ export default function CourseForm({ mode = "create", course }) {
   const clearVideo = () => {
     setVideoFile(null);
     setVideoPreview("");
-    setForm(f => ({ ...f, videoTitle: "", videoDescription: "" }));
+    setForm((f) => ({ ...f, videoTitle: "", videoDescription: "" }));
   };
 
   const toggleInstructor = (id) => {
@@ -181,7 +190,11 @@ export default function CourseForm({ mode = "create", course }) {
 
       // Upload new video file (if chosen)
       if (videoFile && form.videoTitle) {
-        const videoUp = await uploadAPI.uploadVideo(videoFile, form.videoTitle, form.videoDescription);
+        const videoUp = await uploadAPI.uploadVideo(
+          videoFile,
+          form.videoTitle,
+          form.videoDescription
+        );
         uploadedVideoId = videoUp.data?.data?.videoId;
       }
 
@@ -191,8 +204,15 @@ export default function CourseForm({ mode = "create", course }) {
           courseName: form.courseName.trim(),
           description: form.description || undefined,
           imageId: uploadedImageId !== undefined ? uploadedImageId : undefined,
-          videoId: uploadedVideoId !== undefined ? uploadedVideoId : (useExistingVideo && form.videoId ? form.videoId : undefined),
-          instructorIds: form.instructorIds?.length ? form.instructorIds : undefined,
+          videoId:
+            uploadedVideoId !== undefined
+              ? uploadedVideoId
+              : useExistingVideo && form.videoId
+              ? form.videoId
+              : undefined,
+          instructorIds: form.instructorIds?.length
+            ? form.instructorIds
+            : undefined,
         };
 
         const res = await courseAPI.createCourse(payload);
@@ -207,18 +227,25 @@ export default function CourseForm({ mode = "create", course }) {
           courseName: form.courseName.trim() || undefined,
           description: form.description || undefined,
           imageId: imageFile ? uploadedImageId : undefined,
-          videoId: videoFile ? uploadedVideoId : (useExistingVideo && form.videoId ? form.videoId : undefined),
+          videoId: videoFile
+            ? uploadedVideoId
+            : useExistingVideo && form.videoId
+            ? form.videoId
+            : undefined,
           altText: form.altText || undefined,
           instructorIds: form.instructorIds?.length ? form.instructorIds : [],
         };
 
         // If video details changed but no new file uploaded, update existing video
-        if (!videoFile && original.videoId && 
-            (form.videoTitle !== original.videoTitle || 
-             form.videoDescription !== original.videoDescription)) {
+        if (
+          !videoFile &&
+          original.videoId &&
+          (form.videoTitle !== original.videoTitle ||
+            form.videoDescription !== original.videoDescription)
+        ) {
           await videoAPI.updateVideo(original.videoId, {
             title: form.videoTitle,
-            description: form.videoDescription
+            description: form.videoDescription,
           });
         }
 
@@ -228,9 +255,7 @@ export default function CourseForm({ mode = "create", course }) {
         const trimmedNew = (form.altText ?? "").trim();
         const trimmedOld = (original.altText ?? "").trim();
         const mustUpdateExistingImageAlt =
-          !imageFile &&
-          original.imageId &&
-          trimmedNew !== trimmedOld;
+          !imageFile && original.imageId && trimmedNew !== trimmedOld;
 
         if (mustUpdateExistingImageAlt) {
           try {
@@ -247,8 +272,8 @@ export default function CourseForm({ mode = "create", course }) {
     } catch (err) {
       setError(
         err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        (isEdit ? "Failed to update course" : "Failed to create course")
+          err?.response?.data?.error ||
+          (isEdit ? "Failed to update course" : "Failed to create course")
       );
     } finally {
       setSubmitting(false);
@@ -323,7 +348,9 @@ export default function CourseForm({ mode = "create", course }) {
             )}
           </div>
           <div>
-            <label className="block text-sm text-text mb-1">Image Alt Text</label>
+            <label className="block text-sm text-text mb-1">
+              Image Alt Text
+            </label>
             <input
               name="altText"
               value={form.altText}
@@ -341,7 +368,7 @@ export default function CourseForm({ mode = "create", course }) {
           <Film className="w-4 h-4" />
           Course Video
         </h3>
-        
+
         {/* Video upload toggle */}
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2">
@@ -398,7 +425,9 @@ export default function CourseForm({ mode = "create", course }) {
             {(videoFile || original.videoId) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-text mb-1">Video Title *</label>
+                  <label className="block text-sm text-text mb-1">
+                    Video Title *
+                  </label>
                   <input
                     name="videoTitle"
                     value={form.videoTitle}
@@ -409,7 +438,9 @@ export default function CourseForm({ mode = "create", course }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-text mb-1">Video Description</label>
+                  <label className="block text-sm text-text mb-1">
+                    Video Description
+                  </label>
                   <input
                     name="videoDescription"
                     value={form.videoDescription}
@@ -423,7 +454,9 @@ export default function CourseForm({ mode = "create", course }) {
           </>
         ) : (
           <div>
-            <label className="block text-sm text-text mb-1">Video ID (optional)</label>
+            <label className="block text-sm text-text mb-1">
+              Video ID (optional)
+            </label>
             <input
               name="videoId"
               value={form.videoId}
@@ -437,7 +470,9 @@ export default function CourseForm({ mode = "create", course }) {
 
       {/* Instructors Section */}
       <div>
-        <label className="block text-sm text-text mb-2">Assign Instructors (optional)</label>
+        <label className="block text-sm text-text mb-2">
+          Assign Instructors (optional)
+        </label>
         <div className="max-h-40 overflow-auto rounded-lg border border-border-primary p-2 bg-bg2">
           {instructors.length === 0 ? (
             <p className="text-xs text-text/70 px-1">No instructors yet</p>
@@ -446,15 +481,25 @@ export default function CourseForm({ mode = "create", course }) {
               {instructors.map((i) => {
                 const instructorData = i.instructors || i;
                 return (
-                  <li key={instructorData.instructorId} className="flex items-center gap-2">
+                  <li
+                    key={instructorData.instructorId}
+                    className="flex items-center gap-2"
+                  >
                     <input
                       id={`inst-${instructorData.instructorId}`}
                       type="checkbox"
                       className="accent-primary"
-                      checked={form.instructorIds.includes(instructorData.instructorId)}
-                      onChange={() => toggleInstructor(instructorData.instructorId)}
+                      checked={form.instructorIds.includes(
+                        instructorData.instructorId
+                      )}
+                      onChange={() =>
+                        toggleInstructor(instructorData.instructorId)
+                      }
                     />
-                    <label htmlFor={`inst-${instructorData.instructorId}`} className="text-sm text-text">
+                    <label
+                      htmlFor={`inst-${instructorData.instructorId}`}
+                      className="text-sm text-text"
+                    >
                       {instructorData.name}
                     </label>
                   </li>
@@ -478,7 +523,13 @@ export default function CourseForm({ mode = "create", course }) {
           disabled={!canSubmit}
           className="px-3 py-2 text-sm rounded-lg text-white bg-primary hover:opacity-90 disabled:opacity-50"
         >
-          {submitting ? (isEdit ? "Updating…" : "Creating…") : isEdit ? "Update Course" : "Create Course"}
+          {submitting
+            ? isEdit
+              ? "Updating…"
+              : "Creating…"
+            : isEdit
+            ? "Update Course"
+            : "Create Course"}
         </button>
       </div>
     </form>

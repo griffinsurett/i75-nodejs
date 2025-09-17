@@ -13,10 +13,10 @@ import {
   Check,
 } from "lucide-react";
 
-import Modal from "./Modal";
+import Modal from "../Modal";
 import UserElement from "./UserElement";
-import { UseMode } from "../hooks/theme/UseMode";
-import useLocalStorageState from "../hooks/useLocalStorageState";
+import { UseMode } from "../../hooks/theme/UseMode";
+import useLocalStorageState from "../../hooks/useLocalStorageState";
 
 /**
  * UserMenu (reusable)
@@ -67,7 +67,8 @@ export default function UserMenu({
     const handler = () => apply();
     mq.addEventListener?.("change", handler) ?? mq.addListener?.(handler);
     return () => {
-      mq.removeEventListener?.("change", handler) ?? mq.removeListener?.(handler);
+      mq.removeEventListener?.("change", handler) ??
+        mq.removeListener?.(handler);
     };
   }, [themeMode, setIsLight]);
 
@@ -123,7 +124,10 @@ export default function UserMenu({
   };
   const scheduleClose = () => {
     clearHoverTimer();
-    hoverTimer.current = setTimeout(() => setThemeOpen(false), HOVER_CLOSE_DELAY);
+    hoverTimer.current = setTimeout(
+      () => setThemeOpen(false),
+      HOVER_CLOSE_DELAY
+    );
   };
 
   const positionTheme = () => {
@@ -163,7 +167,13 @@ export default function UserMenu({
   const items = menuItems?.length
     ? menuItems
     : [
-        { key: "settings", label: "Settings", icon: Settings, to: profileTo, type: "link" },
+        {
+          key: "settings",
+          label: "Settings",
+          icon: Settings,
+          to: profileTo,
+          type: "link",
+        },
         { key: "theme", label: "Theme", icon: Palette, type: "flyout-theme" },
       ];
 
@@ -192,7 +202,12 @@ export default function UserMenu({
             Account
           </div>
           <Row asLink={!!profileTo} to={profileTo} onClick={closeAll}>
-            <UserElement name={name} email={email} role={role} src={avatarUrl} />
+            <UserElement
+              name={name}
+              email={email}
+              role={role}
+              src={avatarUrl}
+            />
             <ChevronRight className="w-4 h-4 text-text/70" />
           </Row>
         </div>
@@ -201,7 +216,10 @@ export default function UserMenu({
 
         <div className="p-2">
           {items.map((item) => {
-            if (item.type === "flyout-theme" || (item.type === "flyout" && item.key === "theme")) {
+            if (
+              item.type === "flyout-theme" ||
+              (item.type === "flyout" && item.key === "theme")
+            ) {
               return (
                 <div
                   key={item.key}
@@ -287,7 +305,11 @@ export default function UserMenu({
               icon={Sun}
               label="Light"
               selected={resolvedTheme === "light"}
-              badge={themeMode === "system" && resolvedTheme === "light" ? "Auto" : undefined}
+              badge={
+                themeMode === "system" && resolvedTheme === "light"
+                  ? "Auto"
+                  : undefined
+              }
               onClick={() => {
                 setThemeMode("light");
                 setThemeOpen(false);
@@ -298,7 +320,11 @@ export default function UserMenu({
               icon={Moon}
               label="Dark"
               selected={resolvedTheme === "dark"}
-              badge={themeMode === "system" && resolvedTheme === "dark" ? "Auto" : undefined}
+              badge={
+                themeMode === "system" && resolvedTheme === "dark"
+                  ? "Auto"
+                  : undefined
+              }
               onClick={() => {
                 setThemeMode("dark");
                 setThemeOpen(false);
