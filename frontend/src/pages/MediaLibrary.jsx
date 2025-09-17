@@ -56,58 +56,60 @@ const MediaLibrary = () => {
     fetchMedia();
   }, []);
 
-  // Filter media based on search and tab
-  const getFilteredMedia = () => {
-    let media = [];
-    
-    if (activeTab === 'all') {
-      media = [
-        ...images.map(img => ({ 
-          ...img, 
-          type: 'image',
-          // Normalize URL field - could be url, image_url, or full_url
-          url: img.url || img.image_url || img.full_url || img.path
-        })),
-        ...videos.map(vid => ({ 
-          ...vid, 
-          type: 'video',
-          // Normalize URL field for videos
-          url: vid.url || vid.video_url || vid.full_url || vid.path
-        }))
-      ];
-    } else if (activeTab === 'images') {
-      media = images.map(img => ({ 
+// In the getFilteredMedia function, update the video mapping:
+
+const getFilteredMedia = () => {
+  let media = [];
+  
+  if (activeTab === 'all') {
+    media = [
+      ...images.map(img => ({ 
         ...img, 
         type: 'image',
+        // Normalize URL field for images
         url: img.url || img.image_url || img.full_url || img.path
-      }));
-    } else {
-      media = videos.map(vid => ({ 
+      })),
+      ...videos.map(vid => ({ 
         ...vid, 
         type: 'video',
-        url: vid.url || vid.video_url || vid.full_url || vid.path
-      }));
-    }
+        // ADD slides_url to the check for videos
+        url: vid.url || vid.slides_url || vid.video_url || vid.full_url || vid.path
+      }))
+    ];
+  } else if (activeTab === 'images') {
+    media = images.map(img => ({ 
+      ...img, 
+      type: 'image',
+      url: img.url || img.image_url || img.full_url || img.path
+    }));
+  } else {
+    media = videos.map(vid => ({ 
+      ...vid, 
+      type: 'video',
+      // ADD slides_url here too
+      url: vid.url || vid.slides_url || vid.video_url || vid.full_url || vid.path
+    }));
+  }
 
-    // Apply search filter
-    if (searchQuery) {
-      media = media.filter(item => {
-        const searchFields = [
-          item.alt_text,
-          item.title,
-          item.description,
-          item.url
-        ].filter(Boolean).join(' ').toLowerCase();
-        
-        return searchFields.includes(searchQuery.toLowerCase());
-      });
-    }
+  // Apply search filter
+  if (searchQuery) {
+    media = media.filter(item => {
+      const searchFields = [
+        item.alt_text,
+        item.title,
+        item.description,
+        item.url
+      ].filter(Boolean).join(' ').toLowerCase();
+      
+      return searchFields.includes(searchQuery.toLowerCase());
+    });
+  }
 
-    // Sort by created_at (newest first)
-    return media.sort((a, b) => 
-      new Date(b.created_at || 0) - new Date(a.created_at || 0)
-    );
-  };
+  // Sort by created_at (newest first)
+  return media.sort((a, b) => 
+    new Date(b.created_at || 0) - new Date(a.created_at || 0)
+  );
+};
 
   const filteredMedia = getFilteredMedia();
 
@@ -286,55 +288,55 @@ const MediaLibrary = () => {
   );
 };
 
-// Media Card Component (Grid View)
+// Final MediaCard Component
 const MediaCard = ({ item, onClick }) => {
   const isVideo = item.type === 'video';
-  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [thumbnailError, setThumbnailError] = useState(false);
+  const [videoPreviewError, setVideoPreviewError] = useState(false);
   
-  // Create a proper video preview component
-  const VideoPreview = () => {
-    if (!item.url) {
+  // Video thumbnail or preview component
+  const VideoContent = () => {
+    const videoUrl = item.url || item.slides_url;
+    const thumbnailUrl = item.thumbnail_url || item.thumbnail_image_url;
+    
+    // Priority 1: Use thumbnail image if available
+    if (thumbnailUrl && !thumbnailError) {
       return (
-        <div className="w-full h-full flex items-center justify-center">
-          <Film className="w-12 h-12 text-text/40" />
-        </div>
+        <img
+          src={thumbnailUrl}
+          alt={item.title || 'Video thumbnail'}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          onError={() => setThumbnailError(true)}
+        />
       );
     }
-
-    return (
-      <>
-        {!videoLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Film className="w-12 h-12 text-text/40" />
-          </div>
-        )}
+    
+    // Priority 2: Try video preview if no thumbnail
+    if (videoUrl && !videoPreviewError && !thumbnailUrl) {
+      return (
         <video
-          src={item.url}
-          className={`w-full h-full object-cover ${videoLoaded ? '' : 'invisible'}`}
+          src={videoUrl}
+          className="w-full h-full object-cover"
           muted
           playsInline
           preload="metadata"
-          crossOrigin="anonymous"
-          onLoadedData={(e) => {
-            setVideoLoaded(true);
-            // Try to seek to get a better thumbnail
+          onLoadedMetadata={(e) => {
+            // Seek to 1 second for better frame
             if (e.target.duration > 1) {
               e.target.currentTime = 1;
             }
           }}
-          onError={(e) => {
-            console.error('Video failed to load:', item.url);
-            setVideoLoaded(false);
-          }}
+          onError={() => setVideoPreviewError(true)}
         />
-        {videoLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-black/60 rounded-full p-3">
-              <Film className="w-8 h-8 text-white" />
-            </div>
-          </div>
-        )}
-      </>
+      );
+    }
+    
+    // Priority 3: Fallback placeholder
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-800">
+        <Film className="w-12 h-12 text-gray-500" />
+      </div>
     );
   };
   
@@ -346,16 +348,26 @@ const MediaCard = ({ item, onClick }) => {
       <div className="aspect-square relative overflow-hidden bg-bg2">
         {isVideo ? (
           <>
-            <VideoPreview />
+            {/* Video content (thumbnail, preview, or placeholder) */}
+            <VideoContent />
+            
+            {/* Play button overlay - always shown for videos */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-black/50 rounded-full p-3 backdrop-blur-sm">
+                <svg className="w-10 h-10 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+            </div>
+            
+            {/* Hover effect */}
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
               <Eye className="w-8 h-8 text-white" />
             </div>
-            <span className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-              Video
-            </span>
           </>
         ) : (
           <>
+            {/* Image handling */}
             {item.url ? (
               <img
                 src={item.url}
@@ -480,6 +492,7 @@ const MediaPreviewModal = ({ item, onClose }) => {
               <video
                 src={item.url}
                 controls
+                autoPlay
                 className="w-full rounded-lg"
               />
             ) : (
