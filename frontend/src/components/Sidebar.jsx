@@ -24,7 +24,6 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
     { name: "Courses", href: "/courses", icon: BookOpen, current: location.pathname.startsWith("/courses") },
     { name: "Instructors", href: "/instructors", icon: Users, current: location.pathname === "/instructors" },
     { name: "Media Library", href: "/media-library", icon: FileText, current: location.pathname === "/media-library" },
-    { name: "Assessments", href: "/assessments", icon: ClipboardList, current: location.pathname === "/assessments" },
   ];
 
   // dynamic courses submenu

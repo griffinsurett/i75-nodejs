@@ -1,8 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import './App.css';
-import CourseCreatePage from './pages/CourseCreatePage';
-import CourseEditPage from './pages/CourseEditPage';
 import CourseUpsertPage from './pages/CourseUpsertPage';
 // Pages
 import HomePage from './pages/HomePage';
@@ -69,7 +67,6 @@ function App() {
               <Route path="/courses/:courseId/edit" element={<CourseUpsertPage />} />
               <Route path="/instructors" element={<PlaceholderPage title="Instructors" />} />
               <Route path="/media-library" element={<MediaLibrary />} />
-              <Route path="/assessments" element={<PlaceholderPage title="Assessments" />} />
               <Route path="/sections/:sectionId/chapters" element={<PlaceholderPage title="Chapters" />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
