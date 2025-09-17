@@ -10,6 +10,8 @@ const IMAGE_FIELDS = {
   image_id: images.imageId,
   image_url: images.imageUrl,
   alt_text: images.altText,
+  file_size: images.fileSize,
+  mime_type: images.mimeType,
   is_archived: images.isArchived,
   archived_at: images.archivedAt,
   purge_after_at: images.purgeAfterAt,

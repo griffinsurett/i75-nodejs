@@ -8,6 +8,7 @@ const {
   timestamp,
   primaryKey,
   foreignKey,
+  bigint,
   unique,
 } = require("drizzle-orm/pg-core");
 const { relations } = require("drizzle-orm");
@@ -17,7 +18,8 @@ const images = pgTable("images", {
   imageId: serial("image_id").primaryKey(),
   imageUrl: text("image_url").notNull(),
   altText: text("alt_text"),
-  // Add archive fields
+  fileSize: bigint("file_size", { mode: "number" }), // Add this - stores size in bytes
+  mimeType: text("mime_type"), // Add this - stores format like 'image/jpeg'
   isArchived: boolean("is_archived").notNull().default(false),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
@@ -31,6 +33,8 @@ const videos = pgTable("videos", {
   title: text("title").notNull(),
   description: text("description"),
   slidesUrl: text("slides_url"),
+  fileSize: bigint("file_size", { mode: "number" }), // Add this
+  mimeType: text("mime_type"), // Add this
   thumbnailImageId: integer("thumbnail_image_id").references(
     () => images.imageId
   ),

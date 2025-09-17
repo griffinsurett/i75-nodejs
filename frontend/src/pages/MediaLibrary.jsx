@@ -14,6 +14,54 @@ import {
   List
 } from 'lucide-react';
 
+// Format the MIME type to a readable format
+const formatFileType = (mimeType) => {
+  if (!mimeType) return 'Unknown';
+  
+  // Extract the format from mime type (e.g., "image/jpeg" -> "JPEG")
+  const parts = mimeType.split('/');
+  if (parts.length !== 2) return mimeType;
+  
+  const format = parts[1].toUpperCase();
+  
+  // Clean up common formats
+  const formatMap = {
+    'JPEG': 'JPEG',
+    'JPG': 'JPEG',
+    'PNG': 'PNG',
+    'GIF': 'GIF',
+    'WEBP': 'WEBP',
+    'SVG+XML': 'SVG',
+    'MP4': 'MP4',
+    'WEBM': 'WEBM',
+    'QUICKTIME': 'MOV',
+    'X-MSVIDEO': 'AVI',
+    'X-MATROSKA': 'MKV',
+    'MPEG': 'MPEG'
+  };
+  
+  return formatMap[format] || format;
+};
+
+// Format file size
+const formatFileSize = (bytes) => {
+  if (!bytes) return 'Unknown';
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  if (bytes === 0) return '0 Bytes';
+  const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+};
+
+// Format date
+const formatDate = (dateString) => {
+  if (!dateString) return 'Unknown';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
+
 const MediaLibrary = () => {
   const [activeTab, setActiveTab] = useState('all'); // all, images, videos
   const [images, setImages] = useState([]);
@@ -36,9 +84,6 @@ const MediaLibrary = () => {
           videoAPI.getAllVideos()
         ]);
 
-        console.log('Images response:', imagesRes.data); // Debug log
-        console.log('Videos response:', videosRes.data); // Debug log
-
         if (imagesRes.data?.success) {
           setImages(imagesRes.data.data || []);
         }
@@ -56,81 +101,41 @@ const MediaLibrary = () => {
     fetchMedia();
   }, []);
 
-// In the getFilteredMedia function, update the video mapping:
+  const getFilteredMedia = () => {
+    let media = [];
+    
+    if (activeTab === 'all') {
+      media = [
+        ...images.map(img => ({ ...img, type: 'image', url: img.image_url })),
+        ...videos.map(vid => ({ ...vid, type: 'video', url: vid.slides_url }))
+      ];
+    } else if (activeTab === 'images') {
+      media = images.map(img => ({ ...img, type: 'image', url: img.image_url }));
+    } else {
+      media = videos.map(vid => ({ ...vid, type: 'video', url: vid.slides_url }));
+    }
 
-const getFilteredMedia = () => {
-  let media = [];
-  
-  if (activeTab === 'all') {
-    media = [
-      ...images.map(img => ({ 
-        ...img, 
-        type: 'image',
-        // Normalize URL field for images
-        url: img.url || img.image_url || img.full_url || img.path
-      })),
-      ...videos.map(vid => ({ 
-        ...vid, 
-        type: 'video',
-        // ADD slides_url to the check for videos
-        url: vid.url || vid.slides_url || vid.video_url || vid.full_url || vid.path
-      }))
-    ];
-  } else if (activeTab === 'images') {
-    media = images.map(img => ({ 
-      ...img, 
-      type: 'image',
-      url: img.url || img.image_url || img.full_url || img.path
-    }));
-  } else {
-    media = videos.map(vid => ({ 
-      ...vid, 
-      type: 'video',
-      // ADD slides_url here too
-      url: vid.url || vid.slides_url || vid.video_url || vid.full_url || vid.path
-    }));
-  }
+    // Apply search filter
+    if (searchQuery) {
+      media = media.filter(item => {
+        const searchFields = [
+          item.alt_text,
+          item.title,
+          item.description,
+          item.url
+        ].filter(Boolean).join(' ').toLowerCase();
+        
+        return searchFields.includes(searchQuery.toLowerCase());
+      });
+    }
 
-  // Apply search filter
-  if (searchQuery) {
-    media = media.filter(item => {
-      const searchFields = [
-        item.alt_text,
-        item.title,
-        item.description,
-        item.url
-      ].filter(Boolean).join(' ').toLowerCase();
-      
-      return searchFields.includes(searchQuery.toLowerCase());
-    });
-  }
-
-  // Sort by created_at (newest first)
-  return media.sort((a, b) => 
-    new Date(b.created_at || 0) - new Date(a.created_at || 0)
-  );
-};
+    // Sort by created_at (newest first)
+    return media.sort((a, b) => 
+      new Date(b.created_at || 0) - new Date(a.created_at || 0)
+    );
+  };
 
   const filteredMedia = getFilteredMedia();
-
-  // Format file size
-  const formatFileSize = (bytes) => {
-    if (!bytes) return 'Unknown';
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    if (bytes === 0) return '0 Bytes';
-    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Unknown';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
 
   if (loading) {
     return (
@@ -259,6 +264,7 @@ const getFilteredMedia = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">Preview</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">Format</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">Size</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">Date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">Actions</th>
@@ -288,16 +294,17 @@ const getFilteredMedia = () => {
   );
 };
 
-// Final MediaCard Component
+// MediaCard Component
 const MediaCard = ({ item, onClick }) => {
   const isVideo = item.type === 'video';
   const [thumbnailError, setThumbnailError] = useState(false);
   const [videoPreviewError, setVideoPreviewError] = useState(false);
+  const fileFormat = formatFileType(item.mime_type);
   
   // Video thumbnail or preview component
   const VideoContent = () => {
-    const videoUrl = item.url || item.slides_url;
-    const thumbnailUrl = item.thumbnail_url || item.thumbnail_image_url;
+    const videoUrl = item.url;
+    const thumbnailUrl = item.thumbnail_url;
     
     // Priority 1: Use thumbnail image if available
     if (thumbnailUrl && !thumbnailError) {
@@ -364,6 +371,13 @@ const MediaCard = ({ item, onClick }) => {
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
               <Eye className="w-8 h-8 text-white" />
             </div>
+            
+            {/* Format badge */}
+            {fileFormat !== 'Unknown' && (
+              <span className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs backdrop-blur-sm">
+                {fileFormat}
+              </span>
+            )}
           </>
         ) : (
           <>
@@ -388,6 +402,13 @@ const MediaCard = ({ item, onClick }) => {
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Eye className="w-8 h-8 text-white" />
             </div>
+            
+            {/* Format badge for images */}
+            {fileFormat !== 'Unknown' && (
+              <span className="absolute top-2 right-2 bg-white/90 text-gray-800 px-2 py-1 rounded text-xs backdrop-blur-sm">
+                {fileFormat}
+              </span>
+            )}
           </>
         )}
       </div>
@@ -395,24 +416,26 @@ const MediaCard = ({ item, onClick }) => {
         <p className="text-sm font-medium text-heading truncate">
           {isVideo ? (item.title || 'Untitled Video') : (item.alt_text || 'Untitled Image')}
         </p>
-        <p className="text-xs text-text/70 mt-1">
-          {item.created_at ? formatDate(item.created_at) : 'Unknown date'}
-        </p>
+        <div className="flex items-center justify-between text-xs text-text/70 mt-1">
+          <span>{item.created_at ? formatDate(item.created_at) : 'Unknown date'}</span>
+          <span>{formatFileSize(item.file_size)}</span>
+        </div>
       </div>
     </div>
   );
 };
 
-// Fixed MediaListItem Component (List View)
+// MediaListItem Component (List View)
 const MediaListItem = ({ item, onClick }) => {
   const isVideo = item.type === 'video';
   const [thumbnailError, setThumbnailError] = useState(false);
+  const fileFormat = formatFileType(item.mime_type);
   
   // Preview component for list view
   const ListPreview = () => {
     if (isVideo) {
-      const videoUrl = item.url || item.slides_url;
-      const thumbnailUrl = item.thumbnail_url || item.thumbnail_image_url;
+      const videoUrl = item.url;
+      const thumbnailUrl = item.thumbnail_url;
       
       // Try thumbnail first
       if (thumbnailUrl && !thumbnailError) {
@@ -510,6 +533,11 @@ const MediaListItem = ({ item, onClick }) => {
           {isVideo ? 'Video' : 'Image'}
         </span>
       </td>
+      <td className="px-4 py-3">
+        <span className="text-sm font-mono text-text">
+          {fileFormat}
+        </span>
+      </td>
       <td className="px-4 py-3 text-sm text-text">
         {formatFileSize(item.file_size)}
       </td>
@@ -528,7 +556,7 @@ const MediaListItem = ({ item, onClick }) => {
             <Eye className="w-4 h-4" />
           </button>
           <a 
-            href={item.url || item.slides_url} 
+            href={item.url} 
             download 
             onClick={(e) => e.stopPropagation()}
             className="text-text hover:text-heading"
@@ -544,6 +572,7 @@ const MediaListItem = ({ item, onClick }) => {
 // Media Preview Modal
 const MediaPreviewModal = ({ item, onClose }) => {
   const isVideo = item.type === 'video';
+  const fileFormat = formatFileType(item.mime_type);
   
   return (
     <div 
@@ -560,7 +589,7 @@ const MediaPreviewModal = ({ item, onClose }) => {
           </h3>
           <button
             onClick={onClose}
-            className="text-text hover:text-heading p-2"
+            className="text-text hover:text-heading p-2 text-2xl"
           >
             ×
           </button>
@@ -590,15 +619,17 @@ const MediaPreviewModal = ({ item, onClose }) => {
               <span className="text-heading">{isVideo ? 'Video' : 'Image'}</span>
             </div>
             <div className="flex justify-between">
+              <span className="text-text/70">Format:</span>
+              <span className="text-heading font-mono">{fileFormat}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text/70">Size:</span>
+              <span className="text-heading">{formatFileSize(item.file_size)}</span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-text/70">Uploaded:</span>
               <span className="text-heading">{formatDate(item.created_at)}</span>
             </div>
-            {item.file_size && (
-              <div className="flex justify-between">
-                <span className="text-text/70">Size:</span>
-                <span className="text-heading">{formatFileSize(item.file_size)}</span>
-              </div>
-            )}
             {item.description && (
               <div className="pt-2 border-t border-border-primary">
                 <span className="text-text/70">Description:</span>
@@ -621,24 +652,6 @@ const MediaPreviewModal = ({ item, onClose }) => {
       </div>
     </div>
   );
-};
-
-// Helper functions
-const formatDate = (dateString) => {
-  if (!dateString) return 'Unknown';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-};
-
-const formatFileSize = (bytes) => {
-  if (!bytes) return 'Unknown';
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  if (bytes === 0) return '0 Bytes';
-  const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
-  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
 };
 
 export default MediaLibrary;

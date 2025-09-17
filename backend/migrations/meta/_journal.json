@@ -29,6 +29,13 @@
       "when": 1757959218286,
       "tag": "0003_dear_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1758087301212,
+      "tag": "0004_curvy_gladiator",
+      "breakpoints": true
     }
   ]
 }

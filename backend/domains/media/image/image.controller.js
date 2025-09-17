@@ -121,41 +121,44 @@ class ImageController extends BaseController {
   /**
    * POST /api/images/upload
    */
-  async uploadImage(req, res, next) {
-    try {
-      if (!req.file) {
-        throw this.createError("No image file uploaded", 400);
-      }
-
-      const alt_text = req.body?.alt_text || null;
-      const uploadService = require('../upload/upload.service');
-      
-      const fileData = uploadService.processFile(req.file, req, "images");
-
-      const [row] = await db
-        .insert(images)
-        .values({
-          imageUrl: fileData.publicUrl,
-          altText: alt_text,
-          isArchived: false,
-          createdAt: new Date(),
-        })
-        .returning({
-          image_id: images.imageId,
-          image_url: images.imageUrl,
-          alt_text: images.altText,
-        });
-
-      this.success(res, row, null, 201);
-    } catch (error) {
-      // Clean up file on error
-      if (req.file) {
-        const uploadService = require('../upload/upload.service');
-        await uploadService.deleteFile(req.file.path);
-      }
-      this.handleError(error, res, next);
+async uploadImage(req, res, next) {
+  try {
+    if (!req.file) {
+      throw this.createError("No image file uploaded", 400);
     }
+
+    const alt_text = req.body?.alt_text || null;
+    const uploadService = require('../upload/upload.service');
+    
+    const fileData = uploadService.processFile(req.file, req, "images");
+
+    const [row] = await db
+      .insert(images)
+      .values({
+        imageUrl: fileData.publicUrl,
+        altText: alt_text,
+        fileSize: req.file.size, // Add this - automatically captured
+        mimeType: req.file.mimetype, // Add this - automatically captured
+        isArchived: false,
+        createdAt: new Date(),
+      })
+      .returning({
+        image_id: images.imageId,
+        image_url: images.imageUrl,
+        alt_text: images.altText,
+        file_size: images.fileSize,
+        mime_type: images.mimeType,
+      });
+
+    this.success(res, row, null, 201);
+  } catch (error) {
+    if (req.file) {
+      const uploadService = require('../upload/upload.service');
+      await uploadService.deleteFile(req.file.path);
+    }
+    this.handleError(error, res, next);
   }
+}
 
   /**
    * POST /api/images/:imageId/archive

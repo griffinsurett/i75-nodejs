@@ -34,35 +34,37 @@ class VideoController extends BaseController {
   /**
    * GET /api/videos
    */
-  async getAllVideos(req, res, next) {
-    try {
-      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+ async getAllVideos(req, res, next) {
+  try {
+    const showArchived = String(req.query.archived || "").toLowerCase() === "true";
 
-      const result = await db
-        .select({
-          video_id: videos.videoId,
-          title: videos.title,
-          description: videos.description,
-          slides_url: videos.slidesUrl,
-          thumbnail_image_id: videos.thumbnailImageId,
-          thumbnail_url: images.imageUrl,
-          thumbnail_alt: images.altText,
-          is_archived: videos.isArchived,
-          archived_at: videos.archivedAt,
-          purge_after_at: videos.purgeAfterAt,
-          created_at: videos.createdAt,
-          updated_at: videos.updatedAt,
-        })
-        .from(videos)
-        .leftJoin(images, eq(videos.thumbnailImageId, images.imageId))
-        .where(eq(videos.isArchived, showArchived))
-        .orderBy(videos.title);
+    const result = await db
+      .select({
+        video_id: videos.videoId,
+        title: videos.title,
+        description: videos.description,
+        slides_url: videos.slidesUrl,
+        file_size: videos.fileSize, // Add this
+        mime_type: videos.mimeType, // Add this
+        thumbnail_image_id: videos.thumbnailImageId,
+        thumbnail_url: images.imageUrl,
+        thumbnail_alt: images.altText,
+        is_archived: videos.isArchived,
+        archived_at: videos.archivedAt,
+        purge_after_at: videos.purgeAfterAt,
+        created_at: videos.createdAt,
+        updated_at: videos.updatedAt,
+      })
+      .from(videos)
+      .leftJoin(images, eq(videos.thumbnailImageId, images.imageId))
+      .where(eq(videos.isArchived, showArchived))
+      .orderBy(videos.title);
 
-      this.success(res, result);
-    } catch (error) {
-      this.handleError(error, res, next);
-    }
+    this.success(res, result);
+  } catch (error) {
+    this.handleError(error, res, next);
   }
+}
 
   /**
    * GET /api/videos/:videoId
@@ -201,46 +203,50 @@ class VideoController extends BaseController {
   /**
    * POST /api/videos/upload
    */
-  async uploadVideo(req, res, next) {
-    try {
-      if (!req.file) {
-        throw this.createError("No video file uploaded", 400);
-      }
-
-      const { title, description } = req.body;
-      const uploadService = require('../upload/upload.service');
-
-      try {
-        this.validateRequired(title, "Video title");
-        
-        const fileData = uploadService.processFile(req.file, req, "videos");
-
-        const [row] = await db
-          .insert(videos)
-          .values({
-            title,
-            description: description || null,
-            slidesUrl: fileData.publicUrl,
-            thumbnailImageId: null,
-            isArchived: false,
-            createdAt: new Date(),
-          })
-          .returning({
-            video_id: videos.videoId,
-            title: videos.title,
-            description: videos.description,
-            slides_url: videos.slidesUrl,
-          });
-
-        this.success(res, row, null, 201);
-      } catch (error) {
-        await uploadService.deleteFile(req.file.path);
-        throw error;
-      }
-    } catch (error) {
-      this.handleError(error, res, next);
+ async uploadVideo(req, res, next) {
+  try {
+    if (!req.file) {
+      throw this.createError("No video file uploaded", 400);
     }
+
+    const { title, description } = req.body;
+    const uploadService = require('../upload/upload.service');
+
+    try {
+      this.validateRequired(title, "Video title");
+      
+      const fileData = uploadService.processFile(req.file, req, "videos");
+
+      const [row] = await db
+        .insert(videos)
+        .values({
+          title,
+          description: description || null,
+          slidesUrl: fileData.publicUrl,
+          fileSize: req.file.size, // Add this
+          mimeType: req.file.mimetype, // Add this
+          thumbnailImageId: null,
+          isArchived: false,
+          createdAt: new Date(),
+        })
+        .returning({
+          video_id: videos.videoId,
+          title: videos.title,
+          description: videos.description,
+          slides_url: videos.slidesUrl,
+          file_size: videos.fileSize,
+          mime_type: videos.mimeType,
+        });
+
+      this.success(res, row, null, 201);
+    } catch (error) {
+      await uploadService.deleteFile(req.file.path);
+      throw error;
+    }
+  } catch (error) {
+    this.handleError(error, res, next);
   }
+}
 
   /**
    * POST /api/videos/:videoId/archive

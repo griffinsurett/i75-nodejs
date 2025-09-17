@@ -11,6 +11,8 @@ const VIDEO_FIELDS = {
   title: videos.title,
   description: videos.description,
   slides_url: videos.slidesUrl,
+  file_size: videos.fileSize, // Add this
+  mime_type: videos.mimeType, // Add this
   thumbnail_image_id: videos.thumbnailImageId,
   is_archived: videos.isArchived,
   archived_at: videos.archivedAt,
