@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Eye, Film, Image as ImageIcon, Check } from 'lucide-react';
+import { Eye, Film, Image as ImageIcon } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
 import { formatFileSize } from '../../utils/formatFileSize';
 import { formatFileType } from '../../utils/formatFileType';
 import { VideoThumbnail } from '../VideoThumbnail';
 import EditActions from '../archive/EditActions';
 import ArchiveBadge from '../archive/ArchiveBadge';
+import SelectionCheckbox from '../selection/SelectionCheckbox';
 import { imageAPI, videoAPI } from '../../services/api';
 
 export default function MediaCard({ 
@@ -50,15 +51,11 @@ export default function MediaCard({
       {/* Selection Checkbox */}
       {selectionMode && (
         <div className="absolute top-2 left-2 z-20">
-          <div className={`w-6 h-6 rounded border-2 ${
-            isSelected 
-              ? 'bg-primary border-primary' 
-              : 'bg-white/90 border-gray-400 hover:border-primary'
-          } flex items-center justify-center`}>
-            {isSelected && (
-              <Check className="w-4 h-4 text-white" />
-            )}
-          </div>
+          <SelectionCheckbox
+            isSelected={isSelected}
+            onToggle={onToggleSelect}
+            ariaLabel={`Select ${isVideo ? item.title : item.altText}`}
+          />
         </div>
       )}
 
@@ -75,9 +72,7 @@ export default function MediaCard({
         </div>
       )}
 
-      <div 
-        className="aspect-square relative overflow-hidden bg-bg2"
-      >
+      <div className="aspect-square relative overflow-hidden bg-bg2">
         {isVideo ? (
           <>
             <VideoThumbnail 

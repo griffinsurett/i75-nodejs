@@ -1,10 +1,11 @@
-import { Eye, Film, Download, Image as ImageIcon, Check } from "lucide-react";
+import { Eye, Film, Download, Image as ImageIcon } from "lucide-react";
 import { formatDate } from "../../utils/formatDate";
 import { formatFileSize } from "../../utils/formatFileSize";
 import { formatFileType } from "../../utils/formatFileType";
 import { VideoThumbnail } from "../VideoThumbnail";
 import EditActions from "../archive/EditActions";
 import ArchiveBadge from "../archive/ArchiveBadge";
+import SelectionCheckbox from "../selection/SelectionCheckbox";
 import { imageAPI, videoAPI } from "../../services/api";
 
 export default function MediaListItem({ 
@@ -60,11 +61,11 @@ export default function MediaListItem({
     <tr className={`hover:bg-bg2/50 ${isSelected ? 'bg-primary/10' : ''}`}>
       {selectionMode && (
         <td className="px-4 py-3">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={onToggleSelect}
-            className="rounded border-border-primary"
+          <SelectionCheckbox
+            isSelected={isSelected}
+            onToggle={onToggleSelect}
+            ariaLabel={`Select ${isVideo ? item.title : item.altText}`}
+            variant="small"
           />
         </td>
       )}
