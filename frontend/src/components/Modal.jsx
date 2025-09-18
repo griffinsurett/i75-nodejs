@@ -1,4 +1,3 @@
-// src/components/Modal.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -11,7 +10,6 @@ export default function Modal({
   overlayClass = "bg-text/50 bg-opacity-50",
   className = "bg-bg shadow-xl p-4 rounded-md",
   allowScroll = false,
-  // NEW: centered (default) or anchored (renders children directly; no transforms)
   variant = "centered",
 }) {
   const [mounted, setMounted] = useState(isOpen);
@@ -39,7 +37,7 @@ export default function Modal({
   return createPortal(
     <div
       className={`
-        fixed inset-0 z-[250]
+        fixed inset-0 z-[250] flex items-center justify-center
         ${overlayClass}
         transition-opacity duration-200
         ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"}
@@ -54,9 +52,8 @@ export default function Modal({
           ref={modalRef}
           className={`
             relative ${className}
-            mx-auto my-auto flex items-center justify-center
-            transform-gpu transition-transform duration-200 origin-top
-            ${isOpen ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"}
+            transform-gpu transition-transform duration-200 origin-center
+            ${isOpen ? "scale-100 opacity-100" : "scale-95 opacity-0"}
           `}
           onClick={(e) => e.stopPropagation()}
         >

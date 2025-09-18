@@ -131,19 +131,24 @@ export default function UserMenu({
   };
 
   const positionTheme = () => {
-    const anchor = themeBtnRef.current?.getBoundingClientRect();
-    const mainMenu = menuRef.current?.getBoundingClientRect();
-    if (!anchor || !mainMenu) return;
-    const w = themeRef.current?.offsetWidth ?? 260;
-    const h = themeRef.current?.offsetHeight ?? 220;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const preferredLeft = mainMenu.right + 12;
-    const left = Math.min(preferredLeft, vw - w - 12);
-    const preferredTop = anchor.top - 12;
-    const top = Math.max(12, Math.min(preferredTop, vh - h - 12));
-    setThemePos({ top, left });
-  };
+  const anchor = themeBtnRef.current?.getBoundingClientRect();
+  const mainMenu = menuRef.current?.getBoundingClientRect();
+  if (!anchor || !mainMenu) return;
+  const w = themeRef.current?.offsetWidth ?? 260;
+  const h = themeRef.current?.offsetHeight ?? 220;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  
+  // Remove the gap - position flush with the main menu
+  const preferredLeft = mainMenu.right; // Changed from mainMenu.right + 12
+  const left = Math.min(preferredLeft, vw - w - 12);
+  
+  // Align with the Theme button, not offset by 12
+  const preferredTop = anchor.top; // Changed from anchor.top - 12
+  const top = Math.max(12, Math.min(preferredTop, vh - h - 12));
+  
+  setThemePos({ top, left });
+};
 
   useEffect(() => {
     if (!themeOpen) return;

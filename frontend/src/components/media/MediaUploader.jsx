@@ -11,7 +11,7 @@ import {
 import { uploadAPI } from "../../services/api";
 import { formatFileSize } from "../../utils/formatFileSize";
 import { formatFileType } from "../../utils/formatFileType";
-import { generateVideoThumbnail, VideoThumbnail } from "../videoThumbnail";
+import { generateVideoThumbnail, VideoThumbnail } from "../VideoThumbnail";
 
 export default function MediaUploader({ onComplete }) {
   const [files, setFiles] = useState([]);
@@ -119,35 +119,31 @@ export default function MediaUploader({ onComplete }) {
     );
 
     try {
-      // Simulate progress
-      const progressInterval = setInterval(() => {
+      // Progress callback
+      const onUploadProgress = (progress) => {
         setFiles((prev) =>
-          prev.map((f) => {
-            if (
-              f.id === fileObj.id &&
-              f.status === "uploading" &&
-              f.progress < 90
-            ) {
-              return { ...f, progress: f.progress + 10 };
-            }
-            return f;
-          })
+          prev.map((f) =>
+            f.id === fileObj.id ? { ...f, progress } : f
+          )
         );
-      }, 200);
+      };
 
       let response;
 
       if (fileObj.type === "image") {
-        response = await uploadAPI.uploadImage(fileObj.file, fileObj.altText);
+        response = await uploadAPI.uploadImage(
+          fileObj.file, 
+          fileObj.altText,
+          onUploadProgress
+        );
       } else {
         response = await uploadAPI.uploadVideo(
           fileObj.file,
           fileObj.title,
-          fileObj.description
+          fileObj.description,
+          onUploadProgress
         );
       }
-
-      clearInterval(progressInterval);
 
       if (response.data?.success) {
         setFiles((prev) =>
@@ -166,6 +162,7 @@ export default function MediaUploader({ onComplete }) {
                 ...f,
                 status: "error",
                 error: err.response?.data?.message || "Upload failed",
+                progress: 0
               }
             : f
         )
@@ -301,7 +298,7 @@ export default function MediaUploader({ onComplete }) {
 
                     {/* File Name with status and progress */}
                     <td className="p-3 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-medium text-heading truncate">
                           {fileObj.name}
                         </span>
@@ -310,13 +307,19 @@ export default function MediaUploader({ onComplete }) {
                         )}
                       </div>
 
-                      {/* Progress Bar */}
+                      {/* Enhanced Progress Bar with percentage */}
                       {fileObj.status === "uploading" && (
-                        <div className="mt-2 w-full bg-bg2 rounded-full h-1 overflow-hidden">
-                          <div
-                            className="bg-primary h-full transition-all duration-300"
-                            style={{ width: `${fileObj.progress}%` }}
-                          />
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-text/70">Uploading...</span>
+                            <span className="text-text font-medium">{fileObj.progress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-primary h-full rounded-full transition-all duration-300 ease-out"
+                              style={{ width: `${fileObj.progress}%` }}
+                            />
+                          </div>
                         </div>
                       )}
 

@@ -161,36 +161,33 @@ export const videoAPI = {
 
 // Upload API functions
 export const uploadAPI = {
-  uploadImage: (file, alt_text) => {
-    console.log("uploadImage called with:", { file, alt_text });
-
-    const form = new FormData();
-    form.append("file", file);
-    if (alt_text) form.append("alt_text", alt_text);
-
-    console.log("FormData entries:");
-    for (let pair of form.entries()) {
-      console.log(pair[0], pair[1]);
-    }
-
-    return api.post("/images/upload", form, {
-      onUploadProgress: (progressEvent) => {
-        console.log("Upload progress:", progressEvent);
-      },
+ uploadImage: (file, altText, onUploadProgress) => {
+    const formData = new FormData();
+    formData.append('file', file);  // Backend expects 'file'
+    if (altText) formData.append('alt_text', altText);  // Backend expects 'alt_text'
+    
+    return api.post('/images/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onUploadProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onUploadProgress(percentCompleted);
+      } : undefined
     });
   },
   
   // NEW: Upload video (alternative location for consistency)
-  uploadVideo: (file, title, description) => {
-    const form = new FormData();
-    form.append("file", file);
-    form.append("title", title);
-    if (description) form.append("description", description);
-
-    return api.post("/videos/upload", form, {
-      onUploadProgress: (progressEvent) => {
-        console.log("Video upload progress:", progressEvent);
-      },
+    uploadVideo: (file, title, description, onUploadProgress) => {
+    const formData = new FormData();
+    formData.append('file', file);  // Backend expects 'file'
+    formData.append('title', title);  // Required
+    if (description) formData.append('description', description);
+    
+    return api.post('/videos/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onUploadProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onUploadProgress(percentCompleted);
+      } : undefined
     });
   },
 };
