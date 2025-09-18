@@ -48,7 +48,7 @@ export default function MediaCard({
       }`}
       onClick={handleClick}
     >
-      {/* Selection Checkbox */}
+      {/* Selection Checkbox - at card level */}
       {selectionMode && (
         <div className="absolute top-2 left-2 z-20">
           <SelectionCheckbox
@@ -59,9 +59,12 @@ export default function MediaCard({
         </div>
       )}
 
-      {/* Actions Menu - only show when not in selection mode */}
+      {/* Actions Menu - at card level, outside image container */}
       {!selectionMode && (
-        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div 
+          className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
           <EditActions
             id={item.imageId || item.videoId}
             isArchived={item.isArchived}
@@ -72,6 +75,7 @@ export default function MediaCard({
         </div>
       )}
 
+      {/* Image container with overlay */}
       <div className="aspect-square relative overflow-hidden bg-bg2">
         {isVideo ? (
           <>
@@ -110,9 +114,9 @@ export default function MediaCard({
           </>
         )}
 
-        {/* Archive Badge */}
+        {/* Archive Badge - inside image container */}
         {item.isArchived && (
-          <span className="absolute bottom-2 left-2">
+          <span className="absolute bottom-2 left-2 z-10">
             <ArchiveBadge
               archivedAt={item.archivedAt}
               scheduledDeleteAt={item.purgeAfterAt}
@@ -120,14 +124,15 @@ export default function MediaCard({
           </span>
         )}
 
-        {/* Hover overlay - only show when not in selection mode */}
+        {/* Hover overlay - only inside image container */}
         {!selectionMode && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
             <Eye className="w-8 h-8 text-white" />
           </div>
         )}
       </div>
 
+      {/* Card footer with title and metadata */}
       <div className="p-3">
         <p className="text-sm font-medium text-heading truncate">
           {isVideo
