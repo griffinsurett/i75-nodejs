@@ -51,6 +51,12 @@ const instructors = pgTable("instructors", {
   name: text("name").notNull(),
   bio: text("bio"),
   imageId: integer("image_id").references(() => images.imageId),
+  // Add archive fields
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 // Courses table

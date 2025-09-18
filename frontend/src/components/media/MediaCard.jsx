@@ -68,6 +68,7 @@ export default function MediaCard({
           <EditActions
             id={item.imageId || item.videoId}
             isArchived={item.isArchived}
+            entityName={isVideo ? "video" : "image"} // Add this
             api={api}
             onChanged={onChanged}
             buttonClassName="w-8 h-8 bg-black/50 backdrop-blur-sm hover:bg-black/70"

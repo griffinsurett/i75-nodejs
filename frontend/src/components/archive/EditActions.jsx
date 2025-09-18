@@ -13,6 +13,7 @@ import useArchive from "../../hooks/useArchive";
  * - editTo (string) optional Link route for Edit
  * - api: { archive: (id)=>Promise, restore: (id)=>Promise, delete: (id)=>Promise }
  * - onChanged: callback to refetch parent list/entity
+ * - entityName: string for display (e.g., "course", "instructor", "image") - defaults to "item"
  * - menu props passthrough: buttonClassName, menuClassName, align, ariaLabel
  */
 export default function EditActions({
@@ -21,6 +22,7 @@ export default function EditActions({
   editTo,
   api,
   onChanged,
+  entityName = "item",
   buttonClassName = "w-8 h-8 bg-bg/80 backdrop-blur",
   menuClassName = "w-44",
   align = "right",
@@ -33,6 +35,9 @@ export default function EditActions({
       deleteFn: api.delete,
       onSuccess: onChanged,
     });
+
+  // Capitalize first letter for display
+  const displayName = entityName.charAt(0).toUpperCase() + entityName.slice(1);
 
   return (
     <>
@@ -61,11 +66,11 @@ export default function EditActions({
       <ConfirmModal
         isOpen={state.open && state.type === "archive"}
         onClose={close}
-        title={isArchived ? "Unarchive course?" : "Archive course?"}
+        title={isArchived ? `Unarchive ${entityName}?` : `Archive ${entityName}?`}
         description={
           isArchived
-            ? "This will make the course active again and visible to users."
-            : "Archiving hides the course from active views but keeps all data. You can restore it anytime."
+            ? `This will make the ${entityName} active again and visible to users.`
+            : `Archiving hides the ${entityName} from active views but keeps all data. You can restore it anytime.`
         }
         confirmLabel={isArchived ? "Unarchive" : "Archive"}
         onConfirm={() => toggleArchive(id, isArchived)}
@@ -77,8 +82,8 @@ export default function EditActions({
       <ConfirmModal
         isOpen={state.open && state.type === "delete"}
         onClose={close}
-        title="Delete course?"
-        description="This action permanently deletes the course. Consider archiving if you might need it later."
+        title={`Delete ${entityName}?`}
+        description={`This action permanently deletes the ${entityName}. Consider archiving if you might need it later.`}
         confirmLabel="Delete"
         confirmClass="bg-red-600"
         onConfirm={() => hardDelete(id)}

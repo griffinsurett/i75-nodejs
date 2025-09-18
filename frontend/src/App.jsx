@@ -7,6 +7,7 @@ import HomePage from "./pages/HomePage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import MediaLibrary from "./pages/MediaLibrary";
+import Instructors from './pages/Instructors';
 
 // Components
 import CourseList from "./components/course/CourseList";
@@ -65,10 +66,7 @@ function App() {
                 path="/courses/:courseId/edit"
                 element={<CourseUpsertPage />}
               />
-              <Route
-                path="/instructors"
-                element={<PlaceholderPage title="Instructors" />}
-              />
+              <Route path="/instructors" element={<Instructors />} />
               <Route path="/media-library" element={<MediaLibrary />} />
               <Route
                 path="/sections/:sectionId/chapters"

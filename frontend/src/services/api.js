@@ -66,16 +66,14 @@ export const courseAPI = {
 
 // Instructor API functions
 export const instructorAPI = {
-  getAllInstructors: () => api.get("/instructors"),
+  getAllInstructors: (params = {}) => api.get('/instructors', { params }),
   getInstructor: (instructorId) => api.get(`/instructors/${instructorId}`),
-  getInstructorCourses: (instructorId) =>
-    api.get(`/instructors/${instructorId}/courses`),
-  createInstructor: (instructorData) =>
-    api.post("/instructors", instructorData),
-  updateInstructor: (instructorId, instructorData) =>
-    api.put(`/instructors/${instructorId}`, instructorData),
-  deleteInstructor: (instructorId) =>
-    api.delete(`/instructors/${instructorId}`),
+  createInstructor: (data) => api.post('/instructors', data),
+  updateInstructor: (instructorId, data) => api.put(`/instructors/${instructorId}`, data),
+  deleteInstructor: (instructorId) => api.delete(`/instructors/${instructorId}`),
+  getInstructorCourses: (instructorId) => api.get(`/instructors/${instructorId}/courses`),
+  archiveInstructor: (instructorId) => api.post(`/instructors/${instructorId}/archive`),
+  restoreInstructor: (instructorId) => api.post(`/instructors/${instructorId}/restore`),
 };
 
 // Section API functions

@@ -3,22 +3,21 @@ const express = require("express");
 const router = express.Router();
 const instructorController = require("./instructor.controller");
 
-// GET /api/instructors
+// CRUD Routes
 router.get("/", instructorController.getAllInstructors);
-
-// GET /api/instructors/:instructorId
 router.get("/:instructorId", instructorController.getInstructorById);
-
-// POST /api/instructors
 router.post("/", instructorController.createInstructor);
-
-// PUT /api/instructors/:instructorId
 router.put("/:instructorId", instructorController.updateInstructor);
 
-// DELETE /api/instructors/:instructorId
+// Archive operations
+router.post("/:instructorId/archive", instructorController.archiveInstructor);
+router.post("/:instructorId/restore", instructorController.restoreInstructor);
+
+// Safety delete (schedule purge in 60s)
 router.delete("/:instructorId", instructorController.deleteInstructor);
 
-// GET /api/instructors/:instructorId/courses
+// Relationship management
 router.get("/:instructorId/courses", instructorController.getInstructorCourses);
+router.post("/:instructorId/courses", instructorController.assignCourses);
 
 module.exports = router;

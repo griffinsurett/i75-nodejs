@@ -1,3 +1,4 @@
+// ArchiveBadge.jsx
 import { useEffect, useState } from "react";
 
 /**

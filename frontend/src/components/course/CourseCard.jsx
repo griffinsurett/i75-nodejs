@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
-import { BookOpen, Calendar, User } from 'lucide-react';
-import EditActions from '../archive/EditActions';
-import ArchiveBadge from '../archive/ArchiveBadge';
+import { Link } from "react-router-dom";
+import { BookOpen, Calendar, User } from "lucide-react";
+import EditActions from "../archive/EditActions";
+import ArchiveBadge from "../archive/ArchiveBadge";
 import { formatDate } from "../../utils/formatDate";
-import { courseAPI } from '../../services/api';
+import { courseAPI } from "../../services/api";
 
 export default function CourseCard({ course, onChanged }) {
   // Handle both nested and flat structure
@@ -20,6 +20,7 @@ export default function CourseCard({ course, onChanged }) {
             id={courseData.courseId}
             isArchived={courseData.isArchived}
             editTo={`/courses/${courseData.courseId}/edit`}
+            entityName="course" // Add this
             api={{
               archive: courseAPI.archiveCourse,
               restore: courseAPI.restoreCourse,
@@ -57,7 +58,7 @@ export default function CourseCard({ course, onChanged }) {
         </h3>
 
         <p className="text-text mb-4 line-clamp-3">
-          {courseData.description || 'No description available'}
+          {courseData.description || "No description available"}
         </p>
 
         <div className="space-y-2 mb-4">
@@ -69,12 +70,17 @@ export default function CourseCard({ course, onChanged }) {
           )}
           <div className="flex items-center text-sm text-text">
             <Calendar className="w-4 h-4 mr-2" />
-            <span>Created: {formatDate(courseData.createdAt, { variant: 'short' })}</span>
+            <span>
+              Created: {formatDate(courseData.createdAt, { variant: "short" })}
+            </span>
           </div>
           {courseData.updatedAt && (
             <div className="flex items-center text-sm text-text">
               <Calendar className="w-4 h-4 mr-2" />
-              <span>Updated: {formatDate(courseData.updatedAt, { variant: 'short' })}</span>
+              <span>
+                Updated:{" "}
+                {formatDate(courseData.updatedAt, { variant: "short" })}
+              </span>
             </div>
           )}
         </div>
