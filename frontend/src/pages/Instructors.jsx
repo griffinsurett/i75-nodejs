@@ -1,11 +1,8 @@
-import React from "react";
+// frontend/src/pages/Instructors.jsx
+import InstructorList from "../components/instructor/InstructorList";
 
 const Instructors = () => {
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-     Instructors
-    </div>
-  );
+  return <InstructorList />;
 };
 
 export default Instructors;

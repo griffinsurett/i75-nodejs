@@ -1,24 +1,19 @@
-// ==================== routes/instructors.js (UPDATED) ====================
+// backend/domains/instructor/instructor.routes.js
 const express = require("express");
 const router = express.Router();
 const instructorController = require("./instructor.controller");
 
-// GET /api/instructors
 router.get("/", instructorController.getAllInstructors);
-
-// GET /api/instructors/:instructorId
 router.get("/:instructorId", instructorController.getInstructorById);
-
-// POST /api/instructors
+router.get("/:instructorId/courses", instructorController.getInstructorCourses);
 router.post("/", instructorController.createInstructor);
-
-// PUT /api/instructors/:instructorId
 router.put("/:instructorId", instructorController.updateInstructor);
 
-// DELETE /api/instructors/:instructorId
-router.delete("/:instructorId", instructorController.deleteInstructor);
+// Archive operations
+router.post("/:instructorId/archive", instructorController.archiveInstructor);
+router.post("/:instructorId/restore", instructorController.restoreInstructor);
 
-// GET /api/instructors/:instructorId/courses
-router.get("/:instructorId/courses", instructorController.getInstructorCourses);
+// Safety delete (schedule purge in 60s)
+router.delete("/:instructorId", instructorController.deleteInstructor);
 
 module.exports = router;
