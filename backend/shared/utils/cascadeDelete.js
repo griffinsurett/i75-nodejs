@@ -71,9 +71,9 @@ async function cascadeDeleteMedia(tx, entity, schema, purgeAfterMs = 60000) {
     }
   }
 
-  // Also check thumbnailImageId for videos
-  if (entity.thumbnailImageId) {
-    const totalUsage = await getMediaUsageCountFromSchema(tx, entity.thumbnailImageId, 'thumbnailImageId', schema);
+  // Also check imageId for videos
+  if (entity.imageId) {
+    const totalUsage = await getMediaUsageCountFromSchema(tx, entity.imageId, 'imageId', schema);
     
     if (totalUsage === 1) {
       await tx
@@ -84,7 +84,7 @@ async function cascadeDeleteMedia(tx, entity, schema, purgeAfterMs = 60000) {
           purgeAfterAt: purgeAt,
           updatedAt: new Date(now),
         })
-        .where(eq(schema.images.imageId, entity.thumbnailImageId));
+        .where(eq(schema.images.imageId, entity.imageId));
       
       cascadedMedia.thumbnailImage = true;
     }

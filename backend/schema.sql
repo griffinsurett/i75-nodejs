@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS public.videos (
     title TEXT NOT NULL,
     description TEXT,
     slides_url TEXT,
-    thumbnail_image_id UUID,
+    image_id UUID,
     PRIMARY KEY (video_id),
-    FOREIGN KEY (thumbnail_image_id) REFERENCES public.images(image_id)
+    FOREIGN KEY (image_id) REFERENCES public.images(image_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.instructors (

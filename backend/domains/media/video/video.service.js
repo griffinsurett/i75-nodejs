@@ -15,7 +15,7 @@ const videoService = {
   /**
    * Handle video creation logic - used by any domain that needs videos
    */
-  async handleVideoCreation(tx, { video_id, video_url, title, description, thumbnail_image_id }) {
+  async handleVideoCreation(tx, { video_id, video_url, title, description, image_id }) {
     if (video_id) {
       await this.validateVideoExists(tx, video_id);
       return video_id;
@@ -28,7 +28,7 @@ const videoService = {
           title,
           description: description || null,
           slidesUrl: video_url,
-          thumbnailImageId: thumbnail_image_id || null,
+          imageId: image_id || null,
           isArchived: false,
           createdAt: new Date(),
         })
@@ -42,7 +42,7 @@ const videoService = {
   /**
    * Handle video update logic - used by any domain updating videos
    */
-  async handleVideoUpdate(tx, currentVideoId, { video_id, video_url, title, description, thumbnail_image_id }) {
+  async handleVideoUpdate(tx, currentVideoId, { video_id, video_url, title, description, image_id }) {
     if (video_id !== undefined) {
       if (video_id === null) {
         return null;
@@ -60,7 +60,7 @@ const videoService = {
             title,
             description: description || null,
             slidesUrl: video_url,
-            thumbnailImageId: thumbnail_image_id || null,
+            imageId: image_id || null,
             updatedAt: new Date(),
           })
           .where(eq(videos.videoId, currentVideoId));
@@ -72,7 +72,7 @@ const videoService = {
             title,
             description: description || null,
             slidesUrl: video_url,
-            thumbnailImageId: thumbnail_image_id || null,
+            imageId: image_id || null,
             isArchived: false,
             createdAt: new Date(),
           })
@@ -140,7 +140,7 @@ const videoService = {
   /**
    * Create new video
    */
-  async createVideo(tx, { title, description, slidesUrl, thumbnailImageId }) {
+  async createVideo(tx, { title, description, slidesUrl, imageId }) {
     if (!title) {
       throw this.createError("Title is required", 400);
     }
@@ -151,7 +151,7 @@ const videoService = {
         title,
         description: description || null,
         slidesUrl: slidesUrl || null,
-        thumbnailImageId: thumbnailImageId || null,
+        imageId: imageId || null,
         isArchived: false,
         createdAt: new Date(),
       })
@@ -163,7 +163,7 @@ const videoService = {
   /**
    * Update existing video
    */
-  async updateVideo(tx, videoId, { title, description, slidesUrl, thumbnailImageId }) {
+  async updateVideo(tx, videoId, { title, description, slidesUrl, imageId }) {
     const updateData = {
       updatedAt: new Date()
     };
@@ -171,7 +171,7 @@ const videoService = {
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (slidesUrl !== undefined) updateData.slidesUrl = slidesUrl;
-    if (thumbnailImageId !== undefined) updateData.thumbnailImageId = thumbnailImageId;
+    if (imageId !== undefined) updateData.imageId = imageId;
 
     const result = await tx
       .update(videos)

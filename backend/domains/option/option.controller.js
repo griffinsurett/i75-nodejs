@@ -180,7 +180,7 @@ const optionController = {
           title: videos.title,
           description: videos.description,
           slides_url: videos.slidesUrl,
-          thumbnail_image_id: videos.thumbnailImageId,
+          image_id: videos.imageId,
         })
         .from(videos)
         .innerJoin(optionVideos, eq(videos.videoId, optionVideos.videoId))

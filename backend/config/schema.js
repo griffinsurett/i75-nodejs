@@ -35,7 +35,7 @@ const videos = pgTable("videos", {
   slidesUrl: text("slides_url"),
   fileSize: bigint("file_size", { mode: "number" }), // Add this
   mimeType: text("mime_type"), // Add this
-  thumbnailImageId: integer("thumbnail_image_id").references(
+  imageId: integer("image_id").references(
     () => images.imageId
   ),
   isArchived: boolean("is_archived").notNull().default(false),
@@ -244,7 +244,7 @@ const imagesRelations = relations(images, ({ many }) => ({
 
 const videosRelations = relations(videos, ({ one, many }) => ({
   thumbnailImage: one(images, {
-    fields: [videos.thumbnailImageId],
+    fields: [videos.imageId],
     references: [images.imageId],
   }),
   courses: many(courses),

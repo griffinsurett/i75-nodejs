@@ -52,7 +52,7 @@ async function addSampleData() {
           title: 'Introduction to Programming Video',
           description: 'Welcome to our programming course',
           slidesUrl: 'https://example.com/slides/intro',
-          thumbnailImageId: imageId,
+          imageId: imageId,
         })
         .returning();
       

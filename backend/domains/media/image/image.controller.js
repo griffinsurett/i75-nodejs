@@ -16,7 +16,7 @@ class ImageController extends BaseController {
       { table: chapters, field: chapters.imageId },
       { table: tests, field: tests.imageId },
       { table: instructors, field: instructors.imageId },
-      { table: videos, field: videos.thumbnailImageId },
+      { table: videos, field: videos.imageId },
     ];
   }
 

@@ -1,23 +1,23 @@
-import { useState } from 'react';
-import { Eye, Film, Image as ImageIcon } from 'lucide-react';
-import { formatDate } from '../../utils/formatDate';
-import { formatFileSize } from '../../utils/formatFileSize';
-import { formatFileType } from '../../utils/formatFileType';
-import { VideoThumbnail } from '../VideoThumbnail';
-import EditActions from '../archive/EditActions';
-import ArchiveBadge from '../archive/ArchiveBadge';
-import SelectionCheckbox from '../selection/SelectionCheckbox';
-import { imageAPI, videoAPI } from '../../services/api';
+import { useState } from "react";
+import { Eye, Film, Image as ImageIcon } from "lucide-react";
+import { formatDate } from "../../utils/formatDate";
+import { formatFileSize } from "../../utils/formatFileSize";
+import { formatFileType } from "../../utils/formatFileType";
+import { VideoThumbnail } from "../VideoThumbnail";
+import EditActions from "../archive/EditActions";
+import ArchiveBadge from "../archive/ArchiveBadge";
+import SelectionCheckbox from "../selection/SelectionCheckbox";
+import { imageAPI, videoAPI } from "../../services/api";
 
-export default function MediaCard({ 
-  item, 
-  onClick, 
+export default function MediaCard({
+  item,
+  onClick,
   onChanged,
   selectionMode,
   isSelected,
-  onToggleSelect
+  onToggleSelect,
 }) {
-  const isVideo = item.type === 'video';
+  const isVideo = item.type === "video";
   const fileFormat = formatFileType(item.mimeType);
 
   // Get the appropriate API based on media type
@@ -25,12 +25,12 @@ export default function MediaCard({
     ? {
         archive: (id) => videoAPI.archiveVideo(id),
         restore: (id) => videoAPI.restoreVideo(id),
-        delete: (id) => videoAPI.deleteVideo(id)
+        delete: (id) => videoAPI.deleteVideo(id),
       }
     : {
         archive: (id) => imageAPI.archiveImage(id),
         restore: (id) => imageAPI.restoreImage(id),
-        delete: (id) => imageAPI.deleteImage(id)
+        delete: (id) => imageAPI.deleteImage(id),
       };
 
   const handleClick = () => {
@@ -44,7 +44,7 @@ export default function MediaCard({
   return (
     <div
       className={`bg-bg rounded-lg overflow-hidden border hover:shadow-lg transition-shadow cursor-pointer group relative ${
-        isSelected ? 'border-primary border-2' : 'border-border-primary'
+        isSelected ? "border-primary border-2" : "border-border-primary"
       }`}
       onClick={handleClick}
     >
@@ -61,7 +61,7 @@ export default function MediaCard({
 
       {/* Actions Menu - at card level, outside image container */}
       {!selectionMode && (
-        <div 
+        <div
           className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
@@ -79,10 +79,10 @@ export default function MediaCard({
       <div className="aspect-square relative overflow-hidden bg-bg2">
         {isVideo ? (
           <>
-            <VideoThumbnail 
-              src={item.url} 
-              thumbnailSrc={item.thumbnailUrl} 
-              alt={item.title || 'Video thumbnail'}
+            <VideoThumbnail
+              src={item.url}
+              thumbnailSrc={item.imageUrl}
+              alt={item.title || "Video thumbnail"}
               showPlayButton={false}
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -102,7 +102,7 @@ export default function MediaCard({
             {item.url ? (
               <img
                 src={item.url}
-                alt={item.altText || 'Image'}
+                alt={item.altText || "Image"}
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
@@ -136,19 +136,19 @@ export default function MediaCard({
       <div className="p-3">
         <p className="text-sm font-medium text-heading truncate">
           {isVideo
-            ? item.title || 'Untitled Video'
-            : item.altText || 'Untitled Image'}
+            ? item.title || "Untitled Video"
+            : item.altText || "Untitled Image"}
         </p>
         <div className="flex items-center justify-between text-xs text-text/70 mt-1">
           <span>
             {formatDate(item.createdAt, {
-              variant: 'short',
-              empty: 'Unknown date',
+              variant: "short",
+              empty: "Unknown date",
             })}
           </span>
           <div className="flex items-center gap-2">
             <span>{formatFileSize(item.fileSize)}</span>
-            {fileFormat !== 'Unknown' && (
+            {fileFormat !== "Unknown" && (
               <span className="bg-bg2 text-text px-2 py-0.5 rounded text-xs font-medium">
                 {fileFormat}
               </span>

@@ -118,7 +118,7 @@ class MediaManager {
           title,
           description: description || null,
           slidesUrl: video_url,
-          thumbnailImageId: null,
+          imageId: null,
           isArchived: false,
           createdAt: new Date(),
         })
@@ -159,7 +159,7 @@ class MediaManager {
             title,
             description: description || null,
             slidesUrl: video_url,
-            thumbnailImageId: null,
+            imageId: null,
             updatedAt: new Date(),
           })
           .where(eq(schema.videos.videoId, currentVideoId));
@@ -172,7 +172,7 @@ class MediaManager {
             title,
             description: description || null,
             slidesUrl: video_url,
-            thumbnailImageId: null,
+            imageId: null,
             isArchived: false,
             createdAt: new Date(),
           })

@@ -8,13 +8,13 @@ import ArchiveBadge from "../archive/ArchiveBadge";
 import SelectionCheckbox from "../selection/SelectionCheckbox";
 import { imageAPI, videoAPI } from "../../services/api";
 
-export default function MediaListItem({ 
-  item, 
-  onClick, 
+export default function MediaListItem({
+  item,
+  onClick,
   onChanged,
   selectionMode,
   isSelected,
-  onToggleSelect
+  onToggleSelect,
 }) {
   const isVideo = item.type === "video";
   const fileFormat = formatFileType(item.mimeType);
@@ -37,7 +37,7 @@ export default function MediaListItem({
       return (
         <VideoThumbnail
           src={item.url}
-          thumbnailSrc={item.thumbnailUrl}
+          thumbnailSrc={item.imageUrl}
           alt={item.title || "Video thumbnail"}
         />
       );
@@ -58,7 +58,7 @@ export default function MediaListItem({
   };
 
   return (
-    <tr className={`hover:bg-bg2/50 ${isSelected ? 'bg-primary/10' : ''}`}>
+    <tr className={`hover:bg-bg2/50 ${isSelected ? "bg-primary/10" : ""}`}>
       {selectionMode && (
         <td className="px-4 py-3">
           <SelectionCheckbox

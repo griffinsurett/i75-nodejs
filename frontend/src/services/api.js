@@ -39,7 +39,7 @@ api.interceptors.response.use(
 // Course API functions
 export const courseAPI = {
   // Get all courses
-  getAllCourses: (params = {}) => api.get('/courses', { params }),
+  getAllCourses: (params = {}) => api.get("/courses", { params }),
 
   // Get single course by ID
   getCourse: (courseId) => api.get(`/courses/${courseId}`),
@@ -125,11 +125,11 @@ export const questionAPI = {
 
 // Image API functions
 export const imageAPI = {
-  getAllImages: (params = {}) => api.get('/images', { params }),
+  getAllImages: (params = {}) => api.get("/images", { params }),
   getImage: (imageId) => api.get(`/images/${imageId}`),
   getImageUsage: (imageId) => api.get(`/images/${imageId}/usage`),
-  createImage: (imageData) => api.post('/images', imageData),
-  bulkCreateImages: (imagesData) => api.post('/images/bulk', imagesData),
+  createImage: (imageData) => api.post("/images", imageData),
+  bulkCreateImages: (imagesData) => api.post("/images/bulk", imagesData),
   updateImage: (imageId, imageData) => api.put(`/images/${imageId}`, imageData),
   deleteImage: (imageId) => api.delete(`/images/${imageId}`),
   archiveImage: (imageId) => api.post(`/images/${imageId}/archive`),
@@ -138,22 +138,22 @@ export const imageAPI = {
 
 // Video API functions
 export const videoAPI = {
-  getAllVideos: (params = {}) => api.get('/videos', { params }),
+  getAllVideos: (params = {}) => api.get("/videos", { params }),
   getVideo: (videoId) => api.get(`/videos/${videoId}`),
-  createVideo: (videoData) => api.post('/videos', videoData),
+  createVideo: (videoData) => api.post("/videos", videoData),
   updateVideo: (videoId, videoData) => api.put(`/videos/${videoId}`, videoData),
   deleteVideo: (videoId) => api.delete(`/videos/${videoId}`),
   archiveVideo: (videoId) => api.post(`/videos/${videoId}/archive`),
   restoreVideo: (videoId) => api.post(`/videos/${videoId}/restore`),
   uploadVideo: (file, title, description) => {
     const form = new FormData();
-    form.append('file', file);
-    form.append('title', title);
-    if (description) form.append('description', description);
-    
-    return api.post('/videos/upload', form, {
+    form.append("file", file);
+    form.append("title", title);
+    if (description) form.append("description", description);
+
+    return api.post("/videos/upload", form, {
       onUploadProgress: (progressEvent) => {
-        console.log('Video upload progress:', progressEvent);
+        console.log("Video upload progress:", progressEvent);
       },
     });
   },
@@ -161,33 +161,41 @@ export const videoAPI = {
 
 // Upload API functions
 export const uploadAPI = {
- uploadImage: (file, altText, onUploadProgress) => {
+  uploadImage: (file, altText, onUploadProgress) => {
     const formData = new FormData();
-    formData.append('file', file);  // Backend expects 'file'
-    if (altText) formData.append('alt_text', altText);  // Backend expects 'alt_text'
-    
-    return api.post('/images/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: onUploadProgress ? (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        onUploadProgress(percentCompleted);
-      } : undefined
+    formData.append("file", file); // Backend expects 'file'
+    if (altText) formData.append("alt_text", altText); // Backend expects 'alt_text'
+
+    return api.post("/images/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: onUploadProgress
+        ? (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            onUploadProgress(percentCompleted);
+          }
+        : undefined,
     });
   },
-  
+
   // NEW: Upload video (alternative location for consistency)
-    uploadVideo: (file, title, description, onUploadProgress) => {
+  uploadVideo: (file, title, description, onUploadProgress) => {
     const formData = new FormData();
-    formData.append('file', file);  // Backend expects 'file'
-    formData.append('title', title);  // Required
-    if (description) formData.append('description', description);
-    
-    return api.post('/videos/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: onUploadProgress ? (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        onUploadProgress(percentCompleted);
-      } : undefined
+    formData.append("file", file); // Backend expects 'file'
+    formData.append("title", title); // Required
+    if (description) formData.append("description", description);
+
+    return api.post("/videos/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: onUploadProgress
+        ? (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            onUploadProgress(percentCompleted);
+          }
+        : undefined,
     });
   },
 };

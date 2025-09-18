@@ -13,7 +13,7 @@ const {
 } = require("../../../config/schema");
 const { eq } = require("drizzle-orm");
 const BaseController = require("../../../shared/utils/baseController");
-const videoService = require('./video.service');
+const videoService = require("./video.service");
 
 const TimeUntilDeletion = 60000;
 
@@ -36,12 +36,13 @@ class VideoController extends BaseController {
    */
   async getAllVideos(req, res, next) {
     try {
-      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+      const showArchived =
+        String(req.query.archived || "").toLowerCase() === "true";
 
       const result = await db
         .select()
         .from(videos)
-        .leftJoin(images, eq(videos.thumbnailImageId, images.imageId))
+        .leftJoin(images, eq(videos.imageId, images.imageId))
         .where(eq(videos.isArchived, showArchived))
         .orderBy(videos.title);
 
@@ -61,7 +62,7 @@ class VideoController extends BaseController {
       const result = await db
         .select()
         .from(videos)
-        .leftJoin(images, eq(videos.thumbnailImageId, images.imageId))
+        .leftJoin(images, eq(videos.imageId, images.imageId))
         .where(eq(videos.videoId, videoId));
 
       if (result.length === 0) {
@@ -80,20 +81,20 @@ class VideoController extends BaseController {
   async createVideo(req, res, next) {
     try {
       const result = await this.withTransaction(db, async (tx) => {
-        const { title, description, slidesUrl, thumbnailUrl, thumbnailAlt } = req.body;
+        const { title, description, slidesUrl, imageUrl, imageAlt } = req.body;
 
         this.validateRequired(title, "Title");
 
-        let thumbnailImageId = null;
-        if (thumbnailUrl) {
+        let imageId = null;
+        if (imageUrl) {
           const imageResult = await tx
             .insert(images)
             .values({
-              imageUrl: thumbnailUrl,
-              altText: thumbnailAlt,
+              imageUrl: imageUrl,
+              altText: imageAlt,
             })
             .returning();
-          thumbnailImageId = imageResult[0].imageId;
+          imageId = imageResult[0].imageId;
         }
 
         const videoResult = await tx
@@ -102,7 +103,7 @@ class VideoController extends BaseController {
             title,
             description,
             slidesUrl: slidesUrl,
-            thumbnailImageId: thumbnailImageId,
+            imageId: imageId,
             isArchived: false,
             createdAt: new Date(),
           })
@@ -124,30 +125,36 @@ class VideoController extends BaseController {
     try {
       const result = await this.withTransaction(db, async (tx) => {
         const { videoId } = req.params;
-        const { title, description, slidesUrl, thumbnailUrl, thumbnailAlt } = req.body;
+        const { title, description, slidesUrl, imageUrl, imageAlt } = req.body;
 
-        const existingVideo = await this.getOrThrow(tx, videos, videos.videoId, videoId, "Video");
+        const existingVideo = await this.getOrThrow(
+          tx,
+          videos,
+          videos.videoId,
+          videoId,
+          "Video"
+        );
 
-        let thumbnailImageId = existingVideo.thumbnailImageId;
-        if (thumbnailUrl) {
-          if (thumbnailImageId) {
+        let imageId = existingVideo.imageId;
+        if (imageUrl) {
+          if (imageId) {
             await tx
               .update(images)
               .set({
-                imageUrl: thumbnailUrl,
-                altText: thumbnailAlt,
+                imageUrl: imageUrl,
+                altText: imageAlt,
                 updatedAt: new Date(),
               })
-              .where(eq(images.imageId, thumbnailImageId));
+              .where(eq(images.imageId, imageId));
           } else {
             const imageResult = await tx
               .insert(images)
               .values({
-                imageUrl: thumbnailUrl,
-                altText: thumbnailAlt,
+                imageUrl: imageUrl,
+                altText: imageAlt,
               })
               .returning();
-            thumbnailImageId = imageResult[0].imageId;
+            imageId = imageResult[0].imageId;
           }
         }
 
@@ -155,7 +162,7 @@ class VideoController extends BaseController {
         if (title !== undefined) updateData.title = title;
         if (description !== undefined) updateData.description = description;
         if (slidesUrl !== undefined) updateData.slidesUrl = slidesUrl;
-        if (thumbnailImageId !== undefined) updateData.thumbnailImageId = thumbnailImageId;
+        if (imageId !== undefined) updateData.imageId = imageId;
 
         const [updated] = await tx
           .update(videos)
@@ -182,11 +189,11 @@ class VideoController extends BaseController {
       }
 
       const { title, description } = req.body;
-      const uploadService = require('../upload/upload.service');
+      const uploadService = require("../upload/upload.service");
 
       try {
         this.validateRequired(title, "Video title");
-        
+
         const fileData = uploadService.processFile(req.file, req, "videos");
 
         const [row] = await db
@@ -197,7 +204,7 @@ class VideoController extends BaseController {
             slidesUrl: fileData.publicUrl,
             fileSize: req.file.size,
             mimeType: req.file.mimetype,
-            thumbnailImageId: null,
+            imageId: null,
             isArchived: false,
             createdAt: new Date(),
           })
@@ -221,15 +228,28 @@ class VideoController extends BaseController {
       const { videoId } = req.params;
 
       const result = await this.withTransaction(db, async (tx) => {
-        const existing = await this.getOrThrow(tx, videos, videos.videoId, videoId, "Video");
+        const existing = await this.getOrThrow(
+          tx,
+          videos,
+          videos.videoId,
+          videoId,
+          "Video"
+        );
 
         if (existing.isArchived) {
           throw this.createError("Video is already archived", 400);
         }
 
-        const totalUsage = await this.checkMultipleUsage(tx, videoId, this.usageTables);
+        const totalUsage = await this.checkMultipleUsage(
+          tx,
+          videoId,
+          this.usageTables
+        );
         if (totalUsage > 0) {
-          throw this.createError("Cannot archive video that is currently in use", 400);
+          throw this.createError(
+            "Cannot archive video that is currently in use",
+            400
+          );
         }
 
         return await this.archive(tx, videos, videos.videoId, videoId, "Video");
@@ -247,7 +267,13 @@ class VideoController extends BaseController {
   async restoreVideo(req, res, next) {
     try {
       const { videoId } = req.params;
-      const updated = await this.restore(db, videos, videos.videoId, videoId, "Video");
+      const updated = await this.restore(
+        db,
+        videos,
+        videos.videoId,
+        videoId,
+        "Video"
+      );
       this.success(res, updated, "Video restored");
     } catch (error) {
       this.handleError(error, res, next);
@@ -264,9 +290,16 @@ class VideoController extends BaseController {
 
         await this.getOrThrow(tx, videos, videos.videoId, videoId, "Video");
 
-        const totalUsage = await this.checkMultipleUsage(tx, videoId, this.usageTables);
+        const totalUsage = await this.checkMultipleUsage(
+          tx,
+          videoId,
+          this.usageTables
+        );
         if (totalUsage > 0) {
-          throw this.createError("Cannot delete video that is being used. Remove all references first.", 400);
+          throw this.createError(
+            "Cannot delete video that is being used. Remove all references first.",
+            400
+          );
         }
 
         const now = Date.now();
@@ -286,7 +319,11 @@ class VideoController extends BaseController {
         return updated;
       });
 
-      this.success(res, result, "Video scheduled for deletion in 60 seconds. Restore within a minute to cancel.");
+      this.success(
+        res,
+        result,
+        "Video scheduled for deletion in 60 seconds. Restore within a minute to cancel."
+      );
     } catch (error) {
       this.handleError(error, res, next);
     }

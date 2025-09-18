@@ -36,6 +36,13 @@
       "when": 1758087301212,
       "tag": "0004_curvy_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1758167196583,
+      "tag": "0005_real_loki",
+      "breakpoints": true
     }
   ]
 }
