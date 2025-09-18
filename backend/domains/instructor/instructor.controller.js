@@ -1,67 +1,40 @@
-// backend/domains/instructor/instructor.controller.js
+// ==================== controllers/instructorController.js ====================
 const { db } = require("../../config/database");
-const {
-  instructors,
-  images,
-  courses,
-  courseInstructors,
+const { 
+  instructors, 
+  images, 
+  courses, 
+  courseInstructors 
 } = require("../../config/schema");
-const { eq, desc } = require("drizzle-orm");
-const instructorService = require("./instructor.service");
-const mediaManager = require("../../shared/utils/mediaManager");
-const BaseController = require("../../shared/utils/baseController");
+const { eq, desc, count } = require("drizzle-orm");
 
-const TimeUntilDeletion = 60000;
-
-class InstructorController extends BaseController {
-  // Schema for all media operations
-  get mediaSchema() {
-    return {
-      instructors,
-      images,
-      courses,
-      courseInstructors,
-    };
-  }
-
-  // Simplified schema for image operations
-  get imageSchema() {
-    return { images };
-  }
-
-  /**
-   * GET /api/instructors - Get all instructors with optional archive filter
-   */
-  async getAllInstructors(req, res, next) {
+const instructorController = {
+  // Get all instructors
+  getAllInstructors: async (req, res, next) => {
     try {
-      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
-
       const result = await db
         .select({
           instructor_id: instructors.instructorId,
           name: instructors.name,
           bio: instructors.bio,
-          image_id: instructors.imageId,
           instructor_image: images.imageUrl,
           image_alt_text: images.altText,
-          is_archived: instructors.isArchived,
-          archived_at: instructors.archivedAt,
         })
         .from(instructors)
         .leftJoin(images, eq(instructors.imageId, images.imageId))
-        .where(eq(instructors.isArchived, showArchived))
         .orderBy(instructors.name);
 
-      this.success(res, result);
+      res.json({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      this.handleError(error, res, next);
+      next(error);
     }
-  }
+  },
 
-  /**
-   * GET /api/instructors/:instructorId - Get single instructor
-   */
-  async getInstructorById(req, res, next) {
+  // Get single instructor
+  getInstructorById: async (req, res, next) => {
     try {
       const { instructorId } = req.params;
 
@@ -73,278 +46,239 @@ class InstructorController extends BaseController {
           image_id: instructors.imageId,
           instructor_image: images.imageUrl,
           image_alt_text: images.altText,
-          is_archived: instructors.isArchived,
-          archived_at: instructors.archivedAt,
         })
         .from(instructors)
         .leftJoin(images, eq(instructors.imageId, images.imageId))
         .where(eq(instructors.instructorId, instructorId));
 
       if (result.length === 0) {
-        this.throwNotFound("Instructor");
+        return res.status(404).json({
+          success: false,
+          message: "Instructor not found",
+        });
       }
 
-      // Get courses for this instructor
-      const coursesResult = await instructorService.getInstructorCourses(db, instructorId);
-      result[0].courses = coursesResult;
-
-      this.success(res, result[0]);
+      res.json({
+        success: true,
+        data: result[0],
+      });
     } catch (error) {
-      this.handleError(error, res, next);
+      next(error);
     }
-  }
+  },
 
-  /**
-   * GET /api/instructors/:instructorId/courses - Get courses by instructor
-   */
-  async getInstructorCourses(req, res, next) {
+  // Get courses by instructor
+  getInstructorCourses: async (req, res, next) => {
     try {
       const { instructorId } = req.params;
 
       // Check if instructor exists
-      const instructorExists = await this.checkRelatedCount(
-        db,
-        instructors,
-        instructors.instructorId,
-        instructorId
-      );
+      const instructorCheck = await db
+        .select({ count: count() })
+        .from(instructors)
+        .where(eq(instructors.instructorId, instructorId));
 
-      if (instructorExists === 0) {
-        this.throwNotFound("Instructor");
+      if (instructorCheck[0].count === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Instructor not found",
+        });
       }
 
-      const result = await instructorService.getInstructorCourses(db, instructorId);
-      this.success(res, result);
+      const result = await db
+        .select({
+          course_id: courses.courseId,
+          course_name: courses.courseName,
+          description: courses.description,
+          created_at: courses.createdAt,
+          updated_at: courses.updatedAt,
+          course_image: images.imageUrl,
+        })
+        .from(courses)
+        .innerJoin(courseInstructors, eq(courses.courseId, courseInstructors.courseId))
+        .leftJoin(images, eq(courses.imageId, images.imageId))
+        .where(eq(courseInstructors.instructorId, instructorId))
+        .orderBy(desc(courses.createdAt));
+
+      res.json({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      this.handleError(error, res, next);
+      next(error);
     }
-  }
+  },
 
-  /**
-   * POST /api/instructors - Create new instructor
-   */
-  async createInstructor(req, res, next) {
+  // Create new instructor
+  createInstructor: async (req, res, next) => {
     try {
-      const result = await this.withTransaction(db, async (tx) => {
-        const { name, bio, image_url, alt_text, image_id } = req.body;
+      const result = await db.transaction(async (tx) => {
+        const { name, bio, image_url, alt_text } = req.body;
 
-        const validatedName = this.validateRequired(name, "Name");
+        // Validation
+        if (!name) {
+          throw new Error("Name is required");
+        }
 
-        // Handle image
-        const finalImageId = await mediaManager.handleImage(
-          tx,
-          { image_id, image_url, alt_text },
-          this.imageSchema
-        );
+        let image_id = null;
+        if (image_url) {
+          const imageResult = await tx
+            .insert(images)
+            .values({
+              imageUrl: image_url,
+              altText: alt_text,
+            })
+            .returning({ imageId: images.imageId });
+          image_id = imageResult[0].imageId;
+        }
 
-        const [instructor] = await tx
+        const instructorResult = await tx
           .insert(instructors)
           .values({
-            name: validatedName,
-            bio: bio || null,
-            imageId: finalImageId,
-            isArchived: false,
-            createdAt: new Date(),
+            name,
+            bio,
+            imageId: image_id,
           })
           .returning();
 
-        return instructor;
+        return instructorResult[0];
       });
 
-      this.success(res, result, null, 201);
+      res.status(201).json({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      this.handleError(error, res, next);
+      if (error.message === "Name is required") {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+      next(error);
     }
-  }
+  },
 
-  /**
-   * PUT /api/instructors/:instructorId - Update instructor
-   */
-  async updateInstructor(req, res, next) {
+  // Update instructor
+  updateInstructor: async (req, res, next) => {
     try {
-      const result = await this.withTransaction(db, async (tx) => {
+      const result = await db.transaction(async (tx) => {
         const { instructorId } = req.params;
-        const { name, bio, image_url, alt_text, image_id } = req.body;
+        const { name, bio, image_url, alt_text } = req.body;
 
-        const existing = await this.getOrThrow(
-          tx,
-          instructors,
-          instructors.instructorId,
-          instructorId,
-          "Instructor"
-        );
+        // Check if instructor exists
+        const existingInstructor = await tx
+          .select()
+          .from(instructors)
+          .where(eq(instructors.instructorId, instructorId));
+
+        if (existingInstructor.length === 0) {
+          throw new Error("Instructor not found");
+        }
 
         // Handle image update
-        const currentImageId = await mediaManager.updateImage(
-          tx,
-          existing.imageId,
-          { image_id, image_url, alt_text },
-          this.imageSchema
-        );
+        let image_id = existingInstructor[0].imageId;
+        if (image_url) {
+          if (image_id) {
+            // Update existing image
+            await tx
+              .update(images)
+              .set({
+                imageUrl: image_url,
+                altText: alt_text,
+              })
+              .where(eq(images.imageId, image_id));
+          } else {
+            // Create new image
+            const imageResult = await tx
+              .insert(images)
+              .values({
+                imageUrl: image_url,
+                altText: alt_text,
+              })
+              .returning({ imageId: images.imageId });
+            image_id = imageResult[0].imageId;
+          }
+        }
 
-        const updateFields = { updatedAt: new Date() };
-        if (name !== undefined) updateFields.name = name;
-        if (bio !== undefined) updateFields.bio = bio;
-        if (currentImageId !== existing.imageId) updateFields.imageId = currentImageId;
-
-        const [updated] = await tx
+        // Update instructor
+        const updateResult = await tx
           .update(instructors)
-          .set(updateFields)
+          .set({
+            name,
+            bio,
+            imageId: image_id,
+          })
           .where(eq(instructors.instructorId, instructorId))
           .returning();
 
-        return updated;
+        return updateResult[0];
       });
 
-      this.success(res, result);
+      res.json({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      this.handleError(error, res, next);
-    }
-  }
-
-  /**
-   * POST /api/instructors/:instructorId/archive - Archive instructor
-   */
-  async archiveInstructor(req, res, next) {
-    try {
-      const { instructorId } = req.params;
-      
-      // Check if instructor has active courses
-      const courseCount = await this.checkRelatedCount(
-        db,
-        courseInstructors,
-        courseInstructors.instructorId,
-        instructorId
-      );
-
-      if (courseCount > 0) {
-        throw this.createError(
-          "Cannot archive instructor with assigned courses. Remove from courses first.",
-          400
-        );
+      if (error.message === "Instructor not found") {
+        return res.status(404).json({
+          success: false,
+          message: error.message,
+        });
       }
-
-      const updated = await this.archive(
-        db,
-        instructors,
-        instructors.instructorId,
-        instructorId,
-        "Instructor"
-      );
-      
-      this.success(res, updated, "Instructor archived");
-    } catch (error) {
-      this.handleError(error, res, next);
+      next(error);
     }
-  }
+  },
 
-  /**
-   * POST /api/instructors/:instructorId/restore - Restore archived instructor
-   */
-  async restoreInstructor(req, res, next) {
+  // Delete instructor
+  deleteInstructor: async (req, res, next) => {
     try {
-      const { instructorId } = req.params;
-      const updated = await this.restore(
-        db,
-        instructors,
-        instructors.instructorId,
-        instructorId,
-        "Instructor"
-      );
-      this.success(res, updated, "Instructor restored");
-    } catch (error) {
-      this.handleError(error, res, next);
-    }
-  }
-
-  /**
-   * DELETE /api/instructors/:instructorId - Delete instructor with cascade
-   */
-  async deleteInstructor(req, res, next) {
-    try {
-      const result = await this.withTransaction(db, async (tx) => {
+      const result = await db.transaction(async (tx) => {
         const { instructorId } = req.params;
 
-        const instructor = await this.getOrThrow(
-          tx,
-          instructors,
-          instructors.instructorId,
-          instructorId,
-          "Instructor"
-        );
-
         // Check if instructor is assigned to any courses
-        const courseCount = await this.checkRelatedCount(
-          tx,
-          courseInstructors,
-          courseInstructors.instructorId,
-          instructorId
-        );
+        const coursesCheck = await tx
+          .select({ count: count() })
+          .from(courseInstructors)
+          .where(eq(courseInstructors.instructorId, instructorId));
 
-        if (courseCount > 0) {
-          throw this.createError(
-            "Cannot delete instructor who is assigned to courses. Remove from courses first.",
-            400
-          );
+        if (coursesCheck[0].count > 0) {
+          throw new Error("Cannot delete instructor who is assigned to courses. Remove from courses first.");
         }
 
-        // Use mediaManager for cascade delete
-        return await mediaManager.deleteWithCascade(
-          tx,
-          instructor,
-          instructors,
-          instructors.instructorId,
-          instructorId,
-          this.mediaSchema,
-          TimeUntilDeletion
-        );
+        // Delete instructor
+        const deleteResult = await tx
+          .delete(instructors)
+          .where(eq(instructors.instructorId, instructorId))
+          .returning();
+
+        if (deleteResult.length === 0) {
+          throw new Error("Instructor not found");
+        }
+
+        return deleteResult[0];
       });
 
-      let message = "Instructor scheduled for deletion in 60 seconds.";
-      if (result.image) {
-        message = "Instructor and associated image scheduled for deletion in 60 seconds.";
-      }
-
-      this.success(res, result, message);
-    } catch (error) {
-      this.handleError(error, res, next);
-    }
-  }
-
-  /**
-   * POST /api/instructors/:instructorId/courses - Assign instructor to courses
-   */
-  async assignCourses(req, res, next) {
-    try {
-      const { instructorId } = req.params;
-      const { courseIds } = req.body;
-
-      if (!courseIds || !Array.isArray(courseIds)) {
-        throw this.createError("courseIds array is required", 400);
-      }
-
-      const result = await this.withTransaction(db, async (tx) => {
-        // Verify instructor exists
-        await this.getOrThrow(
-          tx,
-          instructors,
-          instructors.instructorId,
-          instructorId,
-          "Instructor"
-        );
-
-        // Update course assignments
-        await instructorService.updateCourseAssignments(tx, instructorId, courseIds);
-
-        // Return updated course list
-        return await instructorService.getInstructorCourses(tx, instructorId);
+      res.json({
+        success: true,
+        message: "Instructor deleted successfully",
       });
-
-      this.success(res, result, "Course assignments updated");
     } catch (error) {
-      this.handleError(error, res, next);
+      if (error.message === "Instructor not found") {
+        return res.status(404).json({
+          success: false,
+          message: error.message,
+        });
+      }
+      if (error.message.includes("Cannot delete instructor")) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+      next(error);
     }
-  }
-}
+  },
+};
 
-module.exports = new InstructorController();
+module.exports = instructorController;

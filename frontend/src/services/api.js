@@ -65,15 +65,16 @@ export const courseAPI = {
 };
 
 // Instructor API functions
+// Add these to frontend/src/services/api.js
 export const instructorAPI = {
-  getAllInstructors: (params = {}) => api.get('/instructors', { params }),
+  getAllInstructors: (params) => api.get('/instructors', { params }),
   getInstructor: (instructorId) => api.get(`/instructors/${instructorId}`),
   createInstructor: (data) => api.post('/instructors', data),
   updateInstructor: (instructorId, data) => api.put(`/instructors/${instructorId}`, data),
   deleteInstructor: (instructorId) => api.delete(`/instructors/${instructorId}`),
-  getInstructorCourses: (instructorId) => api.get(`/instructors/${instructorId}/courses`),
   archiveInstructor: (instructorId) => api.post(`/instructors/${instructorId}/archive`),
   restoreInstructor: (instructorId) => api.post(`/instructors/${instructorId}/restore`),
+  getInstructorCourses: (instructorId) => api.get(`/instructors/${instructorId}/courses`),
 };
 
 // Section API functions
