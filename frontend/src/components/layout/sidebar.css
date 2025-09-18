@@ -1,0 +1,129 @@
+/* ───────────────────────────────────────────────────── */
+/* SIDEBAR STYLES                                        */
+/* ───────────────────────────────────────────────────── */
+
+.sidebar {
+  @apply bg-bg border-r border-border-primary;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 40;
+  transition: width var(--sidebar-transition);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sidebar--open {
+  width: var(--sidebar-width-open);
+}
+
+.sidebar--closed {
+  width: var(--sidebar-width-closed);
+}
+
+/* Mobile specific sidebar styles */
+@media (max-width: 1023px) {
+  .sidebar {
+    z-index: 50;
+  }
+
+  .sidebar--closed {
+    width: 0;
+    border-right: none;
+  }
+}
+
+/* ───────────────────────────────────────────────────── */
+/* SIDEBAR INTERNAL STYLES                               */
+/* ───────────────────────────────────────────────────── */
+
+.sidebar__content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: var(--sidebar-width-open);
+}
+
+.sidebar__header {
+  @apply px-3 py-4;
+  flex-shrink: 0;
+}
+
+.sidebar__toggle {
+  @apply p-2 rounded-lg hover:bg-bg2 transition-colors;
+}
+
+.sidebar__nav {
+  @apply px-3 flex-1 overflow-y-auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-primary) transparent;
+}
+
+.sidebar__nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar__nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar__nav::-webkit-scrollbar-thumb {
+  @apply bg-border-primary rounded-full;
+}
+
+.sidebar__nav-item {
+  @apply flex items-center py-2.5 text-sm font-medium rounded-lg transition-colors;
+}
+
+.sidebar__nav-item--expanded {
+  @apply px-3;
+}
+
+.sidebar__nav-item--collapsed {
+  @apply justify-center px-0;
+}
+
+.sidebar__nav-item--active {
+  @apply bg-primary/10 text-primary;
+}
+
+.sidebar__nav-item:not(.sidebar__nav-item--active) {
+  @apply text-text hover:text-heading hover:bg-bg2;
+}
+
+.sidebar__footer {
+  @apply p-2 border-t border-border-primary;
+  flex-shrink: 0;
+}
+
+/* ───────────────────────────────────────────────────── */
+/* ANIMATION IMPROVEMENTS                                */
+/* ───────────────────────────────────────────────────── */
+
+/* Hide text when sidebar is closed */
+.sidebar--closed .sidebar__header h1,
+.sidebar--closed .sidebar__header p,
+.sidebar--closed .sidebar__nav h2,
+.sidebar--closed .sidebar__nav span:not(.sr-only),
+.sidebar--closed .sidebar__nav-item span {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 200ms, visibility 200ms;
+}
+
+/* Show text when sidebar is open */
+.sidebar--open .sidebar__header h1,
+.sidebar--open .sidebar__header p,
+.sidebar--open .sidebar__nav h2,
+.sidebar--open .sidebar__nav span:not(.sr-only),
+.sidebar--open .sidebar__nav-item span {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 200ms 100ms, visibility 200ms 100ms;
+}
+
+/* Prevent text wrapping during animation */
+.sidebar {
+  white-space: nowrap;
+}
