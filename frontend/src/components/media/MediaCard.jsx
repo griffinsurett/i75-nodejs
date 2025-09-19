@@ -1,3 +1,4 @@
+// MediaCard.jsx
 import { useState } from "react";
 import { Eye, Film, Image as ImageIcon } from "lucide-react";
 import { formatDate } from "../../utils/formatDate";

@@ -1,19 +1,32 @@
-// backend/domains/section/section.service.js
-const { chapters } = require("../../config/schema");
-const { eq, count } = require("drizzle-orm");
+// backend/domains/course/course.service.js
+const { courseInstructors } = require("../../config/schema");
+const { eq } = require("drizzle-orm");
 
-const sectionService = {
+const courseService = {
   /**
-   * Helper functions for section operations
+   * Link course to instructors - used by create and update
    */
-  async getChapterCount(tx, sectionId) {
-    const result = await tx
-      .select({ count: count() })
-      .from(chapters)
-      .where(eq(chapters.sectionId, sectionId));
+  async linkInstructors(tx, courseId, instructorIds) {
+    if (instructorIds?.length > 0) {
+      await tx.insert(courseInstructors).values(
+        instructorIds.map((instructorId) => ({
+          courseId,
+          instructorId,
+        }))
+      );
+    }
+  },
+
+  /**
+   * Update instructor relationships - used by update
+   */
+  async updateInstructors(tx, courseId, instructorIds) {
+    // Remove existing relationships
+    await tx.delete(courseInstructors).where(eq(courseInstructors.courseId, courseId));
     
-    return Number(result[0]?.count || 0);
+    // Add new relationships
+    await this.linkInstructors(tx, courseId, instructorIds);
   },
 };
 
-module.exports = sectionService;
+module.exports = courseService;

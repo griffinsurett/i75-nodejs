@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Image as ImageIcon, Film, Upload, X } from 'lucide-react';
 import MediaSelector from './MediaSelector';
+import { VideoThumbnail } from '../VideoThumbnail';
 import { imageAPI, videoAPI } from '../../services/api';
 
 export default function MediaInput({
@@ -93,26 +94,15 @@ export default function MediaInput({
     
     if (isVideo) {
       return (
-        <>
-          {selectedMedia.imageUrl ? (
-            <img
-              src={selectedMedia.imageUrl}
-              alt={selectedMedia.title || 'Video thumbnail'}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-bg2">
-              <Film className="w-6 h-6 text-text/40" />
-            </div>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-black/50 rounded-full p-2">
-              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </div>
-          </div>
-        </>
+        <div className="relative w-full h-full">
+          <VideoThumbnail
+            src={selectedMedia.url}
+            thumbnailSrc={selectedMedia.imageUrl}
+            alt={selectedMedia.title || 'Video thumbnail'}
+            showPlayButton={true}
+            className="w-full h-full"
+          />
+        </div>
       );
     }
 
@@ -142,10 +132,10 @@ export default function MediaInput({
         {selectedMedia && showPreview ? (
           <div className="flex gap-4">
             {/* Preview Thumbnail */}
-            <div className="w-32 h-32 rounded-lg overflow-hidden border border-border-primary relative">
+            <div className="w-32 h-32 rounded-lg overflow-hidden border border-border-primary relative bg-bg2">
               {loading ? (
-                <div className="w-full h-full flex items-center justify-center bg-bg2">
-                  <div className="animate-pulse">Loading...</div>
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="animate-pulse text-text/60">Loading...</div>
                 </div>
               ) : (
                 getPreviewComponent()

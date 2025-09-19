@@ -1,14 +1,9 @@
 // frontend/src/components/course/sections/SectionForm.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  sectionAPI,
-  courseAPI,
-  videoAPI,
-  uploadAPI,
-  imageAPI,
-} from "../../../services/api";
-import { Loader2, Film, Image } from "lucide-react";
+import { sectionAPI, courseAPI, videoAPI } from "../../../services/api";
+import { Loader2 } from "lucide-react";
+import MediaInput from "../../media/MediaInput";
 
 export default function SectionForm({ mode = "create", section }) {
   const navigate = useNavigate();
@@ -24,29 +19,18 @@ export default function SectionForm({ mode = "create", section }) {
     courseId: courseIdFromUrl || "",
     title: "",
     description: "",
-    altText: "",
-    videoId: "",
+    imageId: null,
+    videoId: null,
   });
 
   // Track if we're creating from within a course context
   const [courseName, setCourseName] = useState("");
   const hasPresetCourse = !isEdit && Boolean(courseIdFromUrl);
 
-  // Image handling
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
-
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [courses, setCourses] = useState([]);
-  const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Track original image for updates
-  const [original, setOriginal] = useState({
-    imageId: null,
-    altText: "",
-  });
 
   const canSubmit = useMemo(
     () => form.title.trim().length > 0 && (isEdit || form.courseId) && !submitting,
@@ -61,20 +45,13 @@ export default function SectionForm({ mode = "create", section }) {
 
         if (isEdit && section) {
           const sectionData = section.sections || section;
-          const imageData = section.images;
 
           setForm({
             courseId: String(sectionData.courseId || ""),
             title: sectionData.title || "",
             description: sectionData.description || "",
-            altText: imageData?.altText || "",
-            videoId: String(sectionData.videoId || ""),
-          });
-
-          setImagePreview(imageData?.imageUrl || "");
-          setOriginal({
-            imageId: sectionData.imageId,
-            altText: imageData?.altText || "",
+            imageId: sectionData.imageId || null,
+            videoId: sectionData.videoId || null,
           });
           
           // Get course name for edit mode
@@ -89,33 +66,20 @@ export default function SectionForm({ mode = "create", section }) {
           }));
         }
 
-        // Fetch videos always
-        const promises = [videoAPI.getAllVideos()];
-        
         // Fetch course info based on context
         if (hasPresetCourse && courseIdFromUrl) {
           // Fetch the specific course to get its name
-          promises.push(courseAPI.getCourse(courseIdFromUrl));
+          const courseRes = await courseAPI.getCourse(courseIdFromUrl);
+          const courseData = courseRes.data?.data?.courses || courseRes.data?.data;
+          setCourseName(courseData.courseName);
         } else if (!isEdit) {
           // Only fetch all courses if we need a selector
-          promises.push(courseAPI.getAllCourses());
-        }
-
-        const results = await Promise.all(promises);
-        setVideos(results[0].data?.data || []);
-        
-        if (hasPresetCourse && courseIdFromUrl && results[1]) {
-          // Set course name from fetched course
-          const courseData = results[1].data?.data?.courses || results[1].data?.data;
-          setCourseName(courseData.courseName);
-        } else if (!hasPresetCourse && results[1]) {
-          // Set courses list for selector
-          setCourses(results[1].data?.data || []);
+          const coursesRes = await courseAPI.getAllCourses();
+          setCourses(coursesRes.data?.data || []);
         }
       } catch (err) {
         console.error("Error loading form data:", err);
         setCourses([]);
-        setVideos([]);
       } finally {
         setLoading(false);
       }
@@ -125,22 +89,6 @@ export default function SectionForm({ mode = "create", section }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
-  };
-
-  const handleImageChange = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) {
-      setImageFile(null);
-      setImagePreview("");
-      return;
-    }
-    if (!f.type.startsWith("image/")) {
-      setError("Please select an image file.");
-      return;
-    }
-    setError("");
-    setImageFile(f);
-    setImagePreview(URL.createObjectURL(f));
   };
 
   const handleSubmit = async (e) => {
@@ -165,14 +113,6 @@ export default function SectionForm({ mode = "create", section }) {
     setError("");
 
     try {
-      let uploadedImageId;
-
-      // Upload new image file (if chosen)
-      if (imageFile) {
-        const up = await uploadAPI.uploadImage(imageFile, form.altText);
-        uploadedImageId = up.data?.data?.imageId;
-      }
-
       if (!isEdit) {
         // CREATE section - use the same API call as the modal
         const courseIdNum = parseInt(finalCourseId);
@@ -185,8 +125,8 @@ export default function SectionForm({ mode = "create", section }) {
         const payload = {
           title: form.title.trim(),
           description: form.description || undefined,
-          imageId: uploadedImageId !== undefined ? uploadedImageId : undefined,
-          videoId: form.videoId ? parseInt(form.videoId) : undefined,
+          imageId: form.imageId || undefined,
+          videoId: form.videoId || undefined,
         };
 
         const res = await courseAPI.createCourseSection(courseIdNum, payload);
@@ -195,7 +135,7 @@ export default function SectionForm({ mode = "create", section }) {
         
         // Navigate to the section under its course
         if (id) {
-          navigate(`/courses/${finalCourseId}/sections/${id}`);
+          navigate(`/courses/${finalCourseId}`);
         }
       } else {
         // UPDATE section
@@ -206,28 +146,11 @@ export default function SectionForm({ mode = "create", section }) {
         const payload = {
           title: form.title.trim() || undefined,
           description: form.description || undefined,
-          imageId: imageFile ? uploadedImageId : undefined,
-          altText: form.altText || undefined,
-          videoId: form.videoId ? parseInt(form.videoId) : undefined,
+          imageId: form.imageId || undefined,
+          videoId: form.videoId || undefined,
         };
 
         await sectionAPI.updateSection(id, payload);
-
-        // Update existing image alt text if needed
-        const trimmedNew = (form.altText ?? "").trim();
-        const trimmedOld = (original.altText ?? "").trim();
-        const mustUpdateExistingImageAlt =
-          !imageFile && original.imageId && trimmedNew !== trimmedOld;
-
-        if (mustUpdateExistingImageAlt) {
-          try {
-            await imageAPI.updateImage(original.imageId, {
-              altText: trimmedNew,
-            });
-          } catch (err) {
-            console.error("Failed to update image alt text:", err);
-          }
-        }
 
         // Navigate back to the section detail under its course
         navigate(`/courses/${courseId}/sections/${id}`);
@@ -319,71 +242,25 @@ export default function SectionForm({ mode = "create", section }) {
         />
       </div>
 
-      {/* Image Upload Section */}
-      <div className="border border-border-primary rounded-lg p-4 space-y-3">
-        <h3 className="text-sm font-medium text-heading flex items-center gap-2">
-          <Image className="w-4 h-4" />
-          Section Image
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm text-text mb-1">
-              {isEdit ? "Upload New Image (optional)" : "Upload Image"}
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="w-full text-sm"
-            />
-            {imagePreview && (
-              <div className="mt-2">
-                <img
-                  src={imagePreview}
-                  alt={form.altText || "Section image preview"}
-                  className="w-full h-32 object-cover rounded-md border border-border-primary"
-                />
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm text-text mb-1">
-              Image Alt Text
-            </label>
-            <input
-              name="altText"
-              value={form.altText}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-border-primary bg-bg2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Describe the image"
-            />
-          </div>
-        </div>
-      </div>
+      {/* Section Image - Using MediaInput */}
+      <MediaInput
+        label="Section Image"
+        value={form.imageId}
+        onChange={(imageId) => setForm(f => ({ ...f, imageId }))}
+        mediaType="image"
+        placeholder="Select or upload section image"
+        showPreview={true}
+      />
 
-      {/* Video Selection */}
-      <div className="border border-border-primary rounded-lg p-4 space-y-3">
-        <h3 className="text-sm font-medium text-heading flex items-center gap-2">
-          <Film className="w-4 h-4" />
-          Section Video (optional)
-        </h3>
-        <select
-          name="videoId"
-          value={form.videoId}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-border-primary bg-bg2 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="">No video</option>
-          {videos.map((v) => {
-            const videoData = v.videos || v;
-            return (
-              <option key={videoData.videoId} value={videoData.videoId}>
-                {videoData.title}
-              </option>
-            );
-          })}
-        </select>
-      </div>
+      {/* Section Video - Using MediaInput */}
+      <MediaInput
+        label="Section Video (optional)"
+        value={form.videoId}
+        onChange={(videoId) => setForm(f => ({ ...f, videoId }))}
+        mediaType="video"
+        placeholder="Select or upload section video"
+        showPreview={true}
+      />
 
       <div className="flex items-center justify-end gap-2 pt-2">
         <button

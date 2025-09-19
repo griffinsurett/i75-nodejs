@@ -1,7 +1,9 @@
+// frontend/src/components/course/sections/chapters/ChapterFormModal.jsx
 import { useState, useEffect } from 'react';
 import Modal from '../../../Modal';
-import { X, Loader2, Image, Film } from 'lucide-react';
-import { sectionAPI, videoAPI, uploadAPI } from '../../../../services/api';
+import { X, Loader2 } from 'lucide-react';
+import { sectionAPI } from '../../../../services/api';
+import MediaInput from '../../../media/MediaInput';
 
 export default function ChapterFormModal({
   isOpen,
@@ -16,36 +18,25 @@ export default function ChapterFormModal({
     title: '',
     description: '',
     content: '',
-    videoId: '',
-    altText: ''
+    imageId: null,
+    videoId: null,
   });
 
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
-  const [videos, setVideos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      // Load videos
-      videoAPI.getAllVideos().then(res => {
-        setVideos(res.data?.data || []);
-      }).catch(err => console.error('Failed to load videos:', err));
-
-      // Load existing data if editing
       if (chapter) {
         const chapterData = chapter.chapters || chapter;
-        const imageData = chapter.images;
         setForm({
           chapterNumber: chapterData.chapterNumber || '',
           title: chapterData.title || '',
           description: chapterData.description || '',
           content: chapterData.content || '',
-          videoId: chapterData.videoId || '',
-          altText: imageData?.altText || ''
+          imageId: chapterData.imageId || null,
+          videoId: chapterData.videoId || null,
         });
-        setImagePreview(imageData?.imageUrl || '');
       } else {
         // Reset for new chapter
         setForm({
@@ -53,11 +44,9 @@ export default function ChapterFormModal({
           title: '',
           description: '',
           content: '',
-          videoId: '',
-          altText: ''
+          imageId: null,
+          videoId: null,
         });
-        setImageFile(null);
-        setImagePreview('');
       }
       setError('');
     }
@@ -68,27 +57,10 @@ export default function ChapterFormModal({
     setForm(f => ({ ...f, [name]: value }));
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setImageFile(null);
-      setImagePreview('');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file.');
-      return;
-    }
-    setError('');
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.chapterNumber) return;
     
-    // Add validation for sectionId
     if (!sectionId) {
       setError('Section ID is missing. Please refresh the page and try again.');
       return;
@@ -98,22 +70,13 @@ export default function ChapterFormModal({
     setError('');
 
     try {
-      let imageId;
-      
-      // Upload image if provided
-      if (imageFile) {
-        const uploadRes = await uploadAPI.uploadImage(imageFile, form.altText);
-        imageId = uploadRes.data?.data?.imageId;
-      }
-
       const payload = {
         chapterNumber: parseInt(form.chapterNumber),
         title: form.title.trim(),
         description: form.description || undefined,
         content: form.content || undefined,
-        videoId: form.videoId ? parseInt(form.videoId) : undefined,
-        imageId: imageId || undefined,
-        altText: form.altText || undefined
+        imageId: form.imageId || undefined,
+        videoId: form.videoId || undefined,
       };
 
       if (isEdit) {
@@ -212,61 +175,25 @@ export default function ChapterFormModal({
             />
           </div>
 
-          {/* Image Upload */}
-          <div>
-            <label className="block text-sm font-medium text-text mb-1">
-              <Image className="w-4 h-4 inline mr-1" />
-              Chapter Image
-            </label>
-            <div className="flex items-start gap-4">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="flex-1 text-sm"
-              />
-              {imagePreview && (
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="w-20 h-20 object-cover rounded-md border border-border-primary"
-                />
-              )}
-            </div>
-            {(imageFile || imagePreview) && (
-              <input
-                name="altText"
-                value={form.altText}
-                onChange={handleChange}
-                className="mt-2 w-full px-3 py-2 bg-bg2 border border-border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                placeholder="Image alt text"
-              />
-            )}
-          </div>
+          {/* Chapter Image - Using MediaInput */}
+          <MediaInput
+            label="Chapter Image"
+            value={form.imageId}
+            onChange={(imageId) => setForm(f => ({ ...f, imageId }))}
+            mediaType="image"
+            placeholder="Select or upload chapter image"
+            showPreview={true}
+          />
 
-          {/* Video Selection */}
-          <div>
-            <label className="block text-sm font-medium text-text mb-1">
-              <Film className="w-4 h-4 inline mr-1" />
-              Chapter Video
-            </label>
-            <select
-              name="videoId"
-              value={form.videoId}
-              onChange={handleChange}
-              className="w-full px-3 py-2 bg-bg2 border border-border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">No video</option>
-              {videos.map(v => {
-                const videoData = v.videos || v;
-                return (
-                  <option key={videoData.videoId} value={videoData.videoId}>
-                    {videoData.title}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
+          {/* Chapter Video - Using MediaInput */}
+          <MediaInput
+            label="Chapter Video"
+            value={form.videoId}
+            onChange={(videoId) => setForm(f => ({ ...f, videoId }))}
+            mediaType="video"
+            placeholder="Select or upload chapter video"
+            showPreview={true}
+          />
 
           <div className="flex justify-end gap-2 pt-4">
             <button
