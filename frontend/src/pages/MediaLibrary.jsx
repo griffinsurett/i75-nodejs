@@ -1,72 +1,42 @@
-import { useState, useEffect, useCallback } from "react";
-import { imageAPI, videoAPI } from "../services/api";
-import {
-  Loader2,
-  AlertCircle,
-  Image as ImageIcon,
-  Plus,
-  CheckSquare,
-} from "lucide-react";
-import MediaControls from "../components/media/MediaControls";
-import MediaCard from "../components/media/MediaCard";
-import MediaListItem from "../components/media/MediaListItem";
-import MediaPreviewModal from "../components/media/MediaPreviewModal";
-import MediaUploader from "../components/media/MediaUploader";
+// frontend/src/pages/MediaLibrary.jsx
+import { useState, useCallback, useEffect } from "react";
+import { Plus, CheckSquare } from "lucide-react";
+import MediaLibraryContent from "../components/media/MediaLibraryContent";
 import ActiveArchivedTabs from "../components/archive/ActiveArchivedTabs";
-import ArchivedNotice from "../components/archive/ArchivedNotice";
 import ConfirmModal from "../components/ConfirmModal";
 import BulkActionsBar from "../components/selection/BulkActionsBar";
-import useArchiveViewParam from "../hooks/useArchiveViewParam";
-import useSelectionMode from "../hooks/useSelectionMode";
+import useArchiveList from "../hooks/useArchiveList";
 import useBulkOperations from "../hooks/useBulkOperations";
+import { imageAPI, videoAPI } from "../services/api";
 
 const MediaLibrary = () => {
-  const [view, setView] = useArchiveViewParam();
-  const [activeTab, setActiveTab] = useState("all");
-  const [images, setImages] = useState([]);
-  const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedItem, setSelectedItem] = useState(null);
   const [showUploader, setShowUploader] = useState(false);
-
-  // Use the selection hook
-  const {
-    selectedItems,
-    selectionMode,
-    toggleItemSelection,
-    selectAll,
-    clearSelection,
-    isSelected,
-    toggleSelectionMode,
-  } = useSelectionMode();
-
-  // Use the bulk operations hook
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [filteredMedia, setFilteredMedia] = useState([]);
+  
   const bulkOps = useBulkOperations();
-
-  // Bulk action modals
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
 
-  const fetchMedia = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const params = view === "archived" ? { archived: "true" } : {};
-
-      const [imagesRes, videosRes] = await Promise.all([
-        imageAPI.getAllImages(params),
-        videoAPI.getAllVideos(params),
-      ]);
-
-      if (imagesRes.data?.success) {
-        setImages(imagesRes.data.data || []);
-      }
-      if (videosRes.data?.success) {
-        const videoData = videosRes.data.data.map((item) => {
+  // Use the unified archive hook with proper data transformation
+  const {
+    view,
+    setView,
+    data: mediaData,
+    loading,
+    error,
+    isArchived,
+    refresh
+  } = useArchiveList(
+    [imageAPI.getAllImages, videoAPI.getAllVideos],
+    {
+      defaultError: 'Failed to load media library',
+      combineResults: (results) => {
+        const [images, videosRaw] = results;
+        
+        // Transform video data to include thumbnail images
+        const videos = (videosRaw || []).map((item) => {
           if (item.videos) {
             return {
               ...item.videos,
@@ -76,73 +46,45 @@ const MediaLibrary = () => {
           }
           return item;
         });
-        setVideos(videoData);
+        
+        // Return the properly structured data
+        return {
+          images: images || [],
+          videos: videos || []
+        };
       }
-    } catch (err) {
-      setError("Failed to load media library");
-      console.error("Error fetching media:", err);
-    } finally {
-      setLoading(false);
     }
+  );
+
+  // Extract images and videos from the combined data
+  const images = mediaData?.images || [];
+  const videos = mediaData?.videos || [];
+
+  // Clear selections when view changes
+  useEffect(() => {
+    setSelectedItems(new Set());
   }, [view]);
 
-  useEffect(() => {
-    if (!showUploader) {
-      fetchMedia();
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    if (selectionMode) {
+      setSelectedItems(new Set());
     }
-  }, [fetchMedia, showUploader]);
-
-  // Clear selection when view changes
-  useEffect(() => {
-    clearSelection();
-  }, [view, activeTab]);
-
-  const getFilteredMedia = () => {
-    let media = [];
-
-    if (activeTab === "all") {
-      media = [
-        ...images.map((img) => ({ ...img, type: "image", url: img.imageUrl })),
-        ...videos.map((vid) => ({ ...vid, type: "video", url: vid.slidesUrl })),
-      ];
-    } else if (activeTab === "images") {
-      media = images.map((img) => ({
-        ...img,
-        type: "image",
-        url: img.imageUrl,
-      }));
-    } else {
-      media = videos.map((vid) => ({
-        ...vid,
-        type: "video",
-        url: vid.slidesUrl,
-      }));
-    }
-
-    if (searchQuery) {
-      media = media.filter((item) => {
-        const searchFields = [
-          item.altText,
-          item.title,
-          item.description,
-          item.url,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return searchFields.includes(searchQuery.toLowerCase());
-      });
-    }
-
-    return media.sort(
-      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-    );
   };
 
-  const filteredMedia = getFilteredMedia();
+  const handleMediaDataChange = useCallback((media) => {
+    setFilteredMedia(media);
+  }, []);
 
-  // Bulk action handlers
+  const handleSelectAll = () => {
+    const allIds = filteredMedia.map(item => item.imageId || item.videoId);
+    setSelectedItems(new Set(allIds));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedItems(new Set());
+  };
+
   const handleBulkDelete = async () => {
     await bulkOps.executeBulkOperation(
       selectedItems,
@@ -150,22 +92,23 @@ const MediaLibrary = () => {
         const item = filteredMedia.find(
           (m) => (m.imageId || m.videoId) === itemId
         );
-        if (item?.type === "video") {
+        if (!item) return;
+
+        if (item.type === "video") {
           return videoAPI.deleteVideo(itemId);
         } else {
           return imageAPI.deleteImage(itemId);
         }
       },
       () => {
-        clearSelection();
-        fetchMedia();
+        handleClearSelection();
         setBulkDeleteOpen(false);
+        refresh();
       }
     );
   };
 
   const handleBulkArchive = async () => {
-    const isArchivedView = view === "archived";
     await bulkOps.executeBulkOperation(
       selectedItems,
       async (itemId) => {
@@ -175,7 +118,8 @@ const MediaLibrary = () => {
         if (!item) return;
 
         const api = item.type === "video" ? videoAPI : imageAPI;
-        if (isArchivedView) {
+        
+        if (isArchived) {
           return item.type === "video"
             ? api.restoreVideo(itemId)
             : api.restoreImage(itemId);
@@ -186,32 +130,12 @@ const MediaLibrary = () => {
         }
       },
       () => {
-        clearSelection();
-        fetchMedia();
+        handleClearSelection();
         setBulkArchiveOpen(false);
+        refresh();
       }
     );
   };
-
-  const isArchivedView = view === "archived";
-
-  if (loading && !showUploader) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-2 text-text/70">Loading media library...</span>
-      </div>
-    );
-  }
-
-  if (error && !showUploader) {
-    return (
-      <div className="flex items-center justify-center min-h-64 text-red-600">
-        <AlertCircle className="w-6 h-6 mr-2" />
-        <span>{error}</span>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -219,10 +143,10 @@ const MediaLibrary = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold text-heading">
-            {showUploader
-              ? "Add New Media"
-              : isArchivedView
-              ? "Archived Media"
+            {showUploader 
+              ? "Add New Media" 
+              : isArchived 
+              ? "Archived Media" 
               : "Media Library"}
           </h1>
 
@@ -267,138 +191,39 @@ const MediaLibrary = () => {
       </div>
 
       {/* Bulk Actions Bar */}
-      {!showUploader && (
+      {!showUploader && selectionMode && selectedItems.size > 0 && (
         <BulkActionsBar
           selectedCount={selectedItems.size}
           totalCount={filteredMedia.length}
-          onSelectAll={() =>
-            selectAll(filteredMedia.map((item) => item.imageId || item.videoId))
-          }
-          onClearSelection={clearSelection}
+          onSelectAll={handleSelectAll}
+          onClearSelection={handleClearSelection}
           onArchive={() => setBulkArchiveOpen(true)}
           onDelete={() => setBulkDeleteOpen(true)}
-          archiveLabel={isArchivedView ? "Restore" : "Archive"}
+          archiveLabel={isArchived ? "Restore" : "Archive"}
         />
       )}
 
       {/* Content */}
-      {showUploader ? (
-        <MediaUploader
-          onComplete={() => {
-            setShowUploader(false);
-            fetchMedia();
-          }}
-        />
-      ) : (
-        <>
-          {isArchivedView && <ArchivedNotice />}
-
-          <MediaControls
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            imageCount={images.length}
-            videoCount={videos.length}
-          />
-
-          {/* Media Grid/List */}
-          {viewMode === "grid" ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredMedia.map((item) => (
-                <MediaCard
-                  key={item.imageId || item.videoId}
-                  item={item}
-                  onClick={() => !selectionMode && setSelectedItem(item)}
-                  onChanged={fetchMedia}
-                  selectionMode={selectionMode}
-                  isSelected={isSelected(item.imageId || item.videoId)}
-                  onToggleSelect={() =>
-                    toggleItemSelection(item.imageId || item.videoId)
-                  }
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-bg rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-bg2 border-b border-border-primary">
-                  <tr>
-                    {selectionMode && (
-                      <th className="px-4 py-3 text-left">
-                        <input
-                          type="checkbox"
-                          checked={
-                            selectedItems.size === filteredMedia.length &&
-                            filteredMedia.length > 0
-                          }
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              selectAll(
-                                filteredMedia.map(
-                                  (item) => item.imageId || item.videoId
-                                )
-                              );
-                            } else {
-                              clearSelection();
-                            }
-                          }}
-                          className="rounded border-border-primary"
-                        />
-                      </th>
-                    )}
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">
-                      Preview
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">
-                      Format
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">
-                      Size
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-primary">
-                  {filteredMedia.map((item) => (
-                    <MediaListItem
-                      key={item.imageId || item.videoId}
-                      item={item}
-                      onClick={() => !selectionMode && setSelectedItem(item)}
-                      onChanged={fetchMedia}
-                      selectionMode={selectionMode}
-                      isSelected={isSelected(item.imageId || item.videoId)}
-                      onToggleSelect={() =>
-                        toggleItemSelection(item.imageId || item.videoId)
-                      }
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
-
-      {selectedItem && (
-        <MediaPreviewModal
-          item={selectedItem}
-          onClose={() => setSelectedItem(null)}
-        />
-      )}
+      <MediaLibraryContent
+        onSelectionChange={setSelectedItems}
+        selectionMode={selectionMode}
+        allowMultiple={true}
+        selectedItems={selectedItems}
+        mediaTypeFilter="all"
+        showArchived={isArchived}
+        showUploader={showUploader}
+        onUploaderComplete={() => {
+          setShowUploader(false);
+          refresh();
+        }}
+        onMediaDataChange={handleMediaDataChange}
+        compact={false}
+        initialImages={images}
+        initialVideos={videos}
+        loading={loading}
+        error={error}
+        onRefresh={refresh}
+      />
 
       {/* Bulk Modals */}
       <ConfirmModal
@@ -417,16 +242,16 @@ const MediaLibrary = () => {
         isOpen={bulkArchiveOpen}
         onClose={() => setBulkArchiveOpen(false)}
         title={
-          isArchivedView
+          isArchived
             ? `Restore ${selectedItems.size} items?`
             : `Archive ${selectedItems.size} items?`
         }
         description={
-          isArchivedView
+          isArchived
             ? "This will restore the selected items and make them active again."
             : "This will archive the selected items. You can restore them later from the archived view."
         }
-        confirmLabel={isArchivedView ? "Restore All" : "Archive All"}
+        confirmLabel={isArchived ? "Restore All" : "Archive All"}
         onConfirm={handleBulkArchive}
         busy={bulkOps.loading}
         error={bulkOps.error}

@@ -1,43 +1,27 @@
 // frontend/src/components/instructor/InstructorList.jsx
-import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { instructorAPI } from '../../services/api';
 import { Loader2, AlertCircle, Plus } from 'lucide-react';
 import ActiveArchivedTabs from '../archive/ActiveArchivedTabs';
 import ArchivedNotice from '../archive/ArchivedNotice';
-import useArchiveViewParam from '../../hooks/useArchiveViewParam';
+import useArchiveList from '../../hooks/useArchiveList';
 import InstructorCard from './InstructorCard';
 import InstructorEmptyState from './InstructorEmptyState';
 
 const InstructorList = () => {
   const navigate = useNavigate();
-  const [view, setView] = useArchiveViewParam();
-  const [instructors, setInstructors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const fetchInstructors = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const res =
-        view === 'archived'
-          ? await instructorAPI.getAllInstructors({ archived: 'true' })
-          : await instructorAPI.getAllInstructors();
-
-      if (res.data?.success) setInstructors(res.data.data || []);
-      else setError('Failed to fetch instructors');
-    } catch (e) {
-      setError(e?.response?.data?.message || 'Failed to fetch instructors');
-      console.error('Error fetching instructors:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [view]);
-
-  useEffect(() => {
-    fetchInstructors();
-  }, [fetchInstructors]);
+  
+  const {
+    view,
+    setView,
+    data: instructors,
+    loading,
+    error,
+    isArchived,
+    refresh: fetchInstructors
+  } = useArchiveList(instructorAPI.getAllInstructors, {
+    defaultError: 'Failed to fetch instructors'
+  });
 
   if (loading) {
     return (
@@ -57,7 +41,6 @@ const InstructorList = () => {
     );
   }
 
-  const isArchivedView = view === 'archived';
   const handleAddInstructor = () => navigate('/instructors/new');
 
   return (
@@ -66,7 +49,7 @@ const InstructorList = () => {
       <div className="mb-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold text-heading">
-            {isArchivedView ? 'Archived Instructors' : 'Instructors'}
+            {isArchived ? 'Archived Instructors' : 'Instructors'}
           </h1>
           <ActiveArchivedTabs value={view} onChange={setView} className="ml-2" />
         </div>
@@ -80,11 +63,11 @@ const InstructorList = () => {
         </button>
       </div>
 
-      {isArchivedView && <ArchivedNotice />}
+      {isArchived && <ArchivedNotice />}
 
       {/* Content */}
       {instructors.length === 0 ? (
-        <InstructorEmptyState isArchived={isArchivedView} onAddInstructor={handleAddInstructor} />
+        <InstructorEmptyState isArchived={isArchived} onAddInstructor={handleAddInstructor} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {instructors.map((instructor) => (
