@@ -1,11 +1,18 @@
 // frontend/src/components/instructor/InstructorDetail.jsx
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { instructorAPI } from '../../services/api';
-import { User, Loader2, AlertCircle, ArrowLeft, Mail, BookOpen } from 'lucide-react';
-import EditActions from '../archive/EditActions';
-import ArchiveBadge from '../archive/ArchiveBadge';
-import { formatDate } from '../../utils/formatDate';
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { instructorAPI } from "../../services/api";
+import {
+  User,
+  Loader2,
+  AlertCircle,
+  ArrowLeft,
+  Mail,
+  BookOpen,
+} from "lucide-react";
+import EditActions from "../archive/EditActions";
+import ArchiveBadge from "../archive/ArchiveBadge";
+import { formatDate } from "../../utils/formatDate";
 
 const InstructorDetail = () => {
   const { instructorId } = useParams();
@@ -18,16 +25,20 @@ const InstructorDetail = () => {
       setLoading(true);
       setError(null);
 
-const response = await instructorAPI.getInstructor(instructorId);
+      const response = await instructorAPI.getInstructor(instructorId);
 
       if (response.data.success) {
         setInstructor(response.data.data);
       } else {
-        throw new Error('Failed to fetch instructor details');
+        throw new Error("Failed to fetch instructor details");
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to fetch instructor data');
-      console.error('Error fetching instructor data:', err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to fetch instructor data"
+      );
+      console.error("Error fetching instructor data:", err);
     } finally {
       setLoading(false);
     }
@@ -54,7 +65,10 @@ const response = await instructorAPI.getInstructor(instructorId);
           <span>{error}</span>
         </div>
         <div className="mt-4 text-center">
-          <Link to="/instructors" className="inline-flex items-center text-primary hover:text-primary/65">
+          <Link
+            to="/instructors"
+            className="inline-flex items-center text-primary hover:text-primary/65"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Instructors
           </Link>
@@ -68,9 +82,16 @@ const response = await instructorAPI.getInstructor(instructorId);
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center py-12">
           <User className="w-12 h-12 mx-auto text-text mb-4" />
-          <h3 className="text-lg font-medium text-heading mb-2">Instructor not found</h3>
-          <p className="text-text mb-4">The requested instructor could not be found.</p>
-          <Link to="/instructors" className="inline-flex items-center text-primary hover:text-primary/65">
+          <h3 className="text-lg font-medium text-heading mb-2">
+            Instructor not found
+          </h3>
+          <p className="text-text mb-4">
+            The requested instructor could not be found.
+          </p>
+          <Link
+            to="/instructors"
+            className="inline-flex items-center text-primary hover:text-primary/65"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Instructors
           </Link>
@@ -86,7 +107,10 @@ const response = await instructorAPI.getInstructor(instructorId);
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Top bar */}
       <div className="mb-6 flex items-center justify-between relative">
-        <Link to="/instructors" className="inline-flex items-center text-primary hover:text-primary/65">
+        <Link
+          to="/instructors"
+          className="inline-flex items-center text-primary hover:text-primary/65"
+        >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Instructors
         </Link>
@@ -123,7 +147,9 @@ const response = await instructorAPI.getInstructor(instructorId);
             )}
             <div className="flex-1 pb-2">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-heading">{instructorData.name}</h1>
+                <h1 className="text-3xl font-bold text-heading">
+                  {instructorData.name}
+                </h1>
                 {instructorData.isArchived && (
                   <ArchiveBadge
                     archivedAt={instructorData.archivedAt}
@@ -132,7 +158,7 @@ const response = await instructorAPI.getInstructor(instructorId);
                 )}
               </div>
               <p className="text-text/70 text-lg">
-                {instructorData.bio || 'No bio available'}
+                {instructorData.bio || "No bio available"}
               </p>
             </div>
           </div>
@@ -146,16 +172,22 @@ const response = await instructorAPI.getInstructor(instructorId);
           <dl className="space-y-3">
             <div>
               <dt className="text-sm text-text/70">Instructor ID</dt>
-              <dd className="text-heading font-mono">#{instructorData.instructorId}</dd>
+              <dd className="text-heading font-mono">
+                #{instructorData.instructorId}
+              </dd>
             </div>
             <div>
               <dt className="text-sm text-text/70">Joined</dt>
-              <dd className="text-heading">{formatDate(instructorData.createdAt)}</dd>
+              <dd className="text-heading">
+                {formatDate(instructorData.createdAt)}
+              </dd>
             </div>
             {instructorData.updatedAt && (
               <div>
                 <dt className="text-sm text-text/70">Last Updated</dt>
-                <dd className="text-heading">{formatDate(instructorData.updatedAt)}</dd>
+                <dd className="text-heading">
+                  {formatDate(instructorData.updatedAt)}
+                </dd>
               </div>
             )}
           </dl>

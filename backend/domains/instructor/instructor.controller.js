@@ -34,7 +34,8 @@ class InstructorController extends BaseController {
    */
   async getAllInstructors(req, res, next) {
     try {
-      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+      const showArchived =
+        String(req.query.archived || "").toLowerCase() === "true";
 
       const result = await db
         .select()
@@ -52,7 +53,7 @@ class InstructorController extends BaseController {
   /**
    * GET /api/instructors/:instructorId - Get single instructor with courses
    */
-  async getInstructorById(req, res, next) {
+  async getInstructor(req, res, next) {
     try {
       const { instructorId } = req.params;
 
@@ -150,7 +151,11 @@ class InstructorController extends BaseController {
           .returning();
 
         if (courseIds?.length > 0) {
-          await instructorService.linkCourses(tx, instructor.instructorId, courseIds);
+          await instructorService.linkCourses(
+            tx,
+            instructor.instructorId,
+            courseIds
+          );
         }
 
         return instructor;

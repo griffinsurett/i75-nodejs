@@ -4,7 +4,7 @@ const router = express.Router();
 const instructorController = require("./instructor.controller");
 
 router.get("/", instructorController.getAllInstructors);
-router.get("/:instructorId", instructorController.getInstructorById);
+router.get("/:instructorId", instructorController.getInstructor);
 router.get("/:instructorId/courses", instructorController.getInstructorCourses);
 router.post("/", instructorController.createInstructor);
 router.put("/:instructorId", instructorController.updateInstructor);

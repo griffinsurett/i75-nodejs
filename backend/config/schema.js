@@ -35,9 +35,7 @@ const videos = pgTable("videos", {
   slidesUrl: text("slides_url"),
   fileSize: bigint("file_size", { mode: "number" }), // Add this
   mimeType: text("mime_type"), // Add this
-  imageId: integer("image_id").references(
-    () => images.imageId
-  ),
+  imageId: integer("image_id").references(() => images.imageId),
   isArchived: boolean("is_archived").notNull().default(false),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
@@ -109,6 +107,11 @@ const sections = pgTable("sections", {
   description: text("description"),
   imageId: integer("image_id").references(() => images.imageId),
   videoId: integer("video_id").references(() => videos.videoId),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
 });
 
 // Chapters table

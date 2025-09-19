@@ -10,6 +10,9 @@ import MediaLibrary from "./pages/MediaLibrary";
 import Instructors from "./pages/Instructors";
 import InstructorDetail from "./components/instructor/InstructorDetail";
 import InstructorUpsertPage from "./pages/InstructorUpsertPage";
+import Sections from "./pages/Sections";
+import SectionDetail from "./components/course/sections/SectionDetail";
+import SectionUpsertPage from "./pages/SectionUpsertPage";
 
 // Components
 import CourseList from "./components/course/CourseList";
@@ -82,6 +85,15 @@ function App() {
                 element={<InstructorUpsertPage />}
               />
               <Route path="/media-library" element={<MediaLibrary />} />
+              {/* // Add to Routes // Add new nested routes */}
+              <Route path="/courses/:courseId" element={<CourseDetail />} />
+              <Route
+                path="/courses/:courseId/sections/:sectionId"
+                element={<SectionDetail />}
+              />
+              <Route path="/sections/new" element={<SectionUpsertPage />} />
+              <Route path="/sections/:sectionId/edit" element={<SectionUpsertPage />} />
+
               <Route
                 path="/sections/:sectionId/chapters"
                 element={<PlaceholderPage title="Chapters" />}

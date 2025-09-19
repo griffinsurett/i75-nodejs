@@ -7,6 +7,7 @@ const {
   instructors,
   courseInstructors,
   sections,
+  chapters,
 } = require("../../config/schema");
 const { eq, desc } = require("drizzle-orm");
 const courseService = require("./course.service");
@@ -117,6 +118,135 @@ class CourseController extends BaseController {
         .orderBy(sections.title);
 
       this.success(res, result);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * POST /api/courses/:courseId/sections - Create section for a course
+   */
+  async createCourseSection(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
+        const { courseId } = req.params;
+        const { title, description, imageId, imageUrl, altText, videoId } = req.body;
+
+        const validatedTitle = this.validateRequired(title, "Section title");
+
+        // Verify course exists
+        await this.getOrThrow(tx, courses, courses.courseId, courseId, "Course");
+
+        const finalImageId = await mediaManager.handleImage(
+          tx,
+          { image_id: imageId, image_url: imageUrl, alt_text: altText },
+          this.imageSchema
+        );
+
+        const [section] = await tx
+          .insert(sections)
+          .values({
+            courseId: parseInt(courseId),
+            title: validatedTitle,
+            description: description || null,
+            imageId: finalImageId,
+            videoId: videoId || null,
+          })
+          .returning();
+
+        return section;
+      });
+
+      this.success(res, result, null, 201);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * PUT /api/courses/:courseId/sections/:sectionId - Update course section
+   */
+  async updateCourseSection(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
+        const { courseId, sectionId } = req.params;
+        const { title, description, imageId, imageUrl, altText, videoId } = req.body;
+
+        // Verify section belongs to course
+        const existing = await tx
+          .select()
+          .from(sections)
+          .where(eq(sections.sectionId, sectionId));
+
+        if (existing.length === 0 || existing[0].courseId !== parseInt(courseId)) {
+          this.throwNotFound("Section in this course");
+        }
+
+        const currentImageId = await mediaManager.updateImage(
+          tx,
+          existing[0].imageId,
+          { image_id: imageId, image_url: imageUrl, alt_text: altText },
+          this.imageSchema
+        );
+
+        const updateFields = {};
+        if (title !== undefined) updateFields.title = title;
+        if (description !== undefined) updateFields.description = description;
+        if (videoId !== undefined) updateFields.videoId = videoId;
+        if (currentImageId !== undefined) updateFields.imageId = currentImageId;
+
+        const [updated] = await tx
+          .update(sections)
+          .set(updateFields)
+          .where(eq(sections.sectionId, sectionId))
+          .returning();
+
+        return updated;
+      });
+
+      this.success(res, result);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * DELETE /api/courses/:courseId/sections/:sectionId - Delete course section
+   */
+  async deleteCourseSection(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
+        const { courseId, sectionId } = req.params;
+
+        // Verify section belongs to course and has no chapters
+        const section = await tx
+          .select()
+          .from(sections)
+          .where(eq(sections.sectionId, sectionId));
+
+        if (section.length === 0 || section[0].courseId !== parseInt(courseId)) {
+          this.throwNotFound("Section in this course");
+        }
+
+        const chapterCount = await this.checkRelatedCount(
+          tx,
+          chapters,
+          chapters.sectionId,
+          sectionId
+        );
+
+        if (chapterCount > 0) {
+          throw this.createError(
+            "Cannot delete section with existing chapters. Delete chapters first.",
+            400
+          );
+        }
+
+        await tx.delete(sections).where(eq(sections.sectionId, sectionId));
+        return { success: true };
+      });
+
+      this.success(res, result, "Section deleted successfully");
     } catch (error) {
       this.handleError(error, res, next);
     }

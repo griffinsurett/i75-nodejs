@@ -1,4 +1,4 @@
-// frontend/src/components/Sidebar.jsx
+// frontend/src/components/layout/Sidebar.jsx
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -7,8 +7,10 @@ import {
   Users,
   FileText,
   ChevronDown,
+  ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Layers,
 } from "lucide-react";
 import Logo from "../../assets/i75logo.webp";
 import { courseAPI } from "../../services/api";
@@ -45,14 +47,20 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
     },
   ];
 
-  // dynamic courses submenu
+  // dynamic courses with sections
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [coursesError, setCoursesError] = useState(null);
   const [coursesOpen, setCoursesOpen] = useState(
     location.pathname.startsWith("/courses")
   );
+  
+  // Track single expanded course (accordion behavior)
+  const [expandedCourseId, setExpandedCourseId] = useState(null);
+  const [courseSections, setCourseSections] = useState({});
+  const [sectionsLoading, setSectionsLoading] = useState({});
 
+  // Fetch courses
   useEffect(() => {
     setCoursesLoading(true);
     courseAPI
@@ -60,7 +68,6 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
       .then((res) => {
         if (res.data?.success) {
           const courseList = res.data.data.map((item) => {
-            // Handle both nested and flat structure
             const courseData = item.courses || item;
             return {
               courseId: courseData.courseId,
@@ -78,13 +85,70 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
       .finally(() => setCoursesLoading(false));
   }, []);
 
+  // Fetch sections for a course
+  const fetchCourseSections = async (courseId) => {
+    if (courseSections[courseId]) return; // Already fetched
+    
+    setSectionsLoading(prev => ({ ...prev, [courseId]: true }));
+    
+    try {
+      const res = await courseAPI.getCourseSections(courseId);
+      if (res.data?.success) {
+        const sections = res.data.data.map(item => {
+          const sectionData = item.sections || item;
+          return {
+            sectionId: sectionData.sectionId,
+            title: sectionData.title,
+            courseId: courseId,
+          };
+        });
+        setCourseSections(prev => ({ ...prev, [courseId]: sections }));
+      }
+    } catch (error) {
+      console.error(`Failed to fetch sections for course ${courseId}:`, error);
+      setCourseSections(prev => ({ ...prev, [courseId]: [] }));
+    } finally {
+      setSectionsLoading(prev => ({ ...prev, [courseId]: false }));
+    }
+  };
+
+  // Toggle course expansion (accordion style - only one open at a time)
+  const toggleCourseExpanded = (courseId) => {
+    if (expandedCourseId === courseId) {
+      // Close if clicking the already expanded course
+      setExpandedCourseId(null);
+    } else {
+      // Open new course and close previous
+      setExpandedCourseId(courseId);
+      // Fetch sections if not already fetched
+      if (!courseSections[courseId]) {
+        fetchCourseSections(courseId);
+      }
+    }
+  };
+
+  // Auto-expand course when navigating to it or its sections
   useEffect(() => {
-    if (location.pathname.startsWith("/courses")) setCoursesOpen(true);
-  }, [location.pathname]);
+    const pathParts = location.pathname.split('/');
+    if (pathParts[1] === 'courses' && pathParts[2]) {
+      const currentCourseId = parseInt(pathParts[2]);
+      if (currentCourseId && !isNaN(currentCourseId)) {
+        // Expand the course sections
+        setExpandedCourseId(currentCourseId);
+        // Fetch sections if not already fetched
+        if (!courseSections[currentCourseId]) {
+          fetchCourseSections(currentCourseId);
+        }
+      }
+    }
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isCourseActive = (id) =>
     location.pathname === `/courses/${id}` ||
     location.pathname.startsWith(`/courses/${id}/`);
+
+  const isSectionActive = (courseId, sectionId) =>
+    location.pathname === `/courses/${courseId}/sections/${sectionId}`;
 
   // Calculate width based on state
   const sidebarWidth = isOpen ? "256px" : "64px";
@@ -233,7 +297,7 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
                     )}
                   </div>
 
-                  {/* Submenu only when expanded sidebar */}
+                  {/* Courses List */}
                   {isOpen && coursesOpen && (
                     <div className="ml-8 pr-1 transition-opacity duration-300">
                       {coursesLoading && (
@@ -256,21 +320,78 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
                       {!coursesLoading &&
                         !coursesError &&
                         courses.map((c) => (
-                          <Link
-                            key={c.courseId}
-                            to={`/courses/${c.courseId}`}
-                            title={c.courseName}
-                            className={`
-                              block px-3 py-2 text-sm rounded-md truncate transition-colors
-                              ${
-                                isCourseActive(c.courseId)
-                                  ? "bg-primary/10 text-primary"
-                                  : "text-text hover:text-heading hover:bg-bg2"
-                              }
-                            `}
-                          >
-                            {c.courseName}
-                          </Link>
+                          <div key={c.courseId}>
+                            {/* Course Item */}
+                            <div
+                              className={`
+                                flex items-center gap-1 pr-1
+                                ${
+                                  isCourseActive(c.courseId)
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-text hover:text-heading hover:bg-bg2"
+                                }
+                                rounded-md transition-colors
+                              `}
+                            >
+                              {/* Expand/Collapse button for sections */}
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  toggleCourseExpanded(c.courseId);
+                                }}
+                                className="p-1 rounded hover:bg-bg2/50"
+                                aria-label={`Toggle sections for ${c.courseName}`}
+                              >
+                                {expandedCourseId === c.courseId ? (
+                                  <ChevronDown className="w-3 h-3" />
+                                ) : (
+                                  <ChevronRight className="w-3 h-3" />
+                                )}
+                              </button>
+                              
+                              <Link
+                                to={`/courses/${c.courseId}`}
+                                title={c.courseName}
+                                className="flex-1 px-2 py-2 text-sm truncate"
+                              >
+                                {c.courseName}
+                              </Link>
+                            </div>
+
+                            {/* Sections List - Only show for the expanded course */}
+                            {expandedCourseId === c.courseId && (
+                              <div className="ml-6 mt-1 space-y-0.5">
+                                {sectionsLoading[c.courseId] && (
+                                  <div className="px-3 py-1 text-xs text-text/50">
+                                    Loading sections…
+                                  </div>
+                                )}
+                                {courseSections[c.courseId]?.length === 0 && (
+                                  <div className="px-3 py-1 text-xs text-text/50">
+                                    No sections
+                                  </div>
+                                )}
+                                {courseSections[c.courseId]?.map((section) => (
+                                  <Link
+                                    key={section.sectionId}
+                                    to={`/courses/${c.courseId}/sections/${section.sectionId}`}
+                                    className={`
+                                      flex items-center gap-2 px-3 py-1.5 text-sm rounded-md truncate transition-colors
+                                      ${
+                                        isSectionActive(c.courseId, section.sectionId)
+                                          ? "bg-primary/10 text-primary"
+                                          : "text-text/80 hover:text-heading hover:bg-bg2"
+                                      }
+                                    `}
+                                    title={section.title}
+                                  >
+                                    <Layers className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{section.title}</span>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         ))}
                     </div>
                   )}

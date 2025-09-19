@@ -7,9 +7,9 @@ const API_BASE_URL =
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
-  // headers: {
-  //   'Content-Type': 'application/json',
-  // },
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // Request interceptor
@@ -62,30 +62,48 @@ export const courseAPI = {
 
   // Delete course
   deleteCourse: (courseId) => api.delete(`/courses/${courseId}`),
+
+   // Section management within course context
+  createCourseSection: (courseId, sectionData) => 
+    api.post(`/courses/${courseId}/sections`, sectionData),
+  
+  updateCourseSection: (courseId, sectionId, sectionData) => 
+    api.put(`/courses/${courseId}/sections/${sectionId}`, sectionData),
+  
+  deleteCourseSection: (courseId, sectionId) => 
+    api.delete(`/courses/${courseId}/sections/${sectionId}`),
 };
 
 // Instructor API functions
 // Add these to frontend/src/services/api.js
 export const instructorAPI = {
-  getAllInstructors: (params) => api.get('/instructors', { params }),
+  getAllInstructors: (params) => api.get("/instructors", { params }),
   getInstructor: (instructorId) => api.get(`/instructors/${instructorId}`),
-  createInstructor: (data) => api.post('/instructors', data),
-  updateInstructor: (instructorId, data) => api.put(`/instructors/${instructorId}`, data),
-  deleteInstructor: (instructorId) => api.delete(`/instructors/${instructorId}`),
-  archiveInstructor: (instructorId) => api.post(`/instructors/${instructorId}/archive`),
-  restoreInstructor: (instructorId) => api.post(`/instructors/${instructorId}/restore`),
-  getInstructorCourses: (instructorId) => api.get(`/instructors/${instructorId}/courses`),
+  createInstructor: (data) => api.post("/instructors", data),
+  updateInstructor: (instructorId, data) =>
+    api.put(`/instructors/${instructorId}`, data),
+  deleteInstructor: (instructorId) =>
+    api.delete(`/instructors/${instructorId}`),
+  archiveInstructor: (instructorId) =>
+    api.post(`/instructors/${instructorId}/archive`),
+  restoreInstructor: (instructorId) =>
+    api.post(`/instructors/${instructorId}/restore`),
+  getInstructorCourses: (instructorId) =>
+    api.get(`/instructors/${instructorId}/courses`),
 };
 
 // Section API functions
+// Add to frontend/src/services/api.js
 export const sectionAPI = {
-  getAllSections: () => api.get("/sections"),
+  getAllSections: (params = {}) => api.get("/sections", { params }),
   getSection: (sectionId) => api.get(`/sections/${sectionId}`),
   getSectionChapters: (sectionId) => api.get(`/sections/${sectionId}/chapters`),
   createSection: (sectionData) => api.post("/sections", sectionData),
   updateSection: (sectionId, sectionData) =>
     api.put(`/sections/${sectionId}`, sectionData),
   deleteSection: (sectionId) => api.delete(`/sections/${sectionId}`),
+  archiveSection: (sectionId) => api.post(`/sections/${sectionId}/archive`),
+  restoreSection: (sectionId) => api.post(`/sections/${sectionId}/restore`),
 };
 
 // Chapter API functions

@@ -20,7 +20,7 @@ export default function CourseCard({ course, onChanged }) {
             id={courseData.courseId}
             isArchived={courseData.isArchived}
             editTo={`/courses/${courseData.courseId}/edit`}
-            entityName="course" // Add this
+            entityName="course"
             api={{
               archive: courseAPI.archiveCourse,
               restore: courseAPI.restoreCourse,
@@ -78,27 +78,18 @@ export default function CourseCard({ course, onChanged }) {
             <div className="flex items-center text-sm text-text">
               <Calendar className="w-4 h-4 mr-2" />
               <span>
-                Updated:{" "}
-                {formatDate(courseData.updatedAt, { variant: "short" })}
+                Updated: {formatDate(courseData.updatedAt, { variant: "short" })}
               </span>
             </div>
           )}
         </div>
 
-        <div className="flex gap-2">
-          <Link
-            to={`/courses/${courseData.courseId}`}
-            className="flex-1 bg-primary hover:bg-primary/65 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors text-center"
-          >
-            View Details
-          </Link>
-          <Link
-            to={`/courses/${courseData.courseId}/sections`}
-            className="flex-1 bg-text text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors text-center"
-          >
-            View Sections
-          </Link>
-        </div>
+        <Link
+          to={`/courses/${courseData.courseId}`}
+          className="block w-full bg-primary hover:bg-primary/65 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors text-center"
+        >
+          View Details
+        </Link>
       </div>
     </div>
   );

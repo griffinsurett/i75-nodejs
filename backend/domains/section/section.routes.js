@@ -1,23 +1,21 @@
-// ==================== routes/sections.js ====================
 const express = require("express");
 const router = express.Router();
 const sectionController = require("./section.controller");
 
-// GET /api/sections
+// Standalone section routes
 router.get("/", sectionController.getAllSections);
+router.get("/:sectionId", sectionController.getSection);
+router.get("/:sectionId/chapters", sectionController.getSectionChapters);
 
-// GET /api/sections/:sectionId
-router.get("/:sectionId", sectionController.getSectionById);
-
-// POST /api/sections
+// Create and Update routes (ADD THESE)
 router.post("/", sectionController.createSection);
-
-// PUT /api/sections/:sectionId
 router.put("/:sectionId", sectionController.updateSection);
 
-// DELETE /api/sections/:sectionId
-router.delete("/:sectionId", sectionController.deleteSection);
+// Archive operations
+router.post("/:sectionId/archive", sectionController.archiveSection);
+router.post("/:sectionId/restore", sectionController.restoreSection);
 
-router.get("/:sectionId/chapters", sectionController.getSectionChapters);
+// Safety delete
+router.delete("/:sectionId", sectionController.deleteSection);
 
 module.exports = router;
