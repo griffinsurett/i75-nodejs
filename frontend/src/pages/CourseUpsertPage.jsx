@@ -1,15 +1,17 @@
+// frontend/src/pages/CourseUpsertPage.jsx
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Loader2, AlertCircle } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { Edit, Plus, Loader2, AlertCircle } from "lucide-react";
 import { courseAPI } from "../services/api";
 import CourseForm from "../components/course/CourseForm";
+import BackButton from "../components/navigation/BackButton";
 
 export default function CourseUpsertPage() {
   const { courseId } = useParams();
   const isEdit = Boolean(courseId);
 
   const [course, setCourse] = useState(null);
-  const [loading, setLoading] = useState(isEdit); // only load when editing
+  const [loading, setLoading] = useState(isEdit);
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -47,13 +49,7 @@ export default function CourseUpsertPage() {
           <AlertCircle className="w-5 h-5 mr-2" />
           <span>{err || "Course not found"}</span>
         </div>
-        <Link
-          to="/courses"
-          className="inline-flex items-center text-primary hover:text-primary/65"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Courses
-        </Link>
+        <BackButton to="/courses">Back to Courses</BackButton>
       </div>
     );
   }
@@ -61,13 +57,9 @@ export default function CourseUpsertPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <Link
-          to={isEdit ? `/courses/${courseId}` : "/courses"}
-          className="inline-flex items-center text-primary hover:text-primary/65"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+        <BackButton to={isEdit ? `/courses/${courseId}` : "/courses"}>
           {isEdit ? "Back to Course" : "Back to Courses"}
-        </Link>
+        </BackButton>
       </div>
 
       <div className="bg-bg rounded-lg shadow-lg p-6">

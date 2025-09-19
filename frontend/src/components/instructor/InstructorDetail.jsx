@@ -1,18 +1,19 @@
 // frontend/src/components/instructor/InstructorDetail.jsx
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { instructorAPI } from "../../services/api";
 import {
   User,
   Loader2,
   AlertCircle,
-  ArrowLeft,
   Mail,
   BookOpen,
 } from "lucide-react";
 import EditActions from "../archive/EditActions";
 import ArchiveBadge from "../archive/ArchiveBadge";
 import { formatDate } from "../../utils/formatDate";
+import BackButton from "../navigation/BackButton";
+import { Link } from "react-router-dom";
 
 const InstructorDetail = () => {
   const { instructorId } = useParams();
@@ -65,13 +66,7 @@ const InstructorDetail = () => {
           <span>{error}</span>
         </div>
         <div className="mt-4 text-center">
-          <Link
-            to="/instructors"
-            className="inline-flex items-center text-primary hover:text-primary/65"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Instructors
-          </Link>
+          <BackButton to="/instructors">Back to Instructors</BackButton>
         </div>
       </div>
     );
@@ -88,13 +83,7 @@ const InstructorDetail = () => {
           <p className="text-text mb-4">
             The requested instructor could not be found.
           </p>
-          <Link
-            to="/instructors"
-            className="inline-flex items-center text-primary hover:text-primary/65"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Instructors
-          </Link>
+          <BackButton to="/instructors">Back to Instructors</BackButton>
         </div>
       </div>
     );
@@ -107,13 +96,7 @@ const InstructorDetail = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Top bar */}
       <div className="mb-6 flex items-center justify-between relative">
-        <Link
-          to="/instructors"
-          className="inline-flex items-center text-primary hover:text-primary/65"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Instructors
-        </Link>
+        <BackButton to="/instructors">Back to Instructors</BackButton>
 
         <EditActions
           id={instructorData.instructorId}
@@ -129,7 +112,7 @@ const InstructorDetail = () => {
         />
       </div>
 
-      {/* Profile Section */}
+      {/* Profile Section - rest of component stays the same */}
       <div className="bg-bg rounded-lg shadow-lg overflow-hidden mb-8">
         <div className="h-32 bg-gradient-to-r from-purple-500 to-pink-600"></div>
         <div className="px-6 pb-6 -mt-16">
@@ -165,7 +148,7 @@ const InstructorDetail = () => {
         </div>
       </div>
 
-      {/* Info Cards */}
+      {/* Info Cards - rest stays the same */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-bg rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-heading mb-4">Details</h3>

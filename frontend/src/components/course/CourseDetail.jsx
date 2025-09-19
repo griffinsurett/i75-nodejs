@@ -1,11 +1,12 @@
 // frontend/src/components/course/CourseDetail.jsx
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { courseAPI } from "../../services/api";
-import { BookOpen, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
+import { BookOpen, Loader2, AlertCircle } from "lucide-react";
 import EditActions from "../archive/EditActions";
 import CourseHeader from "./CourseHeader";
 import CourseSections from "./sections/CourseSections";
+import BackButton from "../navigation/BackButton";
 
 const CourseDetail = () => {
   const { courseId } = useParams();
@@ -68,13 +69,7 @@ const CourseDetail = () => {
           <span>{error}</span>
         </div>
         <div className="mt-4 text-center">
-          <Link
-            to="/courses"
-            className="inline-flex items-center text-primary hover:text-primary/65"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Courses
-          </Link>
+          <BackButton to="/courses">Back to Courses</BackButton>
         </div>
       </div>
     );
@@ -91,13 +86,7 @@ const CourseDetail = () => {
           <p className="text-text mb-4">
             The requested course could not be found.
           </p>
-          <Link
-            to="/courses"
-            className="inline-flex items-center text-primary hover:text-primary/65"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Courses
-          </Link>
+          <BackButton to="/courses">Back to Courses</BackButton>
         </div>
       </div>
     );
@@ -109,13 +98,7 @@ const CourseDetail = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Top bar */}
       <div className="mb-6 flex items-center justify-between relative">
-        <Link
-          to="/courses"
-          className="inline-flex items-center text-primary hover:text-primary/65"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Courses
-        </Link>
+        <BackButton to="/courses">Back to Courses</BackButton>
 
         <EditActions
           id={courseData.courseId}
@@ -133,7 +116,7 @@ const CourseDetail = () => {
 
       <CourseHeader course={course} />
       <CourseSections
-        courseId={courseId} // This is from useParams - make sure it's defined
+        courseId={courseId}
         sections={sections}
         onRefresh={fetchCourseData}
       />

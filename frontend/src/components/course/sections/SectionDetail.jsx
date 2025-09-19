@@ -1,10 +1,12 @@
+// frontend/src/components/course/sections/SectionDetail.jsx
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { sectionAPI } from "../../../services/api";
-import { FileText, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
+import { FileText, Loader2, AlertCircle } from "lucide-react";
 import EditActions from "../../archive/EditActions";
 import SectionHeader from "./SectionHeader";
 import SectionChapters from "./chapters/SectionChapters";
+import BackButton from "../../navigation/BackButton";
 
 const SectionDetail = () => {
   const { courseId, sectionId } = useParams();
@@ -57,13 +59,7 @@ const SectionDetail = () => {
           <span>{error}</span>
         </div>
         <div className="mt-4 text-center">
-          <Link
-            to={`/courses/${courseId}`}
-            className="inline-flex items-center text-primary hover:text-primary/65"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Course
-          </Link>
+          <BackButton to={`/courses/${courseId}`}>Back to Course</BackButton>
         </div>
       </div>
     );
@@ -77,18 +73,14 @@ const SectionDetail = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Top bar */}
       <div className="mb-6 flex items-center justify-between">
-        <Link
-          to={`/courses/${courseId || sectionData.courseId}`}
-          className="inline-flex items-center text-primary hover:text-primary/65"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+        <BackButton to={`/courses/${courseId || sectionData.courseId}`}>
           Back to Course
-        </Link>
+        </BackButton>
 
         <EditActions
           id={sectionData.sectionId}
           isArchived={sectionData.isArchived}
-          editTo={`/sections/${sectionData.sectionId}/edit`} // Add this line
+          editTo={`/sections/${sectionData.sectionId}/edit`}
           entityName="section"
           api={{
             archive: sectionAPI.archiveSection,

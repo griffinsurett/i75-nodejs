@@ -1,16 +1,16 @@
 // frontend/src/pages/SectionUpsertPage.jsx
 import { useEffect, useState } from "react";
-import { Link, useParams, useLocation } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Loader2, AlertCircle } from "lucide-react";
+import { useParams, useLocation } from "react-router-dom";
+import { Edit, Plus, Loader2, AlertCircle } from "lucide-react";
 import { sectionAPI } from "../services/api";
 import SectionForm from "../components/course/sections/SectionForm";
+import BackButton from "../components/navigation/BackButton";
 
 export default function SectionUpsertPage() {
   const { sectionId } = useParams();
   const location = useLocation();
   const isEdit = Boolean(sectionId);
   
-  // Get courseId from URL params when creating
   const urlParams = new URLSearchParams(location.search);
   const courseIdFromUrl = urlParams.get('courseId');
 
@@ -35,17 +35,13 @@ export default function SectionUpsertPage() {
     })();
   }, [isEdit, sectionId]);
 
-  // Determine the back link
   const getBackLink = () => {
     if (isEdit && section) {
-      // For edit: go back to the section detail page
       const courseId = section.sections?.courseId || section.courseId;
       return `/courses/${courseId}/sections/${sectionId}`;
     } else if (courseIdFromUrl) {
-      // For create from course: go back to the course
       return `/courses/${courseIdFromUrl}`;
     } else {
-      // Fallback to sections list
       return "/sections";
     }
   };
@@ -78,13 +74,7 @@ export default function SectionUpsertPage() {
           <AlertCircle className="w-5 h-5 mr-2" />
           <span>{err || "Section not found"}</span>
         </div>
-        <Link
-          to="/sections"
-          className="inline-flex items-center text-primary hover:text-primary/65"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Sections
-        </Link>
+        <BackButton to="/sections">Back to Sections</BackButton>
       </div>
     );
   }
@@ -92,13 +82,7 @@ export default function SectionUpsertPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <Link
-          to={getBackLink()}
-          className="inline-flex items-center text-primary hover:text-primary/65"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          {getBackText()}
-        </Link>
+        <BackButton to={getBackLink()}>{getBackText()}</BackButton>
       </div>
 
       <div className="bg-bg rounded-lg shadow-lg p-6">
