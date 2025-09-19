@@ -1,9 +1,9 @@
 // frontend/src/components/media/MediaInput.jsx
-import { useState, useEffect } from 'react';
-import { Image as ImageIcon, Film, Upload, X } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Image as ImageIcon, Film, Upload, X, Loader2 } from 'lucide-react';
 import MediaSelector from './MediaSelector';
 import { VideoThumbnail } from '../VideoThumbnail';
-import { imageAPI, videoAPI } from '../../services/api';
+import { imageAPI, videoAPI, uploadAPI } from '../../services/api';
 
 export default function MediaInput({
   label,
@@ -21,13 +21,53 @@ export default function MediaInput({
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragCounter = useRef(0);
+
+  // Drag and drop handlers
+  const handleDragEnter = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setDragging(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+    dragCounter.current = 0;
+
+    const droppedFiles = [...e.dataTransfer.files];
+    if (droppedFiles.length > 0) {
+      handleFileUpload(droppedFiles[0]); // Only take first file for single upload
+    }
+  }, [mediaType]);
 
   // Load existing media if value is provided
   useEffect(() => {
-    if (value && !selectedMedia) {
+    if (value && !selectedMedia && !uploading) {
       loadMedia(value);
     }
-  }, [value]);
+  }, [value, selectedMedia, uploading]);
 
   const loadMedia = async (mediaId) => {
     if (!mediaId) return;
@@ -73,6 +113,59 @@ export default function MediaInput({
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+
+    // Validate file type
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      console.error('Invalid file type');
+      return;
+    }
+
+    // Check media type filter
+    if (mediaType === 'image' && !isImage) {
+      console.error('Only images are allowed');
+      return;
+    }
+    if (mediaType === 'video' && !isVideo) {
+      console.error('Only videos are allowed');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const onUploadProgress = (progress) => {
+        setUploadProgress(progress);
+      };
+
+      let response;
+      const fileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension for default title
+
+      if (isImage) {
+        response = await uploadAPI.uploadImage(file, fileName, onUploadProgress);
+      } else {
+        response = await uploadAPI.uploadVideo(file, fileName, '', onUploadProgress);
+      }
+
+      if (response.data?.success) {
+        const uploadedId = response.data.data.imageId || response.data.data.videoId;
+        onChange(uploadedId);
+        // loadMedia will be called by useEffect when value changes
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      // You might want to show an error message to the user here
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -129,7 +222,7 @@ export default function MediaInput({
 
       <div className="space-y-3">
         {/* Preview and Actions */}
-        {selectedMedia && showPreview ? (
+        {selectedMedia && showPreview && !uploading ? (
           <div className="flex gap-4">
             {/* Preview Thumbnail */}
             <div className="w-32 h-32 rounded-lg overflow-hidden border border-border-primary relative bg-bg2">
@@ -178,16 +271,48 @@ export default function MediaInput({
               </div>
             </div>
           </div>
+        ) : uploading ? (
+          /* Upload Progress */
+          <div className="p-4 border border-border-primary rounded-lg bg-bg2">
+            <div className="flex items-center gap-3 mb-3">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span className="text-sm text-text">Uploading...</span>
+              <span className="text-sm font-medium text-text">{uploadProgress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
         ) : (
-          /* No Selection - Show Button */
-          <button
-            type="button"
-            onClick={() => setSelectorOpen(true)}
-            className="w-full px-4 py-3 border-2 border-dashed border-border-primary rounded-lg hover:border-primary transition-colors flex items-center justify-center gap-2 text-text"
+          /* No Selection - Show Drag & Drop Area */
+          <div
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            className={`relative border-2 border-dashed rounded-lg transition-colors ${
+              dragging
+                ? 'border-primary bg-primary/5'
+                : 'border-border-primary hover:border-primary'
+            }`}
           >
-            <Upload className="w-5 h-5" />
-            <span>{placeholder}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setSelectorOpen(true)}
+              className="w-full px-4 py-3 flex items-center justify-center gap-2 text-text"
+            >
+              <Upload className="w-5 h-5" />
+              <span>
+                {dragging 
+                  ? 'Drop to upload' 
+                  : `${placeholder} or drop files here`
+                }
+              </span>
+            </button>
+          </div>
         )}
       </div>
 

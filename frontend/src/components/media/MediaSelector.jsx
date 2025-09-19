@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { X, Upload, Grid3x3 } from 'lucide-react';
 import Modal from '../Modal';
 import MediaLibraryContent from './MediaLibraryContent';
+import MediaUploader from './MediaUploader';
 
 export default function MediaSelector({
   isOpen,
@@ -15,6 +16,7 @@ export default function MediaSelector({
 }) {
   const [activeTab, setActiveTab] = useState('library');
   const [selectedItems, setSelectedItems] = useState(new Set());
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Initialize selection from current
   useEffect(() => {
@@ -24,6 +26,8 @@ export default function MediaSelector({
       } else if (currentSelection) {
         setSelectedItems(new Set([currentSelection]));
       }
+    } else {
+      setSelectedItems(new Set());
     }
   }, [currentSelection]);
 
@@ -45,12 +49,31 @@ export default function MediaSelector({
     onClose();
   };
 
-  const handleUploaderComplete = () => {
+  const handleUploaderComplete = (uploadedMedia) => {
+    // Refresh the media library
+    setRefreshTrigger(prev => prev + 1);
+    
+    // If we have uploaded media info and it's single selection mode
+    if (uploadedMedia && !allowMultiple) {
+      // Auto-select the uploaded media
+      const mediaId = uploadedMedia.imageId || uploadedMedia.videoId;
+      if (mediaId) {
+        onSelect(mediaId);
+        onClose();
+        return; // Exit early - don't switch tabs
+      }
+    }
+    
+    // Switch back to library tab
     setActiveTab('library');
   };
 
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   // Determine selection mode based on allowMultiple
-  const selectionMode = allowMultiple ? 'checkbox' : 'radio';
+  const selectionMode = true; // Always use selection mode in the modal
 
   return (
     <Modal
@@ -97,16 +120,24 @@ export default function MediaSelector({
 
       {/* Content */}
       <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 200px)' }}>
-        <MediaLibraryContent
-          onSelectionChange={handleSelectionChange}
-          selectionMode={selectionMode}
-          selectedItems={selectedItems}
-          mediaTypeFilter={mediaType}
-          showArchived={false}
-          showUploader={activeTab === 'upload'}
-          onUploaderComplete={handleUploaderComplete}
-          compact={true}
-        />
+        {activeTab === 'library' ? (
+          <MediaLibraryContent
+            onSelectionChange={handleSelectionChange}
+            selectionMode={selectionMode}
+            selectedItems={selectedItems}
+            mediaTypeFilter={mediaType}
+            showArchived={false}
+            compact={true}
+            onRefresh={handleRefresh}
+            key={refreshTrigger} // Force refresh when this changes
+          />
+        ) : (
+          <MediaUploader 
+            onComplete={handleUploaderComplete}
+            mediaType={mediaType}
+            singleUploadMode={!allowMultiple}
+          />
+        )}
       </div>
 
       {/* Footer */}

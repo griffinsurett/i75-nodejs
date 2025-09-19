@@ -7,6 +7,8 @@ import MediaCard from "./MediaCard";
 import MediaListItem from "./MediaListItem";
 import MediaUploader from "./MediaUploader";
 import ArchivedNotice from "../archive/ArchivedNotice";
+import SearchInput from "../search/SearchInput";
+import { useSearch } from "../search/hooks/useSearch";
 
 export default function MediaLibraryContent({
   onSelectionChange,
@@ -24,6 +26,8 @@ export default function MediaLibraryContent({
   loading: externalLoading = false,
   error: externalError = '',
   onRefresh = null,
+  showSearch = true, // New prop to control search visibility
+  searchPlaceholder = "Search media...", // Customizable search placeholder
 }) {
   const [activeTab, setActiveTab] = useState(mediaTypeFilter !== 'all' ? mediaTypeFilter + 's' : 'all');
   const [images, setImages] = useState(initialImages || []);
@@ -31,7 +35,42 @@ export default function MediaLibraryContent({
   const [loading, setLoading] = useState(externalLoading);
   const [error, setError] = useState(externalError);
   const [viewMode, setViewMode] = useState(compact ? "grid" : "grid");
-  const [searchQuery, setSearchQuery] = useState("");
+
+  // Prepare media data for search
+  const allMedia = [
+    ...images.map((img) => ({ ...img, type: "image", url: img.imageUrl })),
+    ...videos.map((vid) => ({ ...vid, type: "video", url: vid.slidesUrl })),
+  ];
+
+  // Filter media by active tab first
+  const tabFilteredMedia = (() => {
+    if (activeTab === "images") {
+      return images.map((img) => ({ ...img, type: "image", url: img.imageUrl }));
+    } else if (activeTab === "videos") {
+      return videos.map((vid) => ({ ...vid, type: "video", url: vid.slidesUrl }));
+    } else {
+      return allMedia;
+    }
+  })();
+
+  // Use search hook with media-specific search configuration
+  const {
+    searchQuery,
+    filteredData: searchFilteredMedia,
+    setSearchQuery,
+    clearSearch,
+    isSearchActive,
+    searchStats,
+  } = useSearch(tabFilteredMedia, {
+    searchFields: ['altText', 'title', 'description'],
+    debounceMs: 300,
+    caseSensitive: false,
+  });
+
+  // Sort filtered media by creation date
+  const filteredMedia = searchFilteredMedia.sort(
+    (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+  );
 
   // Use provided data if available
   useEffect(() => {
@@ -123,56 +162,12 @@ export default function MediaLibraryContent({
     }
   }, [showArchived, showUploader, mediaTypeFilter]);
 
-  const getFilteredMedia = () => {
-    let media = [];
-
-    if (activeTab === "all") {
-      media = [
-        ...images.map((img) => ({ ...img, type: "image", url: img.imageUrl })),
-        ...videos.map((vid) => ({ ...vid, type: "video", url: vid.slidesUrl })),
-      ];
-    } else if (activeTab === "images") {
-      media = images.map((img) => ({
-        ...img,
-        type: "image",
-        url: img.imageUrl,
-      }));
-    } else {
-      media = videos.map((vid) => ({
-        ...vid,
-        type: "video",
-        url: vid.slidesUrl,
-      }));
-    }
-
-    if (searchQuery) {
-      media = media.filter((item) => {
-        const searchFields = [
-          item.altText,
-          item.title,
-          item.description,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        return searchFields.includes(searchQuery.toLowerCase());
-      });
-    }
-
-    return media.sort(
-      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-    );
-  };
-
-  const filteredMedia = getFilteredMedia();
-
   // Pass filtered media to parent whenever it changes
   useEffect(() => {
     if (onMediaDataChange) {
       onMediaDataChange(filteredMedia);
     }
-  }, [images, videos, activeTab, searchQuery]);
+  }, [filteredMedia, onMediaDataChange]);
 
   const toggleItemSelection = (itemId) => {
     const newSelection = new Set(selectedItems);
@@ -238,22 +233,60 @@ export default function MediaLibraryContent({
   }
 
   return (
-    <>
+    <div className="space-y-6">
       {showArchived && <ArchivedNotice />}
 
+      {/* Media Controls */}
       <MediaControls
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         viewMode={viewMode}
         setViewMode={setViewMode}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
         imageCount={images.length}
         videoCount={videos.length}
       />
 
+      {/* Search Input */}
+      {showSearch && (
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onClear={clearSearch}
+          placeholder={searchPlaceholder}
+        />
+      )}
+
+      {/* Search Results Info */}
+      {isSearchActive && (
+        <div className="flex items-center justify-between text-sm text-text/70 px-1">
+          <span>
+            {searchStats.hasResults 
+              ? `Showing ${searchStats.filteredItems} of ${searchStats.totalItems} items`
+              : `No results found for "${searchQuery}"`
+            }
+          </span>
+          {searchStats.filteredItems > 0 && (
+            <button
+              onClick={clearSearch}
+              className="text-primary hover:text-primary/80 underline"
+            >
+              Clear search
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Media Grid/List */}
-      {viewMode === "grid" ? (
+      {filteredMedia.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-text/60">
+            {isSearchActive 
+              ? `No ${activeTab === 'all' ? 'media' : activeTab} found matching "${searchQuery}"`
+              : `No ${activeTab === 'all' ? 'media' : activeTab} available`
+            }
+          </p>
+        </div>
+      ) : viewMode === "grid" ? (
         <div className={`grid gap-4 ${
           compact 
             ? 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5' 
@@ -336,6 +369,6 @@ export default function MediaLibraryContent({
           </table>
         </div>
       )}
-    </>
+    </div>
   );
 }

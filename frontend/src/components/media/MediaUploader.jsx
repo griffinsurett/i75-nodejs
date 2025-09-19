@@ -13,7 +13,11 @@ import { formatFileSize } from "../../utils/formatFileSize";
 import { formatFileType } from "../../utils/formatFileType";
 import { generateVideoThumbnail, VideoThumbnail } from "../VideoThumbnail";
 
-export default function MediaUploader({ onComplete }) {
+export default function MediaUploader({ 
+  onComplete, 
+  mediaType = 'all', 
+  singleUploadMode = false 
+}) {
   const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef(null);
@@ -58,11 +62,22 @@ export default function MediaUploader({ onComplete }) {
   };
 
   const handleFiles = (newFiles) => {
-    const validFiles = newFiles.filter((file) => {
+    let validFiles = newFiles.filter((file) => {
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
+      
+      // Filter based on mediaType
+      if (mediaType === 'image') return isImage;
+      if (mediaType === 'video') return isVideo;
       return isImage || isVideo;
     });
+
+    // For single upload mode, only take the first file
+    if (singleUploadMode && validFiles.length > 0) {
+      validFiles = [validFiles[0]];
+      // Clear any existing files
+      setFiles([]);
+    }
 
     const fileObjects = validFiles.map((file) => ({
       id: Math.random().toString(36).substr(2, 9),
@@ -78,6 +93,7 @@ export default function MediaUploader({ onComplete }) {
       altText: file.name.replace(/\.[^/.]+$/, ""),
       title: file.name.replace(/\.[^/.]+$/, ""),
       description: "",
+      uploadedMedia: null, // Store the response data here
     }));
 
     // Create previews
@@ -93,7 +109,6 @@ export default function MediaUploader({ onComplete }) {
         };
         reader.readAsDataURL(fileObj.file);
       } else if (fileObj.type === "video") {
-        // Use the reusable utility
         const thumbnail = await generateVideoThumbnail(fileObj.file);
         setFiles((prev) =>
           prev.map((f) =>
@@ -146,11 +161,25 @@ export default function MediaUploader({ onComplete }) {
       }
 
       if (response.data?.success) {
+        const uploadedMedia = response.data.data;
+        
         setFiles((prev) =>
           prev.map((f) =>
-            f.id === fileObj.id ? { ...f, status: "success", progress: 100 } : f
+            f.id === fileObj.id ? { 
+              ...f, 
+              status: "success", 
+              progress: 100,
+              uploadedMedia 
+            } : f
           )
         );
+
+        // For single upload mode, auto-complete with the uploaded media
+        if (singleUploadMode) {
+          setTimeout(() => {
+            onComplete(uploadedMedia);
+          }, 500); // Small delay to show success state
+        }
       } else {
         throw new Error("Upload failed");
       }
@@ -226,6 +255,18 @@ export default function MediaUploader({ onComplete }) {
     );
   };
 
+  const getAcceptTypes = () => {
+    if (mediaType === 'image') return 'image/*';
+    if (mediaType === 'video') return 'video/*';
+    return 'image/*,video/*';
+  };
+
+  const getFileTypeText = () => {
+    if (mediaType === 'image') return 'Images';
+    if (mediaType === 'video') return 'Videos';
+    return 'Images and Videos';
+  };
+
   return (
     <div className="space-y-6">
       {/* Drag and Drop Area */}
@@ -254,13 +295,14 @@ export default function MediaUploader({ onComplete }) {
         <input
           ref={fileInputRef}
           type="file"
-          multiple
-          accept="image/*,video/*"
+          multiple={!singleUploadMode}
+          accept={getAcceptTypes()}
           onChange={handleFileSelect}
           className="hidden"
         />
         <p className="text-sm text-text/60 mt-4">
-          Accepted file types: Images and Videos
+          Accepted file types: {getFileTypeText()}
+          {singleUploadMode && ' (Single file only)'}
         </p>
       </div>
 
@@ -273,9 +315,9 @@ export default function MediaUploader({ onComplete }) {
                 ? `Uploading ${uploadingCount} of ${files.length} files`
                 : `${successCount} files uploaded`}
             </h3>
-            {allUploadsComplete && successCount > 0 && (
+            {allUploadsComplete && successCount > 0 && !singleUploadMode && (
               <button
-                onClick={onComplete}
+                onClick={() => onComplete()}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
               >
                 View Library
@@ -323,6 +365,13 @@ export default function MediaUploader({ onComplete }) {
                         </div>
                       )}
 
+                      {/* Success Message */}
+                      {fileObj.status === "success" && singleUploadMode && (
+                        <div className="mt-1 text-xs text-green-600">
+                          Upload complete! Selecting automatically...
+                        </div>
+                      )}
+
                       {/* Error Message */}
                       {fileObj.status === "error" && (
                         <div className="mt-1 text-xs text-red-600">
@@ -347,7 +396,7 @@ export default function MediaUploader({ onComplete }) {
                         {fileObj.status === "uploading" && (
                           <Loader2 className="w-4 h-4 animate-spin text-primary" />
                         )}
-                        {fileObj.status === "error" && (
+                        {fileObj.status === "error" && !singleUploadMode && (
                           <button
                             onClick={() => retryUpload(fileObj)}
                             className="text-primary hover:text-primary/80 text-sm px-2 py-1"
@@ -355,13 +404,15 @@ export default function MediaUploader({ onComplete }) {
                             Retry
                           </button>
                         )}
-                        <button
-                          onClick={() => removeFile(fileObj.id)}
-                          className="text-text/60 hover:text-text p-1"
-                          disabled={fileObj.status === "uploading"}
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        {!singleUploadMode && (
+                          <button
+                            onClick={() => removeFile(fileObj.id)}
+                            className="text-text/60 hover:text-text p-1"
+                            disabled={fileObj.status === "uploading"}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
