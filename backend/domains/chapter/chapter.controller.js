@@ -1,407 +1,375 @@
 // ==================== controllers/chapterController.js ====================
 const { db } = require("../../config/database");
-const { 
-  chapters, 
-  sections, 
-  courses, 
-  images, 
-  tests, 
-  entries, 
-  videos 
+const {
+  chapters,
+  sections,
+  courses,
+  images,
+  tests,
+  entries,
+  videos,
 } = require("../../config/schema");
-const { eq, count } = require("drizzle-orm");
+const { eq, desc } = require("drizzle-orm");
+const mediaManager = require("../../shared/utils/mediaManager");
+const BaseController = require("../../shared/utils/baseController");
 
-const chapterController = {
-  // Get all chapters
-  getAllChapters: async (req, res, next) => {
+const TimeUntilDeletion = 60000;
+
+class ChapterController extends BaseController {
+  // Schema for media operations
+  get mediaSchema() {
+    return {
+      chapters,
+      sections,
+      courses,
+      images,
+      tests,
+      entries,
+    };
+  }
+
+  // Simplified schema for image operations
+  get imageSchema() {
+    return { images };
+  }
+
+  /**
+   * GET /api/chapters - Get all chapters with optional archive filter
+   */
+  async getAllChapters(req, res, next) {
     try {
+      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+
       const result = await db
-        .select({
-          chapter_id: chapters.chapterId,
-          section_id: chapters.sectionId,
-          chapter_number: chapters.chapterNumber,
-          title: chapters.title,
-          description: chapters.description,
-          image_id: chapters.imageId,
-          section_title: sections.title,
-          course_name: courses.courseName,
-          chapter_image: images.imageUrl,
-        })
+        .select()
         .from(chapters)
         .innerJoin(sections, eq(chapters.sectionId, sections.sectionId))
         .innerJoin(courses, eq(sections.courseId, courses.courseId))
         .leftJoin(images, eq(chapters.imageId, images.imageId))
+        .where(eq(chapters.isArchived, showArchived))
         .orderBy(courses.courseName, sections.title, chapters.chapterNumber);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get chapters by section
-  getChaptersBySection: async (req, res, next) => {
-    try {
-      const { sectionId } = req.params;
-
-      // Check if section exists
-      const sectionCheck = await db
-        .select({ count: count() })
-        .from(sections)
-        .where(eq(sections.sectionId, sectionId));
-
-      if (sectionCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Section not found",
-        });
-      }
-
-      const result = await db
-        .select({
-          chapter_id: chapters.chapterId,
-          section_id: chapters.sectionId,
-          chapter_number: chapters.chapterNumber,
-          title: chapters.title,
-          description: chapters.description,
-          image_id: chapters.imageId,
-          chapter_image: images.imageUrl,
-        })
-        .from(chapters)
-        .leftJoin(images, eq(chapters.imageId, images.imageId))
-        .where(eq(chapters.sectionId, sectionId))
-        .orderBy(chapters.chapterNumber);
-
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Get single chapter
-  getChapterById: async (req, res, next) => {
+  /**
+   * GET /api/chapters/:chapterId - Get single chapter with tests and entries
+   */
+  async getChapterById(req, res, next) {
     try {
       const { chapterId } = req.params;
 
-      const result = await db
-        .select({
-          chapter_id: chapters.chapterId,
-          section_id: chapters.sectionId,
-          chapter_number: chapters.chapterNumber,
-          title: chapters.title,
-          description: chapters.description,
-          image_id: chapters.imageId,
-          section_title: sections.title,
-          course_name: courses.courseName,
-          chapter_image: images.imageUrl,
-        })
+      const chapterResult = await db
+        .select()
         .from(chapters)
         .innerJoin(sections, eq(chapters.sectionId, sections.sectionId))
         .innerJoin(courses, eq(sections.courseId, courses.courseId))
         .leftJoin(images, eq(chapters.imageId, images.imageId))
         .where(eq(chapters.chapterId, chapterId));
 
-      if (result.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Chapter not found",
-        });
+      if (chapterResult.length === 0) {
+        this.throwNotFound("Chapter");
       }
 
-      res.json({
-        success: true,
-        data: result[0],
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Get tests for a chapter
-  getChapterTests: async (req, res, next) => {
-    try {
-      const { chapterId } = req.params;
-
-      // Check if chapter exists
-      const chapterCheck = await db
-        .select({ count: count() })
-        .from(chapters)
-        .where(eq(chapters.chapterId, chapterId));
-
-      if (chapterCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Chapter not found",
-        });
-      }
-
-      const result = await db
-        .select({
-          test_id: tests.testId,
-          chapter_id: tests.chapterId,
-          title: tests.title,
-          description: tests.description,
-          image_id: tests.imageId,
-          video_id: tests.videoId,
-          test_image: images.imageUrl,
-          video_title: videos.title,
-        })
+      // Get chapter's tests
+      const testsResult = await db
+        .select()
         .from(tests)
         .leftJoin(images, eq(tests.imageId, images.imageId))
         .leftJoin(videos, eq(tests.videoId, videos.videoId))
         .where(eq(tests.chapterId, chapterId))
         .orderBy(tests.title);
 
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Get entries for a chapter
-  getChapterEntries: async (req, res, next) => {
-    try {
-      const { chapterId } = req.params;
-
-      // Check if chapter exists
-      const chapterCheck = await db
-        .select({ count: count() })
-        .from(chapters)
-        .where(eq(chapters.chapterId, chapterId));
-
-      if (chapterCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Chapter not found",
-        });
-      }
-
-      const result = await db
-        .select({
-          entry_id: entries.entryId,
-          chapter_id: entries.chapterId,
-          sequence_number: entries.sequenceNumber,
-          test_id: entries.testId,
-          video_id: entries.videoId,
-          test_title: tests.title,
-          video_title: videos.title,
-        })
+      // Get chapter's entries
+      const entriesResult = await db
+        .select()
         .from(entries)
         .leftJoin(tests, eq(entries.testId, tests.testId))
         .leftJoin(videos, eq(entries.videoId, videos.videoId))
         .where(eq(entries.chapterId, chapterId))
         .orderBy(entries.sequenceNumber);
 
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
+      const chapter = chapterResult[0];
+      chapter.chapters.tests = testsResult;
+      chapter.chapters.entries = entriesResult;
 
-  // Create chapter
-  createChapter: async (req, res, next) => {
+      this.success(res, chapter);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * GET /api/chapters/:chapterId/tests - Get tests for a chapter
+   */
+  async getChapterTests(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const { chapterId } = req.params;
+
+      const chapterExists = await this.checkRelatedCount(
+        db,
+        chapters,
+        chapters.chapterId,
+        chapterId
+      );
+
+      if (chapterExists === 0) {
+        this.throwNotFound("Chapter");
+      }
+
+      const result = await db
+        .select()
+        .from(tests)
+        .leftJoin(images, eq(tests.imageId, images.imageId))
+        .leftJoin(videos, eq(tests.videoId, videos.videoId))
+        .where(eq(tests.chapterId, chapterId))
+        .orderBy(tests.title);
+
+      this.success(res, result);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * GET /api/chapters/:chapterId/entries - Get entries for a chapter
+   */
+  async getChapterEntries(req, res, next) {
+    try {
+      const { chapterId } = req.params;
+
+      const chapterExists = await this.checkRelatedCount(
+        db,
+        chapters,
+        chapters.chapterId,
+        chapterId
+      );
+
+      if (chapterExists === 0) {
+        this.throwNotFound("Chapter");
+      }
+
+      const result = await db
+        .select()
+        .from(entries)
+        .leftJoin(tests, eq(entries.testId, tests.testId))
+        .leftJoin(videos, eq(entries.videoId, videos.videoId))
+        .where(eq(entries.chapterId, chapterId))
+        .orderBy(entries.sequenceNumber);
+
+      this.success(res, result);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * POST /api/chapters - Create new chapter
+   */
+  async createChapter(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
         const {
-          section_id,
-          chapter_number,
+          sectionId,
+          chapterNumber,
           title,
           description,
-          image_url,
-          alt_text,
+          imageId,
+          imageUrl,
+          altText,
         } = req.body;
 
-        if (!section_id || !chapter_number || !title) {
-          throw new Error("Section ID, chapter number, and title are required");
-        }
+        const validatedSectionId = this.validateRequired(sectionId, "Section ID");
+        const validatedChapterNumber = this.validateRequired(chapterNumber, "Chapter number");
+        const validatedTitle = this.validateRequired(title, "Chapter title");
 
-        // Check if section exists
-        const sectionCheck = await tx
-          .select({ count: count() })
-          .from(sections)
-          .where(eq(sections.sectionId, section_id));
+        // Verify section exists
+        await this.getOrThrow(tx, sections, sections.sectionId, validatedSectionId, "Section");
 
-        if (sectionCheck[0].count === 0) {
-          throw new Error("Section not found");
-        }
+        const finalImageId = await mediaManager.handleImage(
+          tx,
+          { image_id: imageId, image_url: imageUrl, alt_text: altText },
+          this.imageSchema
+        );
 
-        // Handle image
-        let image_id = null;
-        if (image_url) {
-          const imageResult = await tx
-            .insert(images)
-            .values({
-              imageUrl: image_url,
-              altText: alt_text,
-            })
-            .returning({ imageId: images.imageId });
-          image_id = imageResult[0].imageId;
-        }
-
-        const chapterResult = await tx
+        const [chapter] = await tx
           .insert(chapters)
           .values({
-            sectionId: section_id,
-            chapterNumber: chapter_number,
-            title,
-            description,
-            imageId: image_id,
+            sectionId: validatedSectionId,
+            chapterNumber: validatedChapterNumber,
+            title: validatedTitle,
+            description: description || null,
+            imageId: finalImageId,
+            isArchived: false,
+            createdAt: new Date(),
           })
           .returning();
 
-        return chapterResult[0];
+        return chapter;
       });
 
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result, null, 201);
     } catch (error) {
-      if (error.message === "Section ID, chapter number, and title are required" || 
-          error.message === "Section not found") {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Update chapter
-  updateChapter: async (req, res, next) => {
+  /**
+   * PUT /api/chapters/:chapterId - Update chapter
+   */
+  async updateChapter(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { chapterId } = req.params;
-        const { chapter_number, title, description, image_url, alt_text } = req.body;
+        const {
+          chapterNumber,
+          title,
+          description,
+          imageId,
+          imageUrl,
+          altText,
+        } = req.body;
 
-        // Check if chapter exists
-        const existingChapter = await tx
-          .select()
-          .from(chapters)
-          .where(eq(chapters.chapterId, chapterId));
+        const existing = await this.getOrThrow(
+          tx,
+          chapters,
+          chapters.chapterId,
+          chapterId,
+          "Chapter"
+        );
 
-        if (existingChapter.length === 0) {
-          throw new Error("Chapter not found");
-        }
+        const currentImageId = await mediaManager.updateImage(
+          tx,
+          existing.imageId,
+          { image_id: imageId, image_url: imageUrl, alt_text: altText },
+          this.imageSchema
+        );
 
-        // Handle image update
-        let image_id = existingChapter[0].imageId;
-        if (image_url) {
-          if (image_id) {
-            await tx
-              .update(images)
-              .set({
-                imageUrl: image_url,
-                altText: alt_text,
-              })
-              .where(eq(images.imageId, image_id));
-          } else {
-            const imageResult = await tx
-              .insert(images)
-              .values({
-                imageUrl: image_url,
-                altText: alt_text,
-              })
-              .returning({ imageId: images.imageId });
-            image_id = imageResult[0].imageId;
-          }
-        }
+        const updateFields = { updatedAt: new Date() };
+        if (chapterNumber !== undefined) updateFields.chapterNumber = chapterNumber;
+        if (title !== undefined) updateFields.title = title;
+        if (description !== undefined) updateFields.description = description;
+        if (currentImageId !== undefined) updateFields.imageId = currentImageId;
 
-        const updateResult = await tx
+        const [updated] = await tx
           .update(chapters)
-          .set({
-            chapterNumber: chapter_number,
-            title,
-            description,
-            imageId: image_id,
-          })
+          .set(updateFields)
           .where(eq(chapters.chapterId, chapterId))
           .returning();
 
-        return updateResult[0];
+        return updated;
       });
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      if (error.message === "Chapter not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Delete chapter
-  deleteChapter: async (req, res, next) => {
+  /**
+   * POST /api/chapters/:chapterId/archive - Archive chapter indefinitely
+   */
+  async archiveChapter(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const { chapterId } = req.params;
+      const updated = await this.archive(
+        db,
+        chapters,
+        chapters.chapterId,
+        chapterId,
+        "Chapter"
+      );
+      this.success(res, updated, "Chapter archived");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * POST /api/chapters/:chapterId/restore - Restore archived chapter
+   */
+  async restoreChapter(req, res, next) {
+    try {
+      const { chapterId } = req.params;
+      const updated = await this.restore(
+        db,
+        chapters,
+        chapters.chapterId,
+        chapterId,
+        "Chapter"
+      );
+      this.success(res, updated, "Chapter restored");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * DELETE /api/chapters/:chapterId - Delete chapter with automatic cascade
+   */
+  async deleteChapter(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
         const { chapterId } = req.params;
+
+        const chapter = await this.getOrThrow(
+          tx,
+          chapters,
+          chapters.chapterId,
+          chapterId,
+          "Chapter"
+        );
 
         // Check if chapter has tests or entries
-        const testsCheck = await tx
-          .select({ count: count() })
-          .from(tests)
-          .where(eq(tests.chapterId, chapterId));
+        const testCount = await this.checkRelatedCount(
+          tx,
+          tests,
+          tests.chapterId,
+          chapterId
+        );
 
-        const entriesCheck = await tx
-          .select({ count: count() })
-          .from(entries)
-          .where(eq(entries.chapterId, chapterId));
+        const entryCount = await this.checkRelatedCount(
+          tx,
+          entries,
+          entries.chapterId,
+          chapterId
+        );
 
-        if (testsCheck[0].count > 0 || entriesCheck[0].count > 0) {
-          throw new Error("Cannot delete chapter with existing tests or entries. Delete them first.");
+        if (testCount > 0 || entryCount > 0) {
+          throw this.createError(
+            "Cannot delete chapter with existing tests or entries. Delete them first.",
+            400
+          );
         }
 
-        const deleteResult = await tx
-          .delete(chapters)
-          .where(eq(chapters.chapterId, chapterId))
-          .returning();
-
-        if (deleteResult.length === 0) {
-          throw new Error("Chapter not found");
-        }
-
-        return deleteResult[0];
+        return await mediaManager.deleteWithCascade(
+          tx,
+          chapter,
+          chapters,
+          chapters.chapterId,
+          chapterId,
+          this.mediaSchema,
+          TimeUntilDeletion
+        );
       });
 
-      res.json({
-        success: true,
-        message: "Chapter deleted successfully",
-      });
+      let message = "Chapter scheduled for deletion in 60 seconds.";
+      const cascaded = [];
+      if (result.image) cascaded.push("image");
+      if (cascaded.length > 0) {
+        message = `Chapter and its exclusive ${cascaded.join(
+          " and "
+        )} scheduled for deletion in 60 seconds.`;
+      }
+
+      this.success(res, result, message);
     } catch (error) {
-      if (error.message === "Chapter not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      if (error.message.includes("Cannot delete chapter")) {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
-};
+  }
+}
 
-module.exports = chapterController;
+module.exports = new ChapterController();

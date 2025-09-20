@@ -124,6 +124,11 @@ const chapters = pgTable("chapters", {
   title: text("title").notNull(),
   description: text("description"),
   imageId: integer("image_id").references(() => images.imageId),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 // Tests table

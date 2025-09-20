@@ -2,30 +2,20 @@
 const express = require("express");
 const router = express.Router();
 const chapterController = require("./chapter.controller");
-const testController = require("../test/test.controller");
 
 // CRUD Routes for Chapters
-// GET /api/chapters
 router.get("/", chapterController.getAllChapters);
-
-// GET /api/chapters/:chapterId
 router.get("/:chapterId", chapterController.getChapterById);
-
-// POST /api/chapters
+router.get("/:chapterId/tests", chapterController.getChapterTests);
+router.get("/:chapterId/entries", chapterController.getChapterEntries);
 router.post("/", chapterController.createChapter);
-
-// PUT /api/chapters/:chapterId
 router.put("/:chapterId", chapterController.updateChapter);
 
-// DELETE /api/chapters/:chapterId
+// Archive operations
+router.post("/:chapterId/archive", chapterController.archiveChapter);
+router.post("/:chapterId/restore", chapterController.restoreChapter);
+
+// Safety delete (schedule purge in 60s)
 router.delete("/:chapterId", chapterController.deleteChapter);
-
-// Hierarchical Routes - Tests for a Chapter
-// GET /api/chapters/:chapterId/tests
-router.get("/:chapterId/tests", chapterController.getChapterTests);
-
-// Hierarchical Routes - Entries for a Chapter
-// GET /api/chapters/:chapterId/entries
-router.get("/:chapterId/entries", chapterController.getChapterEntries);
 
 module.exports = router;
