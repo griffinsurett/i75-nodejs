@@ -1,5 +1,5 @@
 // frontend/src/pages/MediaLibrary.jsx
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Plus, CheckSquare } from "lucide-react";
 import MediaLibraryContent from "../components/media/MediaLibraryContent";
 import ActiveArchivedTabs from "../components/archive/ActiveArchivedTabs";
@@ -13,7 +13,8 @@ const MediaLibrary = () => {
   const [showUploader, setShowUploader] = useState(false);
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
-  const [filteredMedia, setFilteredMedia] = useState([]);
+  // Remove filteredMedia state - not needed
+  const [totalMediaCount, setTotalMediaCount] = useState(0); // Add this for bulk actions count
   
   const bulkOps = useBulkOperations();
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -60,6 +61,12 @@ const MediaLibrary = () => {
   const images = mediaData?.images || [];
   const videos = mediaData?.videos || [];
 
+  // Calculate total count for "Select All"
+  const allMedia = [
+    ...images.map((img) => ({ ...img, type: "image", url: img.imageUrl })),
+    ...videos.map((vid) => ({ ...vid, type: "video", url: vid.slidesUrl })),
+  ];
+
   // Clear selections when view changes
   useEffect(() => {
     setSelectedItems(new Set());
@@ -72,12 +79,8 @@ const MediaLibrary = () => {
     }
   };
 
-  const handleMediaDataChange = useCallback((media) => {
-    setFilteredMedia(media);
-  }, []);
-
   const handleSelectAll = () => {
-    const allIds = filteredMedia.map(item => item.imageId || item.videoId);
+    const allIds = allMedia.map(item => item.imageId || item.videoId);
     setSelectedItems(new Set(allIds));
   };
 
@@ -89,7 +92,7 @@ const MediaLibrary = () => {
     await bulkOps.executeBulkOperation(
       selectedItems,
       async (itemId) => {
-        const item = filteredMedia.find(
+        const item = allMedia.find(
           (m) => (m.imageId || m.videoId) === itemId
         );
         if (!item) return;
@@ -112,7 +115,7 @@ const MediaLibrary = () => {
     await bulkOps.executeBulkOperation(
       selectedItems,
       async (itemId) => {
-        const item = filteredMedia.find(
+        const item = allMedia.find(
           (m) => (m.imageId || m.videoId) === itemId
         );
         if (!item) return;
@@ -136,6 +139,11 @@ const MediaLibrary = () => {
       }
     );
   };
+
+  // Update total count when media changes
+  useEffect(() => {
+    setTotalMediaCount(allMedia.length);
+  }, [images.length, videos.length]); // Only depend on array lengths
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -194,7 +202,7 @@ const MediaLibrary = () => {
       {!showUploader && selectionMode && selectedItems.size > 0 && (
         <BulkActionsBar
           selectedCount={selectedItems.size}
-          totalCount={filteredMedia.length}
+          totalCount={totalMediaCount}
           onSelectAll={handleSelectAll}
           onClearSelection={handleClearSelection}
           onArchive={() => setBulkArchiveOpen(true)}
@@ -203,7 +211,7 @@ const MediaLibrary = () => {
         />
       )}
 
-      {/* Content */}
+      {/* Content - Remove onMediaDataChange prop */}
       <MediaLibraryContent
         onSelectionChange={setSelectedItems}
         selectionMode={selectionMode}
@@ -216,7 +224,7 @@ const MediaLibrary = () => {
           setShowUploader(false);
           refresh();
         }}
-        onMediaDataChange={handleMediaDataChange}
+        // Remove onMediaDataChange prop - not needed!
         compact={false}
         initialImages={images}
         initialVideos={videos}

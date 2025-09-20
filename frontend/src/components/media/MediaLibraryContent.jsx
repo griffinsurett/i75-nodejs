@@ -20,14 +20,13 @@ export default function MediaLibraryContent({
   showUploader = false,
   onUploaderComplete,
   compact = false,
-  onMediaDataChange,
   initialImages = null,
   initialVideos = null,
   loading: externalLoading = false,
   error: externalError = '',
   onRefresh = null,
-  showSearch = true, // New prop to control search visibility
-  searchPlaceholder = "Search media...", // Customizable search placeholder
+  showSearch = true,
+  searchPlaceholder = "Search media...",
 }) {
   const [activeTab, setActiveTab] = useState(mediaTypeFilter !== 'all' ? mediaTypeFilter + 's' : 'all');
   const [images, setImages] = useState(initialImages || []);
@@ -36,14 +35,15 @@ export default function MediaLibraryContent({
   const [error, setError] = useState(externalError);
   const [viewMode, setViewMode] = useState(compact ? "grid" : "grid");
 
+   // Add the render counter here
   const renderCount = useRef(0);
   useEffect(() => {
     renderCount.current += 1;
     console.log('[MediaLibraryContent] Render count:', renderCount.current);
-    if (renderCount.current > 50) {
-      console.error('INFINITE RENDER DETECTED');
-    }
   });
+
+  // Determine if we're in controlled mode (data provided externally)
+const isControlledMode = initialImages !== null && initialVideos !== null;
 
   // Prepare media data for search
   const allMedia = [
@@ -100,15 +100,10 @@ export default function MediaLibraryContent({
     setError(externalError);
   }, [externalError]);
 
-  // Only fetch if no initial data provided (for standalone use)
+  // Fetch media function
   const fetchMedia = async () => {
-    if (initialImages !== null || initialVideos !== null) {
-      // Data is provided externally, use refresh function
-      if (onRefresh) {
-        onRefresh();
-      }
-      return;
-    }
+    // Don't fetch if in controlled mode
+    if (isControlledMode) return;
     
     try {
       setLoading(true);
@@ -165,18 +160,12 @@ export default function MediaLibraryContent({
     }
   };
 
+  // Only fetch if not in controlled mode and not showing uploader
   useEffect(() => {
-    if (!showUploader) {
+    if (!isControlledMode && !showUploader) {
       fetchMedia();
     }
-  }, [showArchived, showUploader, mediaTypeFilter]);
-
-  // Pass filtered media to parent whenever it changes
-  useEffect(() => {
-    if (onMediaDataChange) {
-      onMediaDataChange(filteredMedia);
-    }
-  }, [filteredMedia, onMediaDataChange]);
+  }, [showArchived, showUploader, mediaTypeFilter]); // Don't include isControlledMode in deps
 
   const toggleItemSelection = (itemId) => {
     const newSelection = new Set(selectedItems);
@@ -213,7 +202,10 @@ export default function MediaLibraryContent({
   const isSelected = (itemId) => selectedItems.has(itemId);
 
   const handleUploaderComplete = () => {
-    fetchMedia();
+    // Only fetch if not in controlled mode
+    if (!isControlledMode) {
+      fetchMedia();
+    }
     if (onUploaderComplete) {
       onUploaderComplete();
     }
@@ -306,7 +298,13 @@ export default function MediaLibraryContent({
               key={item.imageId || item.videoId}
               item={item}
               onClick={() => !selectionMode && toggleItemSelection(item.imageId || item.videoId)}
-              onChanged={fetchMedia}
+              onChanged={() => {
+                if (isControlledMode && onRefresh) {
+                  onRefresh();
+                } else {
+                  fetchMedia();
+                }
+              }}
               selectionMode={selectionMode}
               isSelected={isSelected(item.imageId || item.videoId)}
               onToggleSelect={() => toggleItemSelection(item.imageId || item.videoId)}
@@ -368,7 +366,13 @@ export default function MediaLibraryContent({
                   key={item.imageId || item.videoId}
                   item={item}
                   onClick={() => !selectionMode && toggleItemSelection(item.imageId || item.videoId)}
-                  onChanged={fetchMedia}
+                  onChanged={() => {
+                    if (isControlledMode && onRefresh) {
+                      onRefresh();
+                    } else {
+                      fetchMedia();
+                    }
+                  }}
                   selectionMode={selectionMode}
                   isSelected={isSelected(item.imageId || item.videoId)}
                   onToggleSelect={() => toggleItemSelection(item.imageId || item.videoId)}
