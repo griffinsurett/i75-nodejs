@@ -66,7 +66,9 @@ export default function EditActions({
       <ConfirmModal
         isOpen={state.open && state.type === "archive"}
         onClose={close}
-        title={isArchived ? `Unarchive ${entityName}?` : `Archive ${entityName}?`}
+        title={
+          isArchived ? `Unarchive ${entityName}?` : `Archive ${entityName}?`
+        }
         description={
           isArchived
             ? `This will make the ${entityName} active again and visible to users.`

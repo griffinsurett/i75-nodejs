@@ -1,8 +1,14 @@
-// frontend/src/components/course/sections/chapters/ChapterFormModal.jsx
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Modal from '../../../Modal';
-import { X, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
 import { sectionAPI } from '../../../../services/api';
+import { validators } from '../../../../utils/forms/validation';
+import {
+  Form,
+  FormField,
+  FormInput,
+  FormTextarea,
+} from '../../../forms';
 import MediaInput from '../../../media/MediaInput';
 
 export default function ChapterFormModal({
@@ -13,88 +19,79 @@ export default function ChapterFormModal({
   onSuccess
 }) {
   const isEdit = !!chapter;
-  const [form, setForm] = useState({
-    chapterNumber: '',
-    title: '',
-    description: '',
-    content: '',
-    imageId: null,
-    videoId: null,
-  });
 
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (isOpen) {
-      if (chapter) {
-        const chapterData = chapter.chapters || chapter;
-        setForm({
-          chapterNumber: chapterData.chapterNumber || '',
-          title: chapterData.title || '',
-          description: chapterData.description || '',
-          content: chapterData.content || '',
-          imageId: chapterData.imageId || null,
-          videoId: chapterData.videoId || null,
-        });
-      } else {
-        // Reset for new chapter
-        setForm({
-          chapterNumber: '',
-          title: '',
-          description: '',
-          content: '',
-          imageId: null,
-          videoId: null,
-        });
+  // Define validation
+  const validation = {
+    chapterNumber: validators.compose(
+      validators.required('Chapter number is required'),
+      (value) => {
+        const num = parseInt(value);
+        if (isNaN(num) || num < 1) {
+          return 'Chapter number must be a positive number';
+        }
+        return undefined;
       }
-      setError('');
-    }
-  }, [isOpen, chapter]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
+    ),
+    title: validators.compose(
+      validators.required('Chapter title is required'),
+      validators.minLength(3, 'Title must be at least 3 characters')
+    ),
+    description: validators.maxLength(500, 'Description must be less than 500 characters'),
+    content: validators.maxLength(5000, 'Content must be less than 5000 characters'),
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.title.trim() || !form.chapterNumber) return;
-    
-    if (!sectionId) {
-      setError('Section ID is missing. Please refresh the page and try again.');
-      return;
-    }
+  // Load initial data
+  const loadData = async () => {
+    let formData = {
+      chapterNumber: '',
+      title: '',
+      description: '',
+      content: '',
+      imageId: null,
+      videoId: null,
+    };
 
-    setSubmitting(true);
-    setError('');
-
-    try {
-      const payload = {
-        chapterNumber: parseInt(form.chapterNumber),
-        title: form.title.trim(),
-        description: form.description || undefined,
-        content: form.content || undefined,
-        imageId: form.imageId || undefined,
-        videoId: form.videoId || undefined,
+    if (chapter) {
+      const chapterData = chapter.chapters || chapter;
+      formData = {
+        chapterNumber: String(chapterData.chapterNumber || ''),
+        title: chapterData.title || '',
+        description: chapterData.description || '',
+        content: chapterData.content || '',
+        imageId: chapterData.imageId || null,
+        videoId: chapterData.videoId || null,
       };
-
-      if (isEdit) {
-        const chapterData = chapter.chapters || chapter;
-        // You'll need to implement this API endpoint
-        await sectionAPI.updateSectionChapter(sectionId, chapterData.chapterId, payload);
-      } else {
-        // You'll need to implement this API endpoint
-        await sectionAPI.createSectionChapter(sectionId, payload);
-      }
-
-      onSuccess();
-    } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to save chapter');
-    } finally {
-      setSubmitting(false);
     }
+
+    return { formData };
   };
+
+  // Handle submission
+  const handleSubmit = async (values) => {
+    if (!sectionId) {
+      throw new Error('Section ID is missing');
+    }
+
+    if (isEdit) {
+      const chapterData = chapter.chapters || chapter;
+      await sectionAPI.updateSectionChapter(sectionId, chapterData.chapterId, values);
+    } else {
+      await sectionAPI.createSectionChapter(sectionId, values);
+    }
+    
+    onSuccess();
+    onClose();
+  };
+
+  // Transform values before submission
+  const transformOnSubmit = (values) => ({
+    chapterNumber: parseInt(values.chapterNumber),
+    title: values.title?.trim(),
+    description: values.description?.trim() || undefined,
+    content: values.content?.trim() || undefined,
+    imageId: values.imageId || undefined,
+    videoId: values.videoId || undefined,
+  });
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
@@ -108,112 +105,92 @@ export default function ChapterFormModal({
           </button>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
+        <Form
+          loadData={isOpen ? loadData : null}
+          dependencies={[isOpen, chapter]}
+          validation={validation}
+          transformOnSubmit={transformOnSubmit}
+          onSubmit={handleSubmit}
+          submitLabel={isEdit ? 'Update Chapter' : 'Create Chapter'}
+          onCancel={onClose}
+          showLoadingState={false}
+        >
+          {(form) => (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  label="Chapter Number"
+                  name="chapterNumber"
+                  required
+                  error={form.touched.chapterNumber && form.errors.chapterNumber}
+                >
+                  <FormInput
+                    type="number"
+                    {...form.getFieldProps('chapterNumber')}
+                    placeholder="e.g., 1"
+                    min="1"
+                  />
+                </FormField>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text mb-1">
-                Chapter Number *
-              </label>
-              <input
-                type="number"
-                name="chapterNumber"
-                value={form.chapterNumber}
-                onChange={handleChange}
-                className="w-full px-3 py-2 bg-bg2 border border-border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="e.g., 1"
-                min="1"
-                required
+                <FormField
+                  label="Chapter Title"
+                  name="title"
+                  required
+                  error={form.touched.title && form.errors.title}
+                >
+                  <FormInput
+                    {...form.getFieldProps('title')}
+                    placeholder="e.g., Introduction"
+                  />
+                </FormField>
+              </div>
+
+              <FormField
+                label="Description"
+                name="description"
+                error={form.touched.description && form.errors.description}
+              >
+                <FormTextarea
+                  {...form.getFieldProps('description')}
+                  rows={3}
+                  placeholder="Brief description of this chapter"
+                />
+              </FormField>
+
+              <FormField
+                label="Chapter Content"
+                name="content"
+                error={form.touched.content && form.errors.content}
+                help="Main content of the chapter"
+              >
+                <FormTextarea
+                  {...form.getFieldProps('content')}
+                  rows={8}
+                  placeholder="Enter the chapter content..."
+                  className="font-mono text-sm"
+                />
+              </FormField>
+
+              <MediaInput
+                label="Chapter Image"
+                value={form.values.imageId}
+                onChange={(imageId) => form.setFieldValue('imageId', imageId)}
+                mediaType="image"
+                placeholder="Select or upload chapter image"
+                showPreview={true}
               />
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text mb-1">
-                Chapter Title *
-              </label>
-              <input
-                name="title"
-                value={form.title}
-                onChange={handleChange}
-                className="w-full px-3 py-2 bg-bg2 border border-border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="e.g., Introduction"
-                required
+              <MediaInput
+                label="Chapter Video"
+                value={form.values.videoId}
+                onChange={(videoId) => form.setFieldValue('videoId', videoId)}
+                mediaType="video"
+                placeholder="Select or upload chapter video"
+                showPreview={true}
               />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text mb-1">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              rows={3}
-              className="w-full px-3 py-2 bg-bg2 border border-border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Brief description of this chapter"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text mb-1">
-              Chapter Content
-            </label>
-            <textarea
-              name="content"
-              value={form.content}
-              onChange={handleChange}
-              rows={8}
-              className="w-full px-3 py-2 bg-bg2 border border-border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
-              placeholder="Main content of the chapter..."
-            />
-          </div>
-
-          {/* Chapter Image - Using MediaInput */}
-          <MediaInput
-            label="Chapter Image"
-            value={form.imageId}
-            onChange={(imageId) => setForm(f => ({ ...f, imageId }))}
-            mediaType="image"
-            placeholder="Select or upload chapter image"
-            showPreview={true}
-          />
-
-          {/* Chapter Video - Using MediaInput */}
-          <MediaInput
-            label="Chapter Video"
-            value={form.videoId}
-            onChange={(videoId) => setForm(f => ({ ...f, videoId }))}
-            mediaType="video"
-            placeholder="Select or upload chapter video"
-            showPreview={true}
-          />
-
-          <div className="flex justify-end gap-2 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm border border-border-primary rounded-lg hover:bg-bg2"
-              disabled={submitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!form.title.trim() || !form.chapterNumber || submitting}
-              className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
-            >
-              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isEdit ? 'Update Chapter' : 'Create Chapter'}
-            </button>
-          </div>
-        </form>
+            </>
+          )}
+        </Form>
       </div>
     </Modal>
   );

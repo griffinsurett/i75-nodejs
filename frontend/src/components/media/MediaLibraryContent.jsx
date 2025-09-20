@@ -1,5 +1,5 @@
 // frontend/src/components/media/MediaLibraryContent.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { imageAPI, videoAPI } from "../../services/api";
 import { Loader2, AlertCircle } from "lucide-react";
 import MediaControls from "./MediaControls";
@@ -35,6 +35,15 @@ export default function MediaLibraryContent({
   const [loading, setLoading] = useState(externalLoading);
   const [error, setError] = useState(externalError);
   const [viewMode, setViewMode] = useState(compact ? "grid" : "grid");
+
+  const renderCount = useRef(0);
+  useEffect(() => {
+    renderCount.current += 1;
+    console.log('[MediaLibraryContent] Render count:', renderCount.current);
+    if (renderCount.current > 50) {
+      console.error('INFINITE RENDER DETECTED');
+    }
+  });
 
   // Prepare media data for search
   const allMedia = [
