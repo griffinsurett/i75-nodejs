@@ -162,7 +162,7 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
         {/* Header / Logo + collapse button */}
         <div className="px-3 py-4 flex-shrink-0">
           <div
-            className={`flex items-center ${
+            className={`flex ${!isOpen ? "flex-col-reverse" : "items-center"} ${
               isOpen ? "justify-between" : "justify-center"
             } gap-2`}
           >
