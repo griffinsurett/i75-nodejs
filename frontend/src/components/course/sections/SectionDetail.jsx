@@ -1,11 +1,11 @@
 // frontend/src/components/course/sections/SectionDetail.jsx
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { sectionAPI } from "../../../services/api";
-import { FileText, Loader2, AlertCircle } from "lucide-react";
+import { FileText, Loader2, AlertCircle, Edit, Settings } from "lucide-react";
 import EditActions from "../../archive/EditActions";
 import SectionHeader from "./SectionHeader";
-import SectionChapters from "./chapters/SectionChapters";
+import SectionChaptersPreview from "./SectionChaptersPreview";
 import BackButton from "../../navigation/BackButton";
 
 const SectionDetail = () => {
@@ -77,22 +77,32 @@ const SectionDetail = () => {
           Back to Course
         </BackButton>
 
-        <EditActions
-          id={sectionData.sectionId}
-          isArchived={sectionData.isArchived}
-          editTo={`/sections/${sectionData.sectionId}/edit`}
-          entityName="section"
-          api={{
-            archive: sectionAPI.archiveSection,
-            restore: sectionAPI.restoreSection,
-            delete: sectionAPI.deleteSection,
-          }}
-          onChanged={fetchSectionData}
-        />
+        <div className="flex items-center gap-2">
+
+          {/* Section Settings Actions */}
+          <EditActions
+            id={sectionData.sectionId}
+            isArchived={sectionData.isArchived}
+            editTo={`/sections/${sectionData.sectionId}/content`}
+            entityName="section"
+            api={{
+              archive: sectionAPI.archiveSection,
+              restore: sectionAPI.restoreSection,
+              delete: sectionAPI.deleteSection,
+            }}
+            onChanged={fetchSectionData}
+          />
+        </div>
       </div>
 
       <SectionHeader section={section} />
-      <SectionChapters section={section} onRefresh={fetchSectionData} />
+      <SectionChaptersPreview 
+        section={section} 
+        onEditClick={() => {
+          // Navigate to content editor
+          window.location.href = `/sections/${sectionData.sectionId}/content`;
+        }}
+      />
     </div>
   );
 };

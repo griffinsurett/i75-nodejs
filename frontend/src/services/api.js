@@ -97,8 +97,20 @@ export const instructorAPI = {
 export const sectionAPI = {
   getAllSections: (params = {}) => api.get("/sections", { params }),
   getSection: (sectionId) => api.get(`/sections/${sectionId}`),
-  getSectionChapters: (sectionId) => api.get(`/sections/${sectionId}/chapters`),
-  createSection: (sectionData) => api.post("/sections", sectionData),
+  getSectionChapters: (sectionId) => api.get(`/sections/${sectionId}/chapters`),  createSection: (sectionData) => api.post("/sections", sectionData),
+  // NEW: Chapter management within section context
+  createSectionChapter: (sectionId, chapterData) => 
+    api.post(`/sections/${sectionId}/chapters`, chapterData),
+  
+  updateSectionChapter: (sectionId, chapterId, chapterData) => 
+    api.put(`/sections/${sectionId}/chapters/${chapterId}`, chapterData),
+  
+  deleteSectionChapter: (sectionId, chapterId) => 
+    api.delete(`/sections/${sectionId}/chapters/${chapterId}`),
+  
+  // Optional: Reorder chapters
+  reorderSectionChapters: (sectionId, chapterIds) => 
+    api.put(`/sections/${sectionId}/chapters/reorder`, { chapterIds }),
   updateSection: (sectionId, sectionData) =>
     api.put(`/sections/${sectionId}`, sectionData),
   deleteSection: (sectionId) => api.delete(`/sections/${sectionId}`),
@@ -108,14 +120,15 @@ export const sectionAPI = {
 
 // Chapter API functions
 export const chapterAPI = {
-  getAllChapters: () => api.get("/chapters"),
+  getAllChapters: (params = {}) => api.get("/chapters", { params }),
   getChapter: (chapterId) => api.get(`/chapters/${chapterId}`),
   getChapterTests: (chapterId) => api.get(`/chapters/${chapterId}/tests`),
   getChapterEntries: (chapterId) => api.get(`/chapters/${chapterId}/entries`),
   createChapter: (chapterData) => api.post("/chapters", chapterData),
-  updateChapter: (chapterId, chapterData) =>
-    api.put(`/chapters/${chapterId}`, chapterData),
+  updateChapter: (chapterId, chapterData) => api.put(`/chapters/${chapterId}`, chapterData),
   deleteChapter: (chapterId) => api.delete(`/chapters/${chapterId}`),
+  archiveChapter: (chapterId) => api.post(`/chapters/${chapterId}/archive`),
+  restoreChapter: (chapterId) => api.post(`/chapters/${chapterId}/restore`),
 };
 
 // Test API functions

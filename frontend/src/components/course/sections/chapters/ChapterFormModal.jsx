@@ -16,7 +16,7 @@ export default function ChapterFormModal({
   onClose,
   sectionId,
   chapter,
-  onSuccess
+  onSuccess,
 }) {
   const isEdit = !!chapter;
 

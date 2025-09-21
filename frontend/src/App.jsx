@@ -13,6 +13,7 @@ import InstructorUpsertPage from "./pages/InstructorUpsertPage";
 import Sections from "./pages/Sections";
 import SectionDetail from "./components/course/sections/SectionDetail";
 import SectionUpsertPage from "./pages/SectionUpsertPage";
+import SectionEditPage from "./pages/SectionEditPage";
 
 // Components
 import CourseList from "./components/course/CourseList";
@@ -93,6 +94,7 @@ function App() {
               />
               <Route path="/sections/new" element={<SectionUpsertPage />} />
               <Route path="/sections/:sectionId/edit" element={<SectionUpsertPage />} />
+              <Route path="/sections/:sectionId/content" element={<SectionEditPage />} />
 
               <Route
                 path="/sections/:sectionId/chapters"
