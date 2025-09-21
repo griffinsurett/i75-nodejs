@@ -26,19 +26,21 @@ export default function ChaptersSidebar({
       setLoading(true);
       setError('');
 
-      // Get the next chapter number
-      const nextChapterNumber = chapters.length + 1;
-
+      // Don't calculate chapter number - let backend handle it
       const newChapterData = {
-        chapterNumber: nextChapterNumber,
-        title: `Chapter ${nextChapterNumber}`,
+        title: `New Chapter`,
         description: '',
         content: '',
+        // chapterNumber is omitted - backend will auto-assign
       };
 
       const response = await sectionAPI.createSectionChapter(sectionId, newChapterData);
       if (response.data?.success) {
         const newChapter = response.data.data;
+        // Update the title to include the auto-assigned number if generic
+        if (!newChapter.title || newChapter.title === 'New Chapter') {
+          newChapter.title = `Chapter ${newChapter.chapterNumber}`;
+        }
         onChapterCreate(newChapter);
       }
     } catch (err) {
@@ -138,65 +140,71 @@ export default function ChaptersSidebar({
             </div>
           ) : (
             <div className="p-2 space-y-1">
-              {chapters.map((chapter, index) => {
-                const chapterData = chapter.chapters || chapter;
-                const isSelected = chapterData.chapterId === selectedChapterId;
-                
-                return (
-                  <div
-                    key={chapterData.chapterId}
-                    className={`group relative rounded-lg border transition-colors ${
-                      isSelected
-                        ? 'bg-primary/10 border-primary/20 text-primary'
-                        : 'border-transparent hover:bg-bg2 hover:border-border-primary'
-                    }`}
-                  >
-                    <button
-                      onClick={() => onChapterSelect(chapter)}
-                      className="w-full text-left p-3 rounded-lg"
+              {chapters
+                .sort((a, b) => {
+                  const aNum = (a.chapters || a).chapterNumber || (a.chapterNumber) || 0;
+                  const bNum = (b.chapters || b).chapterNumber || (b.chapterNumber) || 0;
+                  return aNum - bNum;
+                })
+                .map((chapter, index) => {
+                  const chapterData = chapter.chapters || chapter;
+                  const isSelected = chapterData.chapterId === selectedChapterId;
+                  
+                  return (
+                    <div
+                      key={chapterData.chapterId}
+                      className={`group relative rounded-lg border transition-colors ${
+                        isSelected
+                          ? 'bg-primary/10 border-primary/20 text-primary'
+                          : 'border-transparent hover:bg-bg2 hover:border-border-primary'
+                      }`}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-6 h-6 rounded text-xs font-medium flex items-center justify-center flex-shrink-0 ${
-                          isSelected 
-                            ? 'bg-primary text-white' 
-                            : 'bg-bg2 text-text'
-                        }`}>
-                          {chapterData.chapterNumber}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className={`text-sm font-medium truncate ${
-                            isSelected ? 'text-primary' : 'text-heading'
+                      <button
+                        onClick={() => onChapterSelect(chapter)}
+                        className="w-full text-left p-3 rounded-lg"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-6 h-6 rounded text-xs font-medium flex items-center justify-center flex-shrink-0 ${
+                            isSelected 
+                              ? 'bg-primary text-white' 
+                              : 'bg-bg2 text-text'
                           }`}>
-                            {chapterData.title || `Chapter ${chapterData.chapterNumber}`}
+                            {chapterData.chapterNumber}
                           </div>
-                          {chapterData.description && (
-                            <div className="text-xs text-text/60 truncate mt-0.5">
-                              {chapterData.description}
+                          <div className="min-w-0 flex-1">
+                            <div className={`text-sm font-medium truncate ${
+                              isSelected ? 'text-primary' : 'text-heading'
+                            }`}>
+                              {chapterData.title || `Chapter ${chapterData.chapterNumber}`}
                             </div>
-                          )}
+                            {chapterData.description && (
+                              <div className="text-xs text-text/60 truncate mt-0.5">
+                                {chapterData.description}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </button>
+                      </button>
 
-                    {/* Chapter Actions */}
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ActionsMenu
-                        items={[
-                          {
-                            label: 'Delete',
-                            icon: Trash2,
-                            danger: true,
-                            onClick: () => openDeleteModal(chapter),
-                          },
-                        ]}
-                        buttonClassName="w-6 h-6 bg-bg/80 backdrop-blur hover:bg-bg2"
-                        menuClassName="w-32"
-                        ariaLabel={`Actions for ${chapterData.title}`}
-                      />
+                      {/* Chapter Actions */}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ActionsMenu
+                          items={[
+                            {
+                              label: 'Delete',
+                              icon: Trash2,
+                              danger: true,
+                              onClick: () => openDeleteModal(chapter),
+                            },
+                          ]}
+                          buttonClassName="w-6 h-6 bg-bg/80 backdrop-blur hover:bg-bg2"
+                          menuClassName="w-32"
+                          ariaLabel={`Actions for ${chapterData.title}`}
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </div>

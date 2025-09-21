@@ -11,6 +11,9 @@ router.get("/:chapterId/entries", chapterController.getChapterEntries);
 router.post("/", chapterController.createChapter);
 router.put("/:chapterId", chapterController.updateChapter);
 
+// Reorder chapters in a section
+router.put("/sections/:sectionId/reorder", chapterController.reorderChapters);
+
 // Archive operations
 router.post("/:chapterId/archive", chapterController.archiveChapter);
 router.post("/:chapterId/restore", chapterController.restoreChapter);

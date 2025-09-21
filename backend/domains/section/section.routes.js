@@ -18,4 +18,8 @@ router.post("/:sectionId/restore", sectionController.restoreSection);
 // Safety delete
 router.delete("/:sectionId", sectionController.deleteSection);
 
+router.post("/:sectionId/chapters", sectionController.createSectionChapter);
+router.put("/:sectionId/chapters/:chapterId", sectionController.updateSectionChapter);
+router.delete("/:sectionId/chapters/:chapterId", sectionController.deleteSectionChapter);
+
 module.exports = router;

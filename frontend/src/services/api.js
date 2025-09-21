@@ -97,8 +97,10 @@ export const instructorAPI = {
 export const sectionAPI = {
   getAllSections: (params = {}) => api.get("/sections", { params }),
   getSection: (sectionId) => api.get(`/sections/${sectionId}`),
-  getSectionChapters: (sectionId) => api.get(`/sections/${sectionId}/chapters`),  createSection: (sectionData) => api.post("/sections", sectionData),
-  // NEW: Chapter management within section context
+  getSectionChapters: (sectionId) => api.get(`/sections/${sectionId}/chapters`),
+  createSection: (sectionData) => api.post("/sections", sectionData),
+  
+  // Chapter management within section context
   createSectionChapter: (sectionId, chapterData) => 
     api.post(`/sections/${sectionId}/chapters`, chapterData),
   
@@ -111,6 +113,7 @@ export const sectionAPI = {
   // Optional: Reorder chapters
   reorderSectionChapters: (sectionId, chapterIds) => 
     api.put(`/sections/${sectionId}/chapters/reorder`, { chapterIds }),
+    
   updateSection: (sectionId, sectionData) =>
     api.put(`/sections/${sectionId}`, sectionData),
   deleteSection: (sectionId) => api.delete(`/sections/${sectionId}`),

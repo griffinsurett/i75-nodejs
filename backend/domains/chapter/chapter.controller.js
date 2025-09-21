@@ -9,13 +9,24 @@ const {
   entries,
   videos,
 } = require("../../config/schema");
-const { eq, desc } = require("drizzle-orm");
+const { eq, desc, sql } = require("drizzle-orm");
 const mediaManager = require("../../shared/utils/mediaManager");
 const BaseController = require("../../shared/utils/baseController");
+const chapterService = require("./chapter.service");
 
 const TimeUntilDeletion = 60000;
 
 class ChapterController extends BaseController {
+  constructor() {
+    super();
+    // Bind all methods to this instance
+    Object.getOwnPropertyNames(Object.getPrototypeOf(this))
+      .filter(method => method !== 'constructor' && typeof this[method] === 'function')
+      .forEach(method => {
+        this[method] = this[method].bind(this);
+      });
+  }
+
   // Schema for media operations
   get mediaSchema() {
     return {
@@ -167,7 +178,7 @@ class ChapterController extends BaseController {
   }
 
   /**
-   * POST /api/chapters - Create new chapter
+   * POST /api/chapters - Create new chapter with automatic numbering
    */
   async createChapter(req, res, next) {
     try {
@@ -177,32 +188,32 @@ class ChapterController extends BaseController {
           chapterNumber,
           title,
           description,
+          content,
           imageId,
-          imageUrl,
-          altText,
+          videoId,
         } = req.body;
 
         const validatedSectionId = this.validateRequired(sectionId, "Section ID");
-        const validatedChapterNumber = this.validateRequired(chapterNumber, "Chapter number");
-        const validatedTitle = this.validateRequired(title, "Chapter title");
-
+        
         // Verify section exists
         await this.getOrThrow(tx, sections, sections.sectionId, validatedSectionId, "Section");
 
-        const finalImageId = await mediaManager.handleImage(
-          tx,
-          { image_id: imageId, image_url: imageUrl, alt_text: altText },
-          this.imageSchema
-        );
+        // Use service to get next chapter number if not provided or if it's 0
+        let finalChapterNumber = chapterNumber;
+        if (!finalChapterNumber || finalChapterNumber === 0) {
+          finalChapterNumber = await chapterService.getNextChapterNumber(tx, validatedSectionId);
+        }
 
         const [chapter] = await tx
           .insert(chapters)
           .values({
             sectionId: validatedSectionId,
-            chapterNumber: validatedChapterNumber,
-            title: validatedTitle,
+            chapterNumber: finalChapterNumber,
+            title: title || `Chapter ${finalChapterNumber}`,
             description: description || null,
-            imageId: finalImageId,
+            content: content || null,
+            imageId: imageId || null,
+            videoId: videoId || null,
             isArchived: false,
             createdAt: new Date(),
           })
@@ -228,9 +239,9 @@ class ChapterController extends BaseController {
           chapterNumber,
           title,
           description,
+          content,
           imageId,
-          imageUrl,
-          altText,
+          videoId,
         } = req.body;
 
         const existing = await this.getOrThrow(
@@ -241,18 +252,13 @@ class ChapterController extends BaseController {
           "Chapter"
         );
 
-        const currentImageId = await mediaManager.updateImage(
-          tx,
-          existing.imageId,
-          { image_id: imageId, image_url: imageUrl, alt_text: altText },
-          this.imageSchema
-        );
-
         const updateFields = { updatedAt: new Date() };
         if (chapterNumber !== undefined) updateFields.chapterNumber = chapterNumber;
         if (title !== undefined) updateFields.title = title;
         if (description !== undefined) updateFields.description = description;
-        if (currentImageId !== undefined) updateFields.imageId = currentImageId;
+        if (content !== undefined) updateFields.content = content;
+        if (imageId !== undefined) updateFields.imageId = imageId;
+        if (videoId !== undefined) updateFields.videoId = videoId;
 
         const [updated] = await tx
           .update(chapters)
@@ -264,6 +270,50 @@ class ChapterController extends BaseController {
       });
 
       this.success(res, result);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * PUT /api/chapters/sections/:sectionId/reorder - Reorder chapters in a section
+   */
+  async reorderChapters(req, res, next) {
+    try {
+      const { sectionId } = req.params;
+      const { chapterIds } = req.body;
+
+      if (!Array.isArray(chapterIds) || chapterIds.length === 0) {
+        throw this.createError("Chapter IDs array is required", 400);
+      }
+
+      await this.withTransaction(db, async (tx) => {
+        // Verify section exists
+        await this.getOrThrow(tx, sections, sections.sectionId, sectionId, "Section");
+
+        // Verify all chapters belong to this section and update their numbers
+        for (let i = 0; i < chapterIds.length; i++) {
+          const [chapter] = await tx
+            .select()
+            .from(chapters)
+            .where(eq(chapters.chapterId, chapterIds[i]));
+          
+          if (!chapter || chapter.sectionId !== parseInt(sectionId)) {
+            throw this.createError(`Invalid chapter ID ${chapterIds[i]} for this section`, 400);
+          }
+
+          // Update chapter number based on position in array
+          await tx
+            .update(chapters)
+            .set({ 
+              chapterNumber: i + 1, 
+              updatedAt: new Date() 
+            })
+            .where(eq(chapters.chapterId, chapterIds[i]));
+        }
+      });
+
+      this.success(res, null, "Chapters reordered successfully");
     } catch (error) {
       this.handleError(error, res, next);
     }
@@ -345,7 +395,8 @@ class ChapterController extends BaseController {
           );
         }
 
-        return await mediaManager.deleteWithCascade(
+        // Delete the chapter
+        const deletedChapter = await mediaManager.deleteWithCascade(
           tx,
           chapter,
           chapters,
@@ -354,6 +405,11 @@ class ChapterController extends BaseController {
           this.mediaSchema,
           TimeUntilDeletion
         );
+
+        // Optional: Renumber remaining chapters to maintain sequential order
+        // await chapterService.renumberChapters(tx, chapter.sectionId);
+
+        return deletedChapter;
       });
 
       let message = "Chapter scheduled for deletion in 60 seconds.";
