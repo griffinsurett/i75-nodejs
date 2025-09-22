@@ -6,6 +6,8 @@ const {
   images,
   videos,
   chapters,
+  tests,
+  entries,
 } = require("../../config/schema");
 const { eq, desc } = require("drizzle-orm");
 const mediaManager = require("../../shared/utils/mediaManager");
@@ -22,6 +24,8 @@ class SectionController extends BaseController {
       images,
       videos,
       chapters,
+      tests,
+      entries,
     };
   }
 
@@ -35,7 +39,8 @@ class SectionController extends BaseController {
    */
   async getAllSections(req, res, next) {
     try {
-      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+      const showArchived =
+        String(req.query.archived || "").toLowerCase() === "true";
 
       const result = await db
         .select()
@@ -90,90 +95,105 @@ class SectionController extends BaseController {
 
   // Add these methods to the SectionController class:
 
-/**
- * POST /api/sections - Create new section (standalone)
- */
-async createSection(req, res, next) {
-  try {
-    const result = await this.withTransaction(db, async (tx) => {
-      const { courseId, title, description, imageId, imageUrl, altText, videoId } = req.body;
+  /**
+   * POST /api/sections - Create new section (standalone)
+   */
+  async createSection(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
+        const {
+          courseId,
+          title,
+          description,
+          imageId,
+          imageUrl,
+          altText,
+          videoId,
+        } = req.body;
 
-      const validatedTitle = this.validateRequired(title, "Section title");
-      const validatedCourseId = this.validateRequired(courseId, "Course ID");
+        const validatedTitle = this.validateRequired(title, "Section title");
+        const validatedCourseId = this.validateRequired(courseId, "Course ID");
 
-      // Verify course exists
-      await this.getOrThrow(tx, courses, courses.courseId, validatedCourseId, "Course");
+        // Verify course exists
+        await this.getOrThrow(
+          tx,
+          courses,
+          courses.courseId,
+          validatedCourseId,
+          "Course"
+        );
 
-      const finalImageId = await mediaManager.handleImage(
-        tx,
-        { image_id: imageId, image_url: imageUrl, alt_text: altText },
-        this.imageVideoSchema
-      );
+        const finalImageId = await mediaManager.handleImage(
+          tx,
+          { image_id: imageId, image_url: imageUrl, alt_text: altText },
+          this.imageVideoSchema
+        );
 
-      const [section] = await tx
-        .insert(sections)
-        .values({
-          courseId: validatedCourseId,
-          title: validatedTitle,
-          description: description || null,
-          imageId: finalImageId,
-          videoId: videoId || null,
-        })
-        .returning();
+        const [section] = await tx
+          .insert(sections)
+          .values({
+            courseId: validatedCourseId,
+            title: validatedTitle,
+            description: description || null,
+            imageId: finalImageId,
+            videoId: videoId || null,
+          })
+          .returning();
 
-      return section;
-    });
+        return section;
+      });
 
-    this.success(res, result, null, 201);
-  } catch (error) {
-    this.handleError(error, res, next);
+      this.success(res, result, null, 201);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
   }
-}
 
-/**
- * PUT /api/sections/:sectionId - Update section (standalone)
- */
-async updateSection(req, res, next) {
-  try {
-    const result = await this.withTransaction(db, async (tx) => {
-      const { sectionId } = req.params;
-      const { title, description, imageId, imageUrl, altText, videoId } = req.body;
+  /**
+   * PUT /api/sections/:sectionId - Update section (standalone)
+   */
+  async updateSection(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
+        const { sectionId } = req.params;
+        const { title, description, imageId, imageUrl, altText, videoId } =
+          req.body;
 
-      const existing = await this.getOrThrow(
-        tx,
-        sections,
-        sections.sectionId,
-        sectionId,
-        "Section"
-      );
+        const existing = await this.getOrThrow(
+          tx,
+          sections,
+          sections.sectionId,
+          sectionId,
+          "Section"
+        );
 
-      const currentImageId = await mediaManager.updateImage(
-        tx,
-        existing.imageId,
-        { image_id: imageId, image_url: imageUrl, alt_text: altText },
-        this.imageVideoSchema
-      );
+        const currentImageId = await mediaManager.updateImage(
+          tx,
+          existing.imageId,
+          { image_id: imageId, image_url: imageUrl, alt_text: altText },
+          this.imageVideoSchema
+        );
 
-      const updateFields = { updatedAt: new Date() };
-      if (title !== undefined) updateFields.title = title;
-      if (description !== undefined) updateFields.description = description;
-      if (videoId !== undefined) updateFields.videoId = videoId;
-      if (currentImageId !== undefined) updateFields.imageId = currentImageId;
+        const updateFields = { updatedAt: new Date() };
+        if (title !== undefined) updateFields.title = title;
+        if (description !== undefined) updateFields.description = description;
+        if (videoId !== undefined) updateFields.videoId = videoId;
+        if (currentImageId !== undefined) updateFields.imageId = currentImageId;
 
-      const [updated] = await tx
-        .update(sections)
-        .set(updateFields)
-        .where(eq(sections.sectionId, sectionId))
-        .returning();
+        const [updated] = await tx
+          .update(sections)
+          .set(updateFields)
+          .where(eq(sections.sectionId, sectionId))
+          .returning();
 
-      return updated;
-    });
+        return updated;
+      });
 
-    this.success(res, result);
-  } catch (error) {
-    this.handleError(error, res, next);
+      this.success(res, result);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
   }
-}
 
   /**
    * GET /api/sections/:sectionId/chapters - Get chapters for a section
@@ -303,135 +323,178 @@ async updateSection(req, res, next) {
   }
 
   /**
- * POST /api/sections/:sectionId/chapters - Create chapter within section
- */
-async createSectionChapter(req, res, next) {
-  try {
-    const result = await this.withTransaction(db, async (tx) => {
-      const { sectionId } = req.params;
-      const {
-        chapterNumber,
-        title,
-        description,
-        content,
-        imageId,
-        videoId,
-      } = req.body;
+   * POST /api/sections/:sectionId/chapters - Create chapter within section
+   */
+  async createSectionChapter(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
+        const { sectionId } = req.params;
+        const { chapterNumber, title, description, content, imageId, videoId } =
+          req.body;
 
-      // Verify section exists
-      await this.getOrThrow(tx, sections, sections.sectionId, sectionId, "Section");
+        // Verify section exists
+        await this.getOrThrow(
+          tx,
+          sections,
+          sections.sectionId,
+          sectionId,
+          "Section"
+        );
 
-      // Auto-generate chapter number if not provided
-      let finalChapterNumber = chapterNumber;
-      if (!finalChapterNumber || finalChapterNumber === 0) {
-        finalChapterNumber = await chapterService.getNextChapterNumber(tx, sectionId);
+        // Auto-generate chapter number if not provided
+        let finalChapterNumber = chapterNumber;
+        if (!finalChapterNumber || finalChapterNumber === 0) {
+          finalChapterNumber = await chapterService.getNextChapterNumber(
+            tx,
+            sectionId
+          );
+        }
+
+        const [chapter] = await tx
+          .insert(chapters)
+          .values({
+            sectionId: parseInt(sectionId),
+            chapterNumber: finalChapterNumber,
+            title: title || `Chapter ${finalChapterNumber}`,
+            description: description || null,
+            content: content || null,
+            imageId: imageId || null,
+            videoId: videoId || null,
+            isArchived: false,
+            createdAt: new Date(),
+          })
+          .returning();
+
+        return chapter;
+      });
+
+      this.success(res, result, null, 201);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * PUT /api/sections/:sectionId/chapters/:chapterId - Update chapter within section
+   */
+  async updateSectionChapter(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
+        const { sectionId, chapterId } = req.params;
+        const { chapterNumber, title, description, content, imageId, videoId } =
+          req.body;
+
+        // Verify chapter belongs to section
+        const existing = await tx
+          .select()
+          .from(chapters)
+          .where(eq(chapters.chapterId, chapterId))
+          .limit(1);
+
+        if (!existing[0] || existing[0].sectionId !== parseInt(sectionId)) {
+          this.throwNotFound("Chapter in this section");
+        }
+
+        const updateFields = { updatedAt: new Date() };
+        if (chapterNumber !== undefined)
+          updateFields.chapterNumber = chapterNumber;
+        if (title !== undefined) updateFields.title = title;
+        if (description !== undefined) updateFields.description = description;
+        if (content !== undefined) updateFields.content = content;
+        if (imageId !== undefined) updateFields.imageId = imageId;
+        if (videoId !== undefined) updateFields.videoId = videoId;
+
+        const [updated] = await tx
+          .update(chapters)
+          .set(updateFields)
+          .where(eq(chapters.chapterId, chapterId))
+          .returning();
+
+        return updated;
+      });
+
+      this.success(res, result);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * DELETE /api/sections/:sectionId/chapters/:chapterId - Delete chapter from section
+   */
+  /**
+   * DELETE /api/sections/:sectionId/chapters/:chapterId - Delete chapter from section with scheduled deletion
+   */
+  async deleteSectionChapter(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
+        const { sectionId, chapterId } = req.params;
+
+        // Verify chapter belongs to section
+        const chapter = await tx
+          .select()
+          .from(chapters)
+          .where(eq(chapters.chapterId, chapterId))
+          .limit(1);
+
+        if (!chapter[0] || chapter[0].sectionId !== parseInt(sectionId)) {
+          this.throwNotFound("Chapter in this section");
+        }
+
+        // Use the same deletion mechanism as the main chapter delete
+        const chapterToDelete = chapter[0];
+
+        // Check if chapter has tests or entries
+        const testCount = await this.checkRelatedCount(
+          tx,
+          tests,
+          tests.chapterId,
+          chapterId
+        );
+
+        const entryCount = await this.checkRelatedCount(
+          tx,
+          entries,
+          entries.chapterId,
+          chapterId
+        );
+
+        if (testCount > 0 || entryCount > 0) {
+          throw this.createError(
+            "Cannot delete chapter with existing tests or entries. Delete them first.",
+            400
+          );
+        }
+
+        // Schedule deletion instead of immediate delete
+        const deletedChapter = await mediaManager.deleteWithCascade(
+          tx,
+          chapterToDelete,
+          chapters,
+          chapters.chapterId,
+          chapterId,
+          this.mediaSchema,
+          TimeUntilDeletion
+        );
+
+        return deletedChapter;
+      });
+
+      let message = "Chapter scheduled for deletion in 60 seconds.";
+      const cascaded = [];
+      if (result.image) cascaded.push("image");
+      if (result.video) cascaded.push("video");
+      if (cascaded.length > 0) {
+        message = `Chapter and its exclusive ${cascaded.join(
+          " and "
+        )} scheduled for deletion in 60 seconds.`;
       }
 
-      const [chapter] = await tx
-        .insert(chapters)
-        .values({
-          sectionId: parseInt(sectionId),
-          chapterNumber: finalChapterNumber,
-          title: title || `Chapter ${finalChapterNumber}`,
-          description: description || null,
-          content: content || null,
-          imageId: imageId || null,
-          videoId: videoId || null,
-          isArchived: false,
-          createdAt: new Date(),
-        })
-        .returning();
-
-      return chapter;
-    });
-
-    this.success(res, result, null, 201);
-  } catch (error) {
-    this.handleError(error, res, next);
+      this.success(res, result, message);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
   }
-}
-
-/**
- * PUT /api/sections/:sectionId/chapters/:chapterId - Update chapter within section
- */
-async updateSectionChapter(req, res, next) {
-  try {
-    const result = await this.withTransaction(db, async (tx) => {
-      const { sectionId, chapterId } = req.params;
-      const {
-        chapterNumber,
-        title,
-        description,
-        content,
-        imageId,
-        videoId,
-      } = req.body;
-
-      // Verify chapter belongs to section
-      const existing = await tx
-        .select()
-        .from(chapters)
-        .where(eq(chapters.chapterId, chapterId))
-        .limit(1);
-
-      if (!existing[0] || existing[0].sectionId !== parseInt(sectionId)) {
-        this.throwNotFound("Chapter in this section");
-      }
-
-      const updateFields = { updatedAt: new Date() };
-      if (chapterNumber !== undefined) updateFields.chapterNumber = chapterNumber;
-      if (title !== undefined) updateFields.title = title;
-      if (description !== undefined) updateFields.description = description;
-      if (content !== undefined) updateFields.content = content;
-      if (imageId !== undefined) updateFields.imageId = imageId;
-      if (videoId !== undefined) updateFields.videoId = videoId;
-
-      const [updated] = await tx
-        .update(chapters)
-        .set(updateFields)
-        .where(eq(chapters.chapterId, chapterId))
-        .returning();
-
-      return updated;
-    });
-
-    this.success(res, result);
-  } catch (error) {
-    this.handleError(error, res, next);
-  }
-}
-
-/**
- * DELETE /api/sections/:sectionId/chapters/:chapterId - Delete chapter from section
- */
-async deleteSectionChapter(req, res, next) {
-  try {
-    const result = await this.withTransaction(db, async (tx) => {
-      const { sectionId, chapterId } = req.params;
-
-      // Verify chapter belongs to section
-      const existing = await tx
-        .select()
-        .from(chapters)
-        .where(eq(chapters.chapterId, chapterId))
-        .limit(1);
-
-      if (!existing[0] || existing[0].sectionId !== parseInt(sectionId)) {
-        this.throwNotFound("Chapter in this section");
-      }
-
-      await tx
-        .delete(chapters)
-        .where(eq(chapters.chapterId, chapterId));
-
-      return { deleted: true };
-    });
-
-    this.success(res, result, "Chapter deleted successfully");
-  } catch (error) {
-    this.handleError(error, res, next);
-  }
-}
 }
 
 module.exports = new SectionController();

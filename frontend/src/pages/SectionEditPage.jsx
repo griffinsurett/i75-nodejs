@@ -1,5 +1,5 @@
 // frontend/src/pages/SectionEditPage.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2, AlertCircle, Save, Check } from "lucide-react";
 import { sectionAPI } from "../services/api";
@@ -9,6 +9,7 @@ import SectionEditor from "../components/course/sections/edit/SectionEditor";
 import ChapterEditor from "../components/course/sections/edit/ChapterEditor";
 import useChapterChanges from "../hooks/useChapterChanges";
 import { getDefaultNextChapterNumber } from "../utils/chapterUtils";
+import { useSidebar } from "../context/SidebarContext";
 
 export default function SectionEditPage() {
   const { sectionId } = useParams();
@@ -20,6 +21,26 @@ export default function SectionEditPage() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [sectionChanges, setSectionChanges] = useState(false);
+
+  // Sidebar management
+  const { sidebarOpen, closeSidebar, openSidebar } = useSidebar();
+  const previousSidebarState = useRef(null);
+
+  // Close sidebar on mount and restore previous state on unmount
+  useEffect(() => {
+    // Store the current state
+    previousSidebarState.current = sidebarOpen;
+    
+    // Close the sidebar for this page
+    closeSidebar();
+
+    // Restore previous state when leaving the page
+    return () => {
+      if (previousSidebarState.current) {
+        openSidebar();
+      }
+    };
+  }, []); // Empty dependency array - only run on mount/unmount
 
   // Use the chapter changes hook
   const {

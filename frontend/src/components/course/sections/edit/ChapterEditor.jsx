@@ -1,9 +1,8 @@
 // frontend/src/components/course/sections/edit/ChapterEditor.jsx
 import { useState, useEffect } from 'react';
-import { BookOpen, Trash2, AlertCircle } from 'lucide-react';
+import { BookOpen, Trash2 } from 'lucide-react';
 import { FormField, FormInput, FormTextarea } from '../../../forms';
 import MediaInput from '../../../media/MediaInput';
-import { getNextAvailableChapterNumber } from '../../../../utils/chapterUtils';
 
 export default function ChapterEditor({ 
   sectionId, 
@@ -23,8 +22,6 @@ export default function ChapterEditor({
     imageId: null,
     videoId: null,
   });
-  
-  const [numberWarning, setNumberWarning] = useState('');
 
   // Initialize form data when chapter changes
   useEffect(() => {
@@ -36,42 +33,18 @@ export default function ChapterEditor({
       imageId: chapterData.imageId || null,
       videoId: chapterData.videoId || null,
     });
-    setNumberWarning('');
   }, [chapter]);
 
   const handleFieldChange = (field, value) => {
-    let finalValue = value;
-    
-    // Check for duplicate chapter numbers
+    // Don't allow manual chapter number changes
     if (field === 'chapterNumber') {
-      const newNumber = parseInt(value);
-      if (!isNaN(newNumber) && newNumber > 0) {
-        // Check if this number is already taken
-        const isDuplicate = chapters?.some(ch => {
-          const chData = ch.chapters || ch;
-          return chData.chapterId !== chapterData.chapterId && 
-                 parseInt(chData.chapterNumber) === newNumber;
-        });
-
-        if (isDuplicate) {
-          const nextAvailable = getNextAvailableChapterNumber(
-            chapters, 
-            newNumber, 
-            chapterData.chapterId
-          );
-          setNumberWarning(
-            `Chapter ${newNumber} already exists. Will be changed to ${nextAvailable} when saved.`
-          );
-        } else {
-          setNumberWarning('');
-        }
-      }
+      return;
     }
-
-    setFormData(prev => ({ ...prev, [field]: finalValue }));
+    
+    setFormData(prev => ({ ...prev, [field]: value }));
     
     // Immediately update parent with changes
-    onUpdate({ [field]: finalValue });
+    onUpdate({ [field]: value });
   };
 
   const handleKeyDown = (e) => {
@@ -111,14 +84,6 @@ export default function ChapterEditor({
         </button>
       </div>
 
-      {/* Number Warning */}
-      {numberWarning && (
-        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 rounded-lg text-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />
-          {numberWarning}
-        </div>
-      )}
-
       {/* Form */}
       <div className="bg-bg rounded-xl border border-border-primary p-6 space-y-6">
         {/* Basic Information */}
@@ -131,15 +96,14 @@ export default function ChapterEditor({
             <FormField
               label="Chapter Number"
               required
-              help={numberWarning ? "Number will be auto-adjusted" : undefined}
+              help="Auto-managed"
             >
               <FormInput
                 type="number"
                 value={formData.chapterNumber}
-                onChange={(e) => handleFieldChange('chapterNumber', e.target.value)}
-                placeholder="1"
-                min="1"
-                className={numberWarning ? 'border-yellow-500' : ''}
+                readOnly
+                disabled
+                className="bg-bg2/50 cursor-not-allowed"
               />
             </FormField>
 
