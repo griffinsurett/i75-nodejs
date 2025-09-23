@@ -1,6 +1,6 @@
 // frontend/src/pages/SectionEditPage.jsx
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Loader2, AlertCircle, Save, Check } from "lucide-react";
 import { sectionAPI, chapterAPI } from "../services/api";
 import BackButton from "../components/navigation/BackButton";
@@ -13,6 +13,8 @@ import { useSidebar } from "../context/SidebarContext";
 
 export default function SectionEditPage() {
   const { sectionId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [section, setSection] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [activeTab, setActiveTab] = useState('section');
@@ -22,6 +24,9 @@ export default function SectionEditPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [sectionChanges, setSectionChanges] = useState(false);
   const [restoringChapter, setRestoringChapter] = useState(false);
+
+  // Track if we should block navigation
+  const [isBlocking, setIsBlocking] = useState(false);
 
   // Sidebar management
   const { sidebarOpen, closeSidebar, openSidebar } = useSidebar();
@@ -71,10 +76,6 @@ export default function SectionEditPage() {
         // Initialize chapters - include ALL chapters (active and archived)
         const sectionInfo = sectionData.sections || sectionData;
         const chaptersData = sectionInfo.chapters || [];
-        
-        // If we need to also fetch archived chapters separately (if backend filters them)
-        // You might need to make an additional API call here to get archived chapters
-        // For now assuming backend returns all chapters including archived ones
         
         resetChapters(chaptersData);
         
@@ -310,6 +311,81 @@ export default function SectionEditPage() {
 
   const hasUnsavedChanges = hasChanges() || sectionChanges;
 
+  // Update blocking state when unsaved changes state changes
+  useEffect(() => {
+    setIsBlocking(hasUnsavedChanges);
+  }, [hasUnsavedChanges]);
+
+  // Handle browser navigation (reload, close tab, navigate away)
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges && !saving) {
+        e.preventDefault();
+        // Chrome requires returnValue to be set
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return 'You have unsaved changes. Are you sure you want to leave?';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, saving]);
+
+  // Handle React Router navigation
+  useEffect(() => {
+    if (!isBlocking) return;
+
+    const unblock = (tx) => {
+      if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+        unblock();
+        tx.retry();
+      }
+    };
+
+    // For React Router v6, we need to handle navigation blocking differently
+    // We'll use a custom approach since useBlocker is not available in all versions
+    const handleLocationChange = (e) => {
+      if (hasUnsavedChanges && !saving) {
+        const confirmLeave = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+        if (!confirmLeave) {
+          e.preventDefault();
+          // Push the current location back to prevent navigation
+          window.history.pushState(null, '', location.pathname);
+        }
+      }
+    };
+
+    // Listen for popstate events (browser back/forward)
+    window.addEventListener('popstate', handleLocationChange);
+
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, [isBlocking, hasUnsavedChanges, saving, location.pathname]);
+
+  // Custom BackButton with confirmation
+  const BackButtonWithConfirmation = ({ to, children }) => {
+    const handleClick = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+          navigate(to);
+        }
+      } else {
+        navigate(to);
+      }
+    };
+
+    return (
+      <button
+        onClick={handleClick}
+        className="inline-flex items-center text-primary hover:text-primary/65"
+      >
+        {children}
+      </button>
+    );
+  };
+
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -368,9 +444,11 @@ export default function SectionEditPage() {
       <div className="bg-bg border-b border-border-primary px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <BackButton to={`/courses/${courseId}/sections/${sectionId}`}>
-              Back to Section
-            </BackButton>
+            <BackButtonWithConfirmation to={`/courses/${courseId}/sections/${sectionId}`}>
+              <BackButton to={`/courses/${courseId}/sections/${sectionId}`}>
+                Back to Section
+              </BackButton>
+            </BackButtonWithConfirmation>
             <div>
               <h1 className="text-xl font-bold text-heading">
                 Edit: {sectionData.title}

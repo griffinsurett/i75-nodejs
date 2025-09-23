@@ -92,54 +92,29 @@ body {
   animation: fade-in 0.3s ease-out;
 }
 
-/* Drag and drop animations */
-.draggable-item {
-  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+/* frontend/src/styles/drag-drop.css */
+/* Smooth cursor transitions for drag handles */
+[data-chapter-item] {
+  transition: transform 0.2s ease;
 }
 
-.draggable-item.dragging {
-  opacity: 0.5;
-  transform: scale(0.95);
+/* Prevent text selection during drag */
+[data-chapter-item].dragging {
+  user-select: none;
 }
 
-.draggable-item.drag-over {
-  transform: translateY(2px);
-}
-
-/* Smooth reordering animation */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.chapter-item-enter {
-  animation: slideIn 0.3s ease-out;
-}
-
-/* Drag handle cursor */
-.drag-handle {
+/* Cursor states */
+[data-chapter-item] .cursor-grab {
   cursor: grab;
 }
 
-.drag-handle:active {
+[data-chapter-item] .cursor-grab:active {
   cursor: grabbing;
 }
 
-/* Drop indicator */
-.drop-indicator {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--color-primary);
-  border-radius: 1px;
-  animation: pulse 1s infinite;
+/* Smooth transitions for drop indicator */
+.drop-indicator-line {
+  animation: pulse 1s ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -147,6 +122,6 @@ body {
     opacity: 1;
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.7;
   }
 }
