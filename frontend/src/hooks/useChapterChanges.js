@@ -14,7 +14,11 @@ export default function useChapterChanges(initialChapters = []) {
   const originalOrder = useRef(initialChapters.map(c => (c.chapters || c).chapterId));
 
   function renumberChapters(chaptersList) {
-    return chaptersList.map((chapter, index) => {
+    // Only renumber non-deleted chapters
+    const activeChapters = chaptersList.filter(ch => !ch.pendingDeletion);
+    const deletedChapters = chaptersList.filter(ch => ch.pendingDeletion);
+    
+    const renumberedActive = activeChapters.map((chapter, index) => {
       const newNumber = index + 1;
       const chapterData = chapter.chapters || chapter;
       
@@ -33,10 +37,17 @@ export default function useChapterChanges(initialChapters = []) {
         };
       }
     });
+    
+    // Keep deleted chapters with their original numbers
+    return [...renumberedActive, ...deletedChapters];
   }
 
   function sortChaptersByNumber(chaptersList) {
     return [...chaptersList].sort((a, b) => {
+      // Put deleted chapters at the end
+      if (a.pendingDeletion && !b.pendingDeletion) return 1;
+      if (!a.pendingDeletion && b.pendingDeletion) return -1;
+      
       const aNum = (a.chapters || a).chapterNumber || 0;
       const bNum = (b.chapters || b).chapterNumber || 0;
       return aNum - bNum;
@@ -65,7 +76,7 @@ export default function useChapterChanges(initialChapters = []) {
     const newChapter = {
       ...chapterData,
       chapterId: tempId,
-      chapterNumber: chapters.length + 1,
+      chapterNumber: chapters.filter(ch => !ch.pendingDeletion).length + 1,
       isTemp: true,
     };
 
@@ -74,7 +85,8 @@ export default function useChapterChanges(initialChapters = []) {
         const chData = ch.chapters || ch;
         return chData.title === newChapter.title && 
                chData.chapterNumber === newChapter.chapterNumber &&
-               !ch.isTemp;
+               !ch.isTemp &&
+               !ch.pendingDeletion;
       });
       
       if (exists) {
@@ -83,7 +95,7 @@ export default function useChapterChanges(initialChapters = []) {
       }
       
       const updatedChapters = [...prev, newChapter];
-      return updatedChapters;
+      return renumberChapters(updatedChapters);
     });
     
     setPendingChanges(current => ({
@@ -92,9 +104,8 @@ export default function useChapterChanges(initialChapters = []) {
     }));
 
     return newChapter;
-  }, [chapters.length]);
+  }, [chapters]);
 
-  // NEW: Smart update that handles reordering when chapter number changes
   const updateChapter = useCallback((chapterId, updates) => {
     setChapters(prev => {
       let updatedChapters = [...prev];
@@ -105,12 +116,17 @@ export default function useChapterChanges(initialChapters = []) {
       if (chapterIndex === -1) return prev;
       
       const chapter = updatedChapters[chapterIndex];
+      
+      // Don't allow updates to deleted chapters
+      if (chapter.pendingDeletion) return prev;
+      
       const oldNumber = (chapter.chapters || chapter).chapterNumber;
       
       // If chapter number is being changed, handle smart reordering
       if (updates.chapterNumber !== undefined && updates.chapterNumber !== oldNumber) {
         const newNumber = updates.chapterNumber;
-        const maxNumber = updatedChapters.length;
+        const activeChapters = updatedChapters.filter(ch => !ch.pendingDeletion);
+        const maxNumber = activeChapters.length;
         
         // Clamp the new number to valid range
         const targetNumber = Math.max(1, Math.min(newNumber, maxNumber));
@@ -133,7 +149,7 @@ export default function useChapterChanges(initialChapters = []) {
         updatedChapters = renumberChapters(updatedChapters);
         
         // Mark all non-temp chapters as modified
-        const modifiedChapters = updatedChapters.filter(c => !c.isTemp);
+        const modifiedChapters = updatedChapters.filter(c => !c.isTemp && !c.pendingDeletion);
         
         setPendingChanges(current => {
           const modifiedIds = new Set(current.modified.map(c => (c.chapters || c).chapterId));
@@ -206,29 +222,60 @@ export default function useChapterChanges(initialChapters = []) {
   const deleteChapter = useCallback((chapterId) => {
     setChapters(prev => {
       const chapterToDelete = prev.find(c => (c.chapters || c).chapterId === chapterId);
-      const chapterIndex = prev.findIndex(c => (c.chapters || c).chapterId === chapterId);
       
       if (!chapterToDelete) return prev;
       
-      const filtered = prev.filter(c => (c.chapters || c).chapterId !== chapterId);
-      const renumbered = renumberChapters(filtered);
-      
+      // If it's a temp chapter, remove it immediately
       if (chapterToDelete?.isTemp) {
+        const filtered = prev.filter(c => (c.chapters || c).chapterId !== chapterId);
+        const renumbered = renumberChapters(filtered);
+        
         setPendingChanges(current => ({
           ...current,
           added: current.added.filter(c => c.chapterId !== chapterId)
         }));
-      } else {
-        setPendingChanges(current => ({
-          ...current,
-          deleted: [...current.deleted, chapterToDelete],
-          modified: current.modified.filter(c => (c.chapters || c).chapterId !== chapterId)
-        }));
+        
+        return renumbered;
       }
       
+      // For existing chapters, mark as pending deletion
+      const updatedChapters = prev.map(ch => {
+        if ((ch.chapters || ch).chapterId === chapterId) {
+          return { ...ch, pendingDeletion: true, deletedAt: Date.now() };
+        }
+        return ch;
+      });
+      
+      // Renumber remaining active chapters
+      const renumbered = renumberChapters(updatedChapters);
+      
+      // Track in deleted array
+      setPendingChanges(current => {
+        // Remove from modified if it was there
+        const modified = current.modified.filter(c => (c.chapters || c).chapterId !== chapterId);
+        
+        // Add to deleted if not already there
+        const alreadyDeleted = current.deleted.some(c => (c.chapters || c).chapterId === chapterId);
+        const deleted = alreadyDeleted 
+          ? current.deleted 
+          : [...current.deleted, chapterToDelete];
+        
+        return {
+          ...current,
+          modified,
+          deleted
+        };
+      });
+      
+      // Mark renumbered chapters as modified
       const chaptersToMarkModified = renumbered
-        .slice(chapterIndex)
-        .filter(c => !c.isTemp);
+        .filter(c => !c.isTemp && !c.pendingDeletion)
+        .filter((ch, index) => {
+          const originalIndex = prev.findIndex(
+            original => (original.chapters || original).chapterId === (ch.chapters || ch).chapterId
+          );
+          return originalIndex !== index;
+        });
       
       if (chaptersToMarkModified.length > 0) {
         setPendingChanges(current => {
@@ -258,11 +305,38 @@ export default function useChapterChanges(initialChapters = []) {
     });
   }, []);
 
+  const undoDeleteChapter = useCallback((chapterId) => {
+    setChapters(prev => {
+      const updatedChapters = prev.map(ch => {
+        if ((ch.chapters || ch).chapterId === chapterId) {
+          const { pendingDeletion, deletedAt, ...cleanChapter } = ch;
+          return cleanChapter;
+        }
+        return ch;
+      });
+      
+      // Renumber chapters
+      const renumbered = renumberChapters(updatedChapters);
+      
+      // Update pending changes
+      setPendingChanges(current => ({
+        ...current,
+        deleted: current.deleted.filter(c => (c.chapters || c).chapterId !== chapterId)
+      }));
+      
+      return renumbered;
+    });
+  }, []);
+
   const reorderChapters = useCallback((reorderedChapters) => {
-    const renumbered = renumberChapters(reorderedChapters);
+    // Filter out deleted chapters for reordering
+    const activeChapters = reorderedChapters.filter(ch => !ch.pendingDeletion);
+    const deletedChapters = chapters.filter(ch => ch.pendingDeletion);
+    
+    const renumbered = renumberChapters([...activeChapters, ...deletedChapters]);
     setChapters(renumbered);
     
-    const modifiedChapters = renumbered.filter(c => !c.isTemp);
+    const modifiedChapters = renumbered.filter(c => !c.isTemp && !c.pendingDeletion);
     
     setPendingChanges(prev => {
       const modifiedIds = new Set(prev.modified.map(c => (c.chapters || c).chapterId));
@@ -286,7 +360,7 @@ export default function useChapterChanges(initialChapters = []) {
         reordered: true
       };
     });
-  }, []);
+  }, [chapters]);
 
   const hasChanges = useCallback(() => {
     return pendingChanges.added.length > 0 ||
@@ -305,7 +379,7 @@ export default function useChapterChanges(initialChapters = []) {
     return {
       ...pendingChanges,
       added: uniqueAdded,
-      currentOrder: chapters
+      currentOrder: chapters.filter(ch => !ch.pendingDeletion)
     };
   }, [pendingChanges, chapters]);
 
@@ -315,6 +389,7 @@ export default function useChapterChanges(initialChapters = []) {
     addChapter,
     updateChapter,
     deleteChapter,
+    undoDeleteChapter,
     reorderChapters,
     hasChanges,
     getChanges,

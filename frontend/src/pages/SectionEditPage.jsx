@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2, AlertCircle, Save, Check } from "lucide-react";
-import { sectionAPI } from "../services/api";
+import { sectionAPI, chapterAPI } from "../services/api";
 import BackButton from "../components/navigation/BackButton";
 import ChaptersSidebar from "../components/course/sections/edit/ChaptersSidebar";
 import SectionEditor from "../components/course/sections/edit/SectionEditor";
@@ -21,6 +21,7 @@ export default function SectionEditPage() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [sectionChanges, setSectionChanges] = useState(false);
+  const [restoringChapter, setRestoringChapter] = useState(false);
 
   // Sidebar management
   const { sidebarOpen, closeSidebar, openSidebar } = useSidebar();
@@ -49,25 +50,32 @@ export default function SectionEditPage() {
     addChapter,
     updateChapter,
     deleteChapter,
+    undoDeleteChapter,
     reorderChapters,
     hasChanges,
     getChanges,
     reset: resetChapters
   } = useChapterChanges([]);
 
-  const fetchSectionData = async (keepSelection = false) => {
+  const fetchSectionData = async (keepSelection = false, includeArchived = true) => {
     try {
       setLoading(true);
       setError(null);
 
+      // Get section with all chapters (including archived)
       const response = await sectionAPI.getSection(sectionId);
       if (response.data.success) {
         const sectionData = response.data.data;
         setSection(sectionData);
         
-        // Initialize chapters
+        // Initialize chapters - include ALL chapters (active and archived)
         const sectionInfo = sectionData.sections || sectionData;
         const chaptersData = sectionInfo.chapters || [];
+        
+        // If we need to also fetch archived chapters separately (if backend filters them)
+        // You might need to make an additional API call here to get archived chapters
+        // For now assuming backend returns all chapters including archived ones
+        
         resetChapters(chaptersData);
         
         // Update selected chapter if it exists in the new data
@@ -98,9 +106,12 @@ export default function SectionEditPage() {
             }
           }
         } else if (!keepSelection && chaptersData.length > 0 && !selectedChapter) {
-          // Auto-select first chapter if available and nothing selected
-          setSelectedChapter(chaptersData[0]);
-          setActiveTab('chapter');
+          // Auto-select first active (non-archived) chapter if available
+          const firstActive = chaptersData.find(ch => !(ch.chapters || ch).isArchived);
+          if (firstActive) {
+            setSelectedChapter(firstActive);
+            setActiveTab('chapter');
+          }
         }
       } else {
         throw new Error("Failed to fetch section details");
@@ -121,6 +132,26 @@ export default function SectionEditPage() {
     if (sectionId) fetchSectionData(false);
   }, [sectionId]);
 
+  const handleRestoreArchivedChapter = async (chapter) => {
+    try {
+      setRestoringChapter(true);
+      const chapterData = chapter.chapters || chapter;
+      await chapterAPI.restoreChapter(chapterData.chapterId);
+      
+      // Refresh data after restore
+      await fetchSectionData(true);
+      
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to restore chapter"
+      );
+    } finally {
+      setRestoringChapter(false);
+    }
+  };
+
   const handleSaveAllChanges = async () => {
     try {
       setSaving(true);
@@ -129,11 +160,11 @@ export default function SectionEditPage() {
       const changes = getChanges();
       const promises = [];
 
-      // Delete chapters
+      // DELETE chapters (this triggers scheduled deletion, not just archiving)
       for (const chapter of changes.deleted) {
         const chapterData = chapter.chapters || chapter;
         promises.push(
-          sectionAPI.deleteSectionChapter(sectionId, chapterData.chapterId)
+          chapterAPI.deleteChapter(chapterData.chapterId)
         );
       }
 
@@ -170,9 +201,9 @@ export default function SectionEditPage() {
 
       // Handle reordering if needed
       if (changes.reordered && !changes.added.length) {
-        // Update chapter numbers for all non-temp chapters
+        // Update chapter numbers for all non-temp and non-archived chapters
         const reorderPromises = changes.currentOrder
-          .filter(c => !c.isTemp)
+          .filter(c => !c.isTemp && !(c.chapters || c).isArchived)
           .map((chapter, index) => {
             const chapterData = chapter.chapters || chapter;
             return sectionAPI.updateSectionChapter(
@@ -216,7 +247,9 @@ export default function SectionEditPage() {
   };
 
   const handleChapterCreate = () => {
-    const nextNumber = getDefaultNextChapterNumber(chapters);
+    // Get next chapter number based on active chapters only
+    const activeChapters = chapters.filter(ch => !ch.pendingDeletion && !(ch.chapters || ch).isArchived);
+    const nextNumber = getDefaultNextChapterNumber(activeChapters);
     const newChapter = addChapter({
       chapterNumber: nextNumber,
       title: `Chapter ${nextNumber}`,
@@ -241,12 +274,32 @@ export default function SectionEditPage() {
     }
   };
 
-  const handleChapterDelete = (chapterId) => {
+  const handleChapterDelete = (chapter) => {
+    const chapterId = (chapter.chapters || chapter).chapterId;
     deleteChapter(chapterId);
-    // Clear selection if deleted chapter was selected
+    
+    // If the deleted chapter was selected, clear selection
     if (selectedChapter && (selectedChapter.chapters || selectedChapter).chapterId === chapterId) {
-      setSelectedChapter(null);
-      setActiveTab('section');
+      // Update the selected chapter to show deletion state
+      setSelectedChapter({
+        ...chapter,
+        pendingDeletion: true,
+        deletedAt: Date.now()
+      });
+    }
+  };
+
+  const handleChapterUndoDelete = (chapter) => {
+    const chapterId = (chapter.chapters || chapter).chapterId;
+    undoDeleteChapter(chapterId);
+    
+    // Update selected chapter if it's the one being restored
+    if (selectedChapter && (selectedChapter.chapters || selectedChapter).chapterId === chapterId) {
+      const restoredChapter = chapters.find(c => (c.chapters || c).chapterId === chapterId);
+      if (restoredChapter) {
+        const { pendingDeletion, deletedAt, ...cleanChapter } = restoredChapter;
+        setSelectedChapter(cleanChapter);
+      }
     }
   };
 
@@ -301,6 +354,14 @@ export default function SectionEditPage() {
   const sectionData = section.sections || section;
   const courseId = sectionData.courseId;
 
+  // Count active and scheduled for deletion
+  const activeChapterCount = chapters.filter(ch => !ch.pendingDeletion && !(ch.chapters || ch).isArchived).length;
+  const archivedCount = chapters.filter(ch => (ch.chapters || ch).isArchived).length;
+  const scheduledForDeletionCount = chapters.filter(ch => {
+    const data = ch.chapters || ch;
+    return data.isArchived && (data.purgeAfterAt || data.scheduledDeleteAt);
+  }).length;
+
   return (
     <div className="min-h-screen bg-bg2">
       {/* Header */}
@@ -315,12 +376,29 @@ export default function SectionEditPage() {
                 Edit: {sectionData.title}
               </h1>
               <p className="text-sm text-text/70">
-                {chapters.length} chapter{chapters.length !== 1 ? 's' : ''}
+                {activeChapterCount} active chapter{activeChapterCount !== 1 ? 's' : ''}
+                {pendingChanges.deleted.length > 0 && (
+                  <span className="text-red-600">
+                    {' '}• {pendingChanges.deleted.length} pending deletion
+                  </span>
+                )}
+                {scheduledForDeletionCount > 0 && (
+                  <span className="text-orange-600">
+                    {' '}• {scheduledForDeletionCount} scheduled for deletion
+                  </span>
+                )}
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
+            {restoringChapter && (
+              <div className="flex items-center gap-2 text-blue-600">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Restoring...</span>
+              </div>
+            )}
+            
             {saveSuccess && (
               <div className="flex items-center gap-2 text-green-600 animate-fade-in">
                 <Check className="w-4 h-4" />
@@ -379,6 +457,8 @@ export default function SectionEditPage() {
           onSectionSelect={handleSectionSelect}
           onChapterCreate={handleChapterCreate}
           onChapterDelete={handleChapterDelete}
+          onChapterUndoDelete={handleChapterUndoDelete}
+          onChapterRestoreArchived={handleRestoreArchivedChapter}
           onReorderChapters={reorderChapters}
         />
 
@@ -389,7 +469,7 @@ export default function SectionEditPage() {
               <SectionEditor
                 section={section}
                 onUpdate={handleSectionUpdate}
-                hasUnsavedChanges={sectionChanges}
+                onDataChange={() => setSectionChanges(true)}
               />
             ) : selectedChapter ? (
               <ChapterEditor
@@ -400,10 +480,9 @@ export default function SectionEditPage() {
                   const chapterId = (selectedChapter.chapters || selectedChapter).chapterId;
                   handleChapterUpdate(chapterId, updates);
                 }}
-                onDelete={() => {
-                  const chapterId = (selectedChapter.chapters || selectedChapter).chapterId;
-                  handleChapterDelete(chapterId);
-                }}
+                onDelete={() => handleChapterDelete(selectedChapter)}
+                onUndoDelete={() => handleChapterUndoDelete(selectedChapter)}
+                onRestoreArchived={() => handleRestoreArchivedChapter(selectedChapter)}
                 isTemp={selectedChapter.isTemp}
               />
             ) : (
