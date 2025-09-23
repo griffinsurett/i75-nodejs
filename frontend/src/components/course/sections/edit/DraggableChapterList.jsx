@@ -98,21 +98,10 @@ export default function DraggableChapterList({
 
   const selectedChapterId = selectedChapter ? (selectedChapter.chapters || selectedChapter).chapterId : null;
 
-  // Sort chapters: active chapters by number, then pending deletion, then archived
+  // Sort chapters by chapter number only - don't move deleted/archived to the end
   const sortedChapters = [...chapters].sort((a, b) => {
-    const aData = a.chapters || a;
-    const bData = b.chapters || b;
-    
-    // Archived chapters at the very end
-    if (aData.isArchived && !bData.isArchived) return 1;
-    if (!aData.isArchived && bData.isArchived) return -1;
-    
-    // Pending deletion after active but before archived
-    if (a.pendingDeletion && !b.pendingDeletion && !bData.isArchived) return 1;
-    if (!a.pendingDeletion && b.pendingDeletion && !aData.isArchived) return -1;
-    
-    const aNum = aData.chapterNumber || 0;
-    const bNum = bData.chapterNumber || 0;
+    const aNum = (a.chapters || a).chapterNumber || 0;
+    const bNum = (b.chapters || b).chapterNumber || 0;
     return aNum - bNum;
   });
 
