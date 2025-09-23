@@ -14,7 +14,7 @@ const mediaManager = require("../../shared/utils/mediaManager");
 const BaseController = require("../../shared/utils/baseController");
 const chapterService = require("./chapter.service");
 
-const TimeUntilDeletion = 60000;
+const TimeUntilDeletion = 6000;
 
 class ChapterController extends BaseController {
   constructor() {
@@ -324,15 +324,34 @@ class ChapterController extends BaseController {
    */
   async archiveChapter(req, res, next) {
     try {
-      const { chapterId } = req.params;
-      const updated = await this.archive(
-        db,
-        chapters,
-        chapters.chapterId,
-        chapterId,
-        "Chapter"
-      );
-      this.success(res, updated, "Chapter archived");
+      const result = await this.withTransaction(db, async (tx) => {
+        const { chapterId } = req.params;
+        
+        // Get chapter details before archiving
+        const chapter = await this.getOrThrow(
+          tx,
+          chapters,
+          chapters.chapterId,
+          chapterId,
+          "Chapter"
+        );
+        
+        // Archive the chapter
+        const updated = await this.archive(
+          tx,
+          chapters,
+          chapters.chapterId,
+          chapterId,
+          "Chapter"
+        );
+        
+        // Renumber remaining chapters in the section
+        await chapterService.renumberChapters(tx, chapter.sectionId);
+        
+        return updated;
+      });
+      
+      this.success(res, result, "Chapter archived and remaining chapters renumbered");
     } catch (error) {
       this.handleError(error, res, next);
     }
@@ -343,22 +362,50 @@ class ChapterController extends BaseController {
    */
   async restoreChapter(req, res, next) {
     try {
-      const { chapterId } = req.params;
-      const updated = await this.restore(
-        db,
-        chapters,
-        chapters.chapterId,
-        chapterId,
-        "Chapter"
-      );
-      this.success(res, updated, "Chapter restored");
+      const result = await this.withTransaction(db, async (tx) => {
+        const { chapterId } = req.params;
+        
+        // Get chapter details before restoring
+        const chapter = await this.getOrThrow(
+          tx,
+          chapters,
+          chapters.chapterId,
+          chapterId,
+          "Chapter"
+        );
+        
+        // Restore the chapter
+        const updated = await this.restore(
+          tx,
+          chapters,
+          chapters.chapterId,
+          chapterId,
+          "Chapter"
+        );
+        
+        // Assign it the next available number
+        const nextNumber = await chapterService.getNextChapterNumber(tx, chapter.sectionId);
+        await tx
+          .update(chapters)
+          .set({ 
+            chapterNumber: nextNumber,
+            updatedAt: new Date()
+          })
+          .where(eq(chapters.chapterId, chapterId));
+        
+        updated.chapterNumber = nextNumber;
+        
+        return updated;
+      });
+      
+      this.success(res, result, `Chapter restored as Chapter ${result.chapterNumber}`);
     } catch (error) {
       this.handleError(error, res, next);
     }
   }
 
   /**
-   * DELETE /api/chapters/:chapterId - Delete chapter with automatic cascade
+   * DELETE /api/chapters/:chapterId - Delete chapter with automatic cascade and renumbering
    */
   async deleteChapter(req, res, next) {
     try {
@@ -406,19 +453,19 @@ class ChapterController extends BaseController {
           TimeUntilDeletion
         );
 
-        // Optional: Renumber remaining chapters to maintain sequential order
-        // await chapterService.renumberChapters(tx, chapter.sectionId);
+        // IMPORTANT: Renumber remaining chapters to maintain sequential order
+        await chapterService.renumberChapters(tx, chapter.sectionId);
 
         return deletedChapter;
       });
 
-      let message = "Chapter scheduled for deletion in 60 seconds.";
+      let message = "Chapter scheduled for deletion in 60 seconds. Remaining chapters have been renumbered.";
       const cascaded = [];
       if (result.image) cascaded.push("image");
       if (cascaded.length > 0) {
         message = `Chapter and its exclusive ${cascaded.join(
           " and "
-        )} scheduled for deletion in 60 seconds.`;
+        )} scheduled for deletion in 60 seconds. Remaining chapters have been renumbered.`;
       }
 
       this.success(res, result, message);

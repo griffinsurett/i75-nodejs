@@ -425,76 +425,81 @@ class SectionController extends BaseController {
   /**
    * DELETE /api/sections/:sectionId/chapters/:chapterId - Delete chapter from section with scheduled deletion
    */
-  async deleteSectionChapter(req, res, next) {
-    try {
-      const result = await this.withTransaction(db, async (tx) => {
-        const { sectionId, chapterId } = req.params;
+ /**
+ * DELETE /api/sections/:sectionId/chapters/:chapterId - Delete chapter from section with renumbering
+ */
+async deleteSectionChapter(req, res, next) {
+  try {
+    const result = await this.withTransaction(db, async (tx) => {
+      const { sectionId, chapterId } = req.params;
 
-        // Verify chapter belongs to section
-        const chapter = await tx
-          .select()
-          .from(chapters)
-          .where(eq(chapters.chapterId, chapterId))
-          .limit(1);
+      // Verify chapter belongs to section
+      const chapter = await tx
+        .select()
+        .from(chapters)
+        .where(eq(chapters.chapterId, chapterId))
+        .limit(1);
 
-        if (!chapter[0] || chapter[0].sectionId !== parseInt(sectionId)) {
-          this.throwNotFound("Chapter in this section");
-        }
-
-        // Use the same deletion mechanism as the main chapter delete
-        const chapterToDelete = chapter[0];
-
-        // Check if chapter has tests or entries
-        const testCount = await this.checkRelatedCount(
-          tx,
-          tests,
-          tests.chapterId,
-          chapterId
-        );
-
-        const entryCount = await this.checkRelatedCount(
-          tx,
-          entries,
-          entries.chapterId,
-          chapterId
-        );
-
-        if (testCount > 0 || entryCount > 0) {
-          throw this.createError(
-            "Cannot delete chapter with existing tests or entries. Delete them first.",
-            400
-          );
-        }
-
-        // Schedule deletion instead of immediate delete
-        const deletedChapter = await mediaManager.deleteWithCascade(
-          tx,
-          chapterToDelete,
-          chapters,
-          chapters.chapterId,
-          chapterId,
-          this.mediaSchema,
-          TimeUntilDeletion
-        );
-
-        return deletedChapter;
-      });
-
-      let message = "Chapter scheduled for deletion in 60 seconds.";
-      const cascaded = [];
-      if (result.image) cascaded.push("image");
-      if (result.video) cascaded.push("video");
-      if (cascaded.length > 0) {
-        message = `Chapter and its exclusive ${cascaded.join(
-          " and "
-        )} scheduled for deletion in 60 seconds.`;
+      if (!chapter[0] || chapter[0].sectionId !== parseInt(sectionId)) {
+        this.throwNotFound("Chapter in this section");
       }
 
-      this.success(res, result, message);
-    } catch (error) {
-      this.handleError(error, res, next);
+      const chapterToDelete = chapter[0];
+
+      // Check if chapter has tests or entries
+      const testCount = await this.checkRelatedCount(
+        tx,
+        tests,
+        tests.chapterId,
+        chapterId
+      );
+
+      const entryCount = await this.checkRelatedCount(
+        tx,
+        entries,
+        entries.chapterId,
+        chapterId
+      );
+
+      if (testCount > 0 || entryCount > 0) {
+        throw this.createError(
+          "Cannot delete chapter with existing tests or entries. Delete them first.",
+          400
+        );
+      }
+
+      // Schedule deletion instead of immediate delete
+      const deletedChapter = await mediaManager.deleteWithCascade(
+        tx,
+        chapterToDelete,
+        chapters,
+        chapters.chapterId,
+        chapterId,
+        this.mediaSchema,
+        TimeUntilDeletion
+      );
+
+      // IMPORTANT: Renumber remaining chapters in the section
+      await chapterService.renumberChapters(tx, parseInt(sectionId));
+
+      return deletedChapter;
+    });
+
+    let message = "Chapter scheduled for deletion in 60 seconds. Remaining chapters have been renumbered.";
+    const cascaded = [];
+    if (result.image) cascaded.push("image");
+    if (result.video) cascaded.push("video");
+    if (cascaded.length > 0) {
+      message = `Chapter and its exclusive ${cascaded.join(
+        " and "
+      )} scheduled for deletion in 60 seconds. Remaining chapters have been renumbered.`;
     }
+
+    this.success(res, result, message);
+  } catch (error) {
+    this.handleError(error, res, next);
   }
+}
 }
 
 module.exports = new SectionController();
