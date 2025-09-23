@@ -49,18 +49,18 @@ export default function SectionEditPage() {
   }, []); // Empty dependency array - only run on mount/unmount
 
   // Use the chapter changes hook
-  const {
-    chapters,
-    pendingChanges,
-    addChapter,
-    updateChapter,
-    deleteChapter,
-    undoDeleteChapter,
-    reorderChapters,
-    hasChanges,
-    getChanges,
-    reset: resetChapters
-  } = useChapterChanges([]);
+const {
+  chapters,
+  pendingChanges,
+  addChapter,
+  updateChapter,
+  deleteChapter,
+  undoDeleteChapter,
+  reorderChapters,
+  hasChanges,
+  getChanges,
+  reset: resetChapters
+} = useChapterChanges([]);
 
   const fetchSectionData = async (keepSelection = false, includeArchived = true) => {
     try {
