@@ -36,8 +36,17 @@ export default function ChapterEditor({
   }, [chapter]);
 
   const handleFieldChange = (field, value) => {
-    // Don't allow manual chapter number changes
+    // Allow chapter number changes now
     if (field === 'chapterNumber') {
+      const numValue = parseInt(value, 10);
+      if (!isNaN(numValue) && numValue > 0) {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        // Immediately update parent with the number change
+        onUpdate({ chapterNumber: numValue });
+      } else if (value === '') {
+        // Allow clearing the field for typing
+        setFormData(prev => ({ ...prev, [field]: value }));
+      }
       return;
     }
     
@@ -96,14 +105,15 @@ export default function ChapterEditor({
             <FormField
               label="Chapter Number"
               required
-              help="Auto-managed"
+              help="You can also drag to reorder"
             >
               <FormInput
                 type="number"
                 value={formData.chapterNumber}
-                readOnly
-                disabled
-                className="bg-bg2/50 cursor-not-allowed"
+                onChange={(e) => handleFieldChange('chapterNumber', e.target.value)}
+                min="1"
+                placeholder="Chapter number"
+                className="text-lg"
               />
             </FormField>
 

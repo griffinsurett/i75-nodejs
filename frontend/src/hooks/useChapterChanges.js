@@ -37,12 +37,26 @@ export default function useChapterChanges(initialChapters = []) {
     });
   }
 
-  // Reset to initial state
+  // Sort chapters by number
+  function sortChaptersByNumber(chaptersList) {
+    return [...chaptersList].sort((a, b) => {
+      const aNum = (a.chapters || a).chapterNumber || 0;
+      const bNum = (b.chapters || b).chapterNumber || 0;
+      return aNum - bNum;
+    });
+  }
+
+  // Reset to initial state - IMPORTANT: This clears ALL state including temp chapters
   const reset = useCallback((newChapters) => {
-    const renumbered = renumberChapters(newChapters);
+    // Filter out any temp chapters from the new chapters to prevent duplicates
+    const cleanChapters = newChapters.filter(ch => !ch.isTemp);
+    const renumbered = renumberChapters(cleanChapters);
+    
     setChapters(renumbered);
-    originalChapters.current = newChapters;
-    originalOrder.current = newChapters.map(c => (c.chapters || c).chapterId);
+    originalChapters.current = cleanChapters;
+    originalOrder.current = cleanChapters.map(c => (c.chapters || c).chapterId);
+    
+    // Clear ALL pending changes
     setPendingChanges({
       added: [],
       modified: [],
@@ -55,68 +69,83 @@ export default function useChapterChanges(initialChapters = []) {
   const addChapter = useCallback((chapterData) => {
     const tempId = `temp_${Date.now()}_${Math.random()}`;
     
-    setChapters(prev => {
-      const newChapter = {
-        ...chapterData,
-        chapterId: tempId,
-        chapterNumber: prev.length + 1, // Always add at the end
-        isTemp: true, // Flag to identify unsaved chapters
-      };
-
-      const updatedChapters = [...prev, newChapter];
-      
-      setPendingChanges(current => ({
-        ...current,
-        added: [...current.added, newChapter]
-      }));
-
-      return updatedChapters;
-    });
-
-    return {
+    const newChapter = {
       ...chapterData,
       chapterId: tempId,
       chapterNumber: chapters.length + 1,
-      isTemp: true
+      isTemp: true, // Flag to identify unsaved chapters
     };
+
+    setChapters(prev => {
+      // Check if a chapter with the same title and number already exists
+      const exists = prev.some(ch => {
+        const chData = ch.chapters || ch;
+        return chData.title === newChapter.title && 
+               chData.chapterNumber === newChapter.chapterNumber &&
+               !ch.isTemp; // Only check against non-temp chapters
+      });
+      
+      if (exists) {
+        console.warn('Chapter already exists, skipping addition');
+        return prev;
+      }
+      
+      const updatedChapters = [...prev, newChapter];
+      return updatedChapters;
+    });
+    
+    setPendingChanges(current => ({
+      ...current,
+      added: [...current.added, newChapter]
+    }));
+
+    return newChapter;
   }, [chapters.length]);
 
-  // Update a chapter (locally only)
+  // Update a chapter (locally only) - INCLUDING chapter number changes
   const updateChapter = useCallback((chapterId, updates) => {
-    setChapters(prev => prev.map(chapter => {
-      const chapterData = chapter.chapters || chapter;
-      if (chapterData.chapterId === chapterId) {
-        // Don't allow manual chapter number updates through this method
-        const { chapterNumber, ...safeUpdates } = updates;
-        
-        const updatedChapter = {
-          ...chapter,
-          ...(chapter.chapters ? { chapters: { ...chapterData, ...safeUpdates } } : safeUpdates)
-        };
-        
-        // Track as modified if it's not a temp chapter
-        if (!chapter.isTemp) {
-          setPendingChanges(prev => ({
-            ...prev,
-            modified: [
-              ...prev.modified.filter(c => (c.chapters || c).chapterId !== chapterId),
-              updatedChapter
-            ]
-          }));
-        } else {
-          // Update in added array if it's a temp chapter
-          setPendingChanges(prev => ({
-            ...prev,
-            added: prev.added.map(c => 
-              c.chapterId === chapterId ? updatedChapter : c
-            )
-          }));
+    setChapters(prev => {
+      const updatedChapters = prev.map(chapter => {
+        const chapterData = chapter.chapters || chapter;
+        if (chapterData.chapterId === chapterId) {
+          const updatedChapter = {
+            ...chapter,
+            ...(chapter.chapters ? { 
+              chapters: { ...chapterData, ...updates } 
+            } : updates)
+          };
+          
+          // Track as modified if it's not a temp chapter
+          if (!chapter.isTemp) {
+            setPendingChanges(current => ({
+              ...current,
+              modified: [
+                ...current.modified.filter(c => (c.chapters || c).chapterId !== chapterId),
+                updatedChapter
+              ]
+            }));
+          } else {
+            // Update in added array if it's a temp chapter
+            setPendingChanges(current => ({
+              ...current,
+              added: current.added.map(c => 
+                c.chapterId === chapterId ? updatedChapter : c
+              )
+            }));
+          }
+          
+          return updatedChapter;
         }
-        
-        return updatedChapter;
+        return chapter;
+      });
+      
+      // If chapter number was updated, re-sort the chapters
+      if (updates.chapterNumber !== undefined) {
+        return sortChaptersByNumber(updatedChapters);
       }
-      return chapter;
-    }));
+      
+      return updatedChapters;
+    });
   }, []);
 
   // Delete a chapter (mark for deletion if existing, remove if temp)
@@ -182,49 +211,38 @@ export default function useChapterChanges(initialChapters = []) {
     });
   }, []);
 
-  // Reorder chapters
+  // Reorder chapters (for drag and drop)
   const reorderChapters = useCallback((reorderedChapters) => {
     // Renumber based on new order
     const renumbered = renumberChapters(reorderedChapters);
     setChapters(renumbered);
     
-    // Check if order actually changed from original
-    const newOrder = renumbered.map(c => (c.chapters || c).chapterId);
-    const orderChanged = JSON.stringify(newOrder) !== JSON.stringify(originalOrder.current);
+    // Mark all non-temp chapters as modified since their numbers changed
+    const modifiedChapters = renumbered.filter(c => !c.isTemp);
     
-    // Mark all non-temp chapters as modified if order changed
-    if (orderChanged) {
-      const modifiedChapters = renumbered.filter(c => !c.isTemp);
+    setPendingChanges(prev => {
+      const modifiedIds = new Set(prev.modified.map(c => (c.chapters || c).chapterId));
+      const newModified = [...prev.modified];
       
-      setPendingChanges(prev => {
-        const modifiedIds = new Set(prev.modified.map(c => (c.chapters || c).chapterId));
-        const newModified = [...prev.modified];
-        
-        modifiedChapters.forEach(chapter => {
-          const chapterId = (chapter.chapters || chapter).chapterId;
-          if (!modifiedIds.has(chapterId)) {
-            newModified.push(chapter);
-          } else {
-            // Update existing modified entry
-            const index = newModified.findIndex(c => (c.chapters || c).chapterId === chapterId);
-            if (index !== -1) {
-              newModified[index] = chapter;
-            }
+      modifiedChapters.forEach(chapter => {
+        const chapterId = (chapter.chapters || chapter).chapterId;
+        if (!modifiedIds.has(chapterId)) {
+          newModified.push(chapter);
+        } else {
+          // Update existing modified entry
+          const index = newModified.findIndex(c => (c.chapters || c).chapterId === chapterId);
+          if (index !== -1) {
+            newModified[index] = chapter;
           }
-        });
-        
-        return {
-          ...prev,
-          modified: newModified,
-          reordered: true
-        };
+        }
       });
-    } else {
-      setPendingChanges(prev => ({
+      
+      return {
         ...prev,
-        reordered: false
-      }));
-    }
+        modified: newModified,
+        reordered: true
+      };
+    });
   }, []);
 
   // Check if there are any unsaved changes
@@ -235,10 +253,18 @@ export default function useChapterChanges(initialChapters = []) {
            pendingChanges.reordered;
   }, [pendingChanges]);
 
-  // Get all changes for saving
+  // Get all changes for saving - filtering out duplicates
   const getChanges = useCallback(() => {
+    // Filter out any duplicate temp chapters before returning
+    const uniqueAdded = pendingChanges.added.filter((chapter, index, self) => 
+      index === self.findIndex(ch => 
+        ch.title === chapter.title && ch.chapterNumber === chapter.chapterNumber
+      )
+    );
+    
     return {
       ...pendingChanges,
+      added: uniqueAdded,
       currentOrder: chapters
     };
   }, [pendingChanges, chapters]);
