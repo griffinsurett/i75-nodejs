@@ -2,18 +2,14 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { instructorAPI } from "../../services/api";
-import {
-  User,
-  Loader2,
-  AlertCircle,
-  Mail,
-  BookOpen,
-} from "lucide-react";
+import { User, Mail, BookOpen } from "lucide-react";
 import EditActions from "../archive/EditActions";
 import ArchiveBadge from "../archive/ArchiveBadge";
 import { formatDate } from "../../utils/formatDate";
 import BackButton from "../navigation/BackButton";
 import { Link } from "react-router-dom";
+import PageLoadingState from "../common/PageLoadingState";
+import PageErrorState from "../common/PageErrorState";
 
 const InstructorDetail = () => {
   const { instructorId } = useParams();
@@ -50,26 +46,11 @@ const InstructorDetail = () => {
   }, [instructorId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-2 text-text/70">Loading instructor details...</span>
-      </div>
-    );
+    return <PageLoadingState message="Loading instructor details..." />;
   }
 
   if (error) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center min-h-64 text-red-600">
-          <AlertCircle className="w-6 h-6 mr-2" />
-          <span>{error}</span>
-        </div>
-        <div className="mt-4 text-center">
-          <BackButton to="/instructors">Back to Instructors</BackButton>
-        </div>
-      </div>
-    );
+    return <PageErrorState error={error} backUrl="/instructors" backLabel="Back to Instructors" />;
   }
 
   if (!instructor) {

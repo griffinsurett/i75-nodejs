@@ -1,12 +1,14 @@
 // frontend/src/components/instructor/InstructorList.jsx
 import { useNavigate } from "react-router-dom";
 import { instructorAPI } from "../../services/api";
-import { Loader2, AlertCircle, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import ActiveArchivedTabs from "../archive/ActiveArchivedTabs";
 import ArchivedNotice from "../archive/ArchivedNotice";
 import useArchiveList from "../archive/hooks/useArchiveList";
 import InstructorCard from "./InstructorCard";
 import InstructorEmptyState from "./InstructorEmptyState";
+import PageLoadingState from "../common/PageLoadingState";
+import PageErrorState from "../common/PageErrorState";
 
 const InstructorList = () => {
   const navigate = useNavigate();
@@ -24,21 +26,11 @@ const InstructorList = () => {
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading instructors...</span>
-      </div>
-    );
+    return <PageLoadingState message="Loading instructors..." />;
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-64 text-red-600">
-        <AlertCircle className="w-6 h-6 mr-2" />
-        <span>{error}</span>
-      </div>
-    );
+    return <PageErrorState error={error} />;
   }
 
   const handleAddInstructor = () => navigate("/instructors/new");

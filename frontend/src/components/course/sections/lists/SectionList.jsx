@@ -1,13 +1,15 @@
-// frontend/src/components/section/SectionList.jsx
+// frontend/src/components/course/sections/lists/SectionList.jsx
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { sectionAPI } from "../../../../services/api";
-import { Loader2, AlertCircle, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import ActiveArchivedTabs from "../../../archive/ActiveArchivedTabs";
 import ArchivedNotice from "../../../archive/ArchivedNotice";
 import useArchiveViewParam from "../../../archive/hooks/useArchiveViewParam";
 import SectionCard from "../cards/SectionCard";
 import SectionEmptyState from "../detail/SectionEmptyState";
+import PageLoadingState from "../../../common/PageLoadingState";
+import PageErrorState from "../../../common/PageErrorState";
 
 const SectionList = () => {
   const navigate = useNavigate();
@@ -40,21 +42,11 @@ const SectionList = () => {
   }, [fetchSections]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading sections...</span>
-      </div>
-    );
+    return <PageLoadingState message="Loading sections..." />;
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-64 text-red-600">
-        <AlertCircle className="w-6 h-6 mr-2" />
-        <span>{error}</span>
-      </div>
-    );
+    return <PageErrorState error={error} />;
   }
 
   const isArchivedView = view === "archived";

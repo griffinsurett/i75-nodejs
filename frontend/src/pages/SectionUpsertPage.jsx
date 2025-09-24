@@ -1,10 +1,12 @@
 // frontend/src/pages/SectionUpsertPage.jsx
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
-import { Edit, Plus, Loader2, AlertCircle } from "lucide-react";
+import { Edit, Plus } from "lucide-react";
 import { sectionAPI } from "../services/api";
 import SectionForm from "../components/course/sections/forms/SectionForm";
 import BackButton from "../components/navigation/BackButton";
+import PageLoadingState from "../components/common/PageLoadingState";
+import PageErrorState from "../components/common/PageErrorState";
 
 export default function SectionUpsertPage() {
   const { sectionId } = useParams();
@@ -57,25 +59,16 @@ export default function SectionUpsertPage() {
   };
 
   if (isEdit && loading) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center gap-2 text-text/70">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Loading…</span>
-        </div>
-      </div>
-    );
+    return <PageLoadingState message="Loading section..." />;
   }
 
   if (isEdit && (err || !section)) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center text-red-600 mb-4">
-          <AlertCircle className="w-5 h-5 mr-2" />
-          <span>{err || "Section not found"}</span>
-        </div>
-        <BackButton to="/sections">Back to Sections</BackButton>
-      </div>
+      <PageErrorState 
+        error={err || "Section not found"} 
+        backUrl="/sections" 
+        backLabel="Back to Sections" 
+      />
     );
   }
 

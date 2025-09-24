@@ -1,12 +1,14 @@
-// frontend/src/components/course/sections/SectionDetail.jsx
+// frontend/src/components/course/sections/detail/SectionDetail.jsx
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { sectionAPI } from "../../../../services/api";
-import { FileText, Loader2, AlertCircle, Edit, Settings } from "lucide-react";
+import { FileText } from "lucide-react";
 import EditActions from "../../../archive/EditActions";
 import SectionHeader from "./SectionHeader";
 import SectionChaptersPreview from "./SectionChaptersPreview";
 import BackButton from "../../../navigation/BackButton";
+import PageLoadingState from "../../../common/PageLoadingState";
+import PageErrorState from "../../../common/PageErrorState";
 
 const SectionDetail = () => {
   const { courseId, sectionId } = useParams();
@@ -43,25 +45,16 @@ const SectionDetail = () => {
   }, [sectionId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-2 text-text/70">Loading section details...</span>
-      </div>
-    );
+    return <PageLoadingState message="Loading section details..." />;
   }
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center min-h-64 text-red-600">
-          <AlertCircle className="w-6 h-6 mr-2" />
-          <span>{error}</span>
-        </div>
-        <div className="mt-4 text-center">
-          <BackButton to={`/courses/${courseId}`}>Back to Course</BackButton>
-        </div>
-      </div>
+      <PageErrorState 
+        error={error} 
+        backUrl={`/courses/${courseId}`} 
+        backLabel="Back to Course" 
+      />
     );
   }
 

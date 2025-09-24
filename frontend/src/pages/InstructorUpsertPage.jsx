@@ -1,9 +1,12 @@
 // frontend/src/pages/InstructorUpsertPage.jsx
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Edit, Plus, Loader2, AlertCircle } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { Edit, Plus } from "lucide-react";
 import { instructorAPI } from "../services/api";
 import InstructorForm from "../components/instructor/InstructorForm";
+import BackButton from "../components/navigation/BackButton";
+import PageLoadingState from "../components/common/PageLoadingState";
+import PageErrorState from "../components/common/PageErrorState";
 
 export default function InstructorUpsertPage() {
   const { instructorId } = useParams();
@@ -31,44 +34,25 @@ export default function InstructorUpsertPage() {
   }, [isEdit, instructorId]);
 
   if (isEdit && loading) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center gap-2 text-text/70">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Loading…</span>
-        </div>
-      </div>
-    );
+    return <PageLoadingState message="Loading instructor..." />;
   }
 
   if (isEdit && (err || !instructor)) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center text-red-600 mb-4">
-          <AlertCircle className="w-5 h-5 mr-2" />
-          <span>{err || "Instructor not found"}</span>
-        </div>
-        <Link
-          to="/instructors"
-          className="inline-flex items-center text-primary hover:text-primary/65"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Instructors
-        </Link>
-      </div>
+      <PageErrorState 
+        error={err || "Instructor not found"} 
+        backUrl="/instructors" 
+        backLabel="Back to Instructors" 
+      />
     );
   }
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <Link
-          to={isEdit ? `/instructors/${instructorId}` : "/instructors"}
-          className="inline-flex items-center text-primary hover:text-primary/65"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+        <BackButton to={isEdit ? `/instructors/${instructorId}` : "/instructors"}>
           {isEdit ? "Back to Profile" : "Back to Instructors"}
-        </Link>
+        </BackButton>
       </div>
 
       <div className="bg-bg rounded-lg shadow-lg p-6">

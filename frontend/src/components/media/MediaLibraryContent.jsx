@@ -1,7 +1,6 @@
 // frontend/src/components/media/MediaLibraryContent.jsx
 import { useState, useEffect, useRef } from "react";
 import { imageAPI, videoAPI } from "../../services/api";
-import { Loader2, AlertCircle } from "lucide-react";
 import MediaControls from "./MediaControls";
 import MediaCard from "./MediaCard";
 import MediaListItem from "./MediaListItem";
@@ -9,12 +8,17 @@ import MediaUploader from "./MediaUploader";
 import ArchivedNotice from "../archive/ArchivedNotice";
 import SearchInput from "../search/SearchInput";
 import { useSearch } from "../search/hooks/useSearch";
+import useSelectionMode from "../../hooks/useSelectionMode";
+import useBulkOperations from "../../hooks/useBulkOperations";
+import BulkActionsBar from "../selection/BulkActionsBar";
+import PageLoadingState from "../common/PageLoadingState";
+import PageErrorState from "../common/PageErrorState";
 
 export default function MediaLibraryContent({
   onSelectionChange,
-  selectionMode = false,
+  selectionMode: externalSelectionMode = false,
   allowMultiple = false,
-  selectedItems = new Set(),
+  selectedItems: externalSelectedItems = new Set(),
   mediaTypeFilter = 'all',
   showArchived = false,
   showUploader = false,
@@ -35,15 +39,31 @@ export default function MediaLibraryContent({
   const [error, setError] = useState(externalError);
   const [viewMode, setViewMode] = useState(compact ? "grid" : "grid");
 
-   // Add the render counter here
-  const renderCount = useRef(0);
-  useEffect(() => {
-    renderCount.current += 1;
-    console.log('[MediaLibraryContent] Render count:', renderCount.current);
-  });
+  // Use selection mode hook if not controlled externally
+  const internalSelection = useSelectionMode();
+  const {
+    loading: bulkLoading,
+    error: bulkError,
+    executeBulkOperation
+  } = useBulkOperations();
+
+  // Use external or internal selection state
+  const selectionMode = externalSelectionMode || internalSelection.selectionMode;
+  const selectedItems = externalSelectedItems.size > 0 ? externalSelectedItems : internalSelection.selectedItems;
+  const toggleItemSelection = onSelectionChange ? 
+    (id) => {
+      const newSelection = new Set(selectedItems);
+      if (newSelection.has(id)) {
+        newSelection.delete(id);
+      } else {
+        if (!allowMultiple) newSelection.clear();
+        newSelection.add(id);
+      }
+      onSelectionChange(newSelection);
+    } : internalSelection.toggleItemSelection;
 
   // Determine if we're in controlled mode (data provided externally)
-const isControlledMode = initialImages !== null && initialVideos !== null;
+  const isControlledMode = initialImages !== null && initialVideos !== null;
 
   // Prepare media data for search
   const allMedia = [
@@ -167,35 +187,71 @@ const isControlledMode = initialImages !== null && initialVideos !== null;
     }
   }, [showArchived, showUploader, mediaTypeFilter]); // Don't include isControlledMode in deps
 
-  const toggleItemSelection = (itemId) => {
-    const newSelection = new Set(selectedItems);
-    
-    if (!allowMultiple) {
-      newSelection.clear();
-      newSelection.add(itemId);
-    } else {
-      if (newSelection.has(itemId)) {
-        newSelection.delete(itemId);
+  // Bulk operations handlers
+  const handleBulkArchive = async () => {
+    const operation = async (id) => {
+      const item = filteredMedia.find(m => (m.imageId || m.videoId) === id);
+      if (item?.type === 'video') {
+        return videoAPI.archiveVideo(id);
       } else {
-        newSelection.add(itemId);
+        return imageAPI.archiveImage(id);
       }
-    }
+    };
+
+    await executeBulkOperation(selectedItems, operation, () => {
+      if (isControlledMode && onRefresh) {
+        onRefresh();
+      } else {
+        fetchMedia();
+      }
+      if (onSelectionChange) {
+        onSelectionChange(new Set());
+      } else {
+        internalSelection.clearSelection();
+      }
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedItems.size} items permanently?`)) return;
     
-    if (onSelectionChange) {
-      onSelectionChange(newSelection);
-    }
+    const operation = async (id) => {
+      const item = filteredMedia.find(m => (m.imageId || m.videoId) === id);
+      if (item?.type === 'video') {
+        return videoAPI.deleteVideo(id);
+      } else {
+        return imageAPI.deleteImage(id);
+      }
+    };
+
+    await executeBulkOperation(selectedItems, operation, () => {
+      if (isControlledMode && onRefresh) {
+        onRefresh();
+      } else {
+        fetchMedia();
+      }
+      if (onSelectionChange) {
+        onSelectionChange(new Set());
+      } else {
+        internalSelection.clearSelection();
+      }
+    });
   };
 
   const selectAll = () => {
     const allIds = filteredMedia.map(item => item.imageId || item.videoId);
     if (onSelectionChange) {
       onSelectionChange(new Set(allIds));
+    } else {
+      internalSelection.selectAll(allIds);
     }
   };
 
   const clearSelection = () => {
     if (onSelectionChange) {
       onSelectionChange(new Set());
+    } else {
+      internalSelection.clearSelection();
     }
   };
 
@@ -212,21 +268,11 @@ const isControlledMode = initialImages !== null && initialVideos !== null;
   };
 
   if (loading && !showUploader) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-2 text-text/70">Loading media library...</span>
-      </div>
-    );
+    return <PageLoadingState message="Loading media library..." />;
   }
 
   if (error && !showUploader) {
-    return (
-      <div className="flex items-center justify-center min-h-64 text-red-600">
-        <AlertCircle className="w-6 h-6 mr-2" />
-        <span>{error}</span>
-      </div>
-    );
+    return <PageErrorState error={error} />;
   }
 
   if (showUploader) {
@@ -236,6 +282,26 @@ const isControlledMode = initialImages !== null && initialVideos !== null;
   return (
     <div className="space-y-6">
       {showArchived && <ArchivedNotice />}
+
+      {/* Bulk Actions Bar */}
+      {selectionMode && selectedItems.size > 0 && (
+        <BulkActionsBar
+          selectedCount={selectedItems.size}
+          totalCount={filteredMedia.length}
+          onSelectAll={selectAll}
+          onClearSelection={clearSelection}
+          onArchive={showArchived ? null : handleBulkArchive}
+          onDelete={handleBulkDelete}
+          archiveLabel="Archive Selected"
+        />
+      )}
+
+      {/* Error from bulk operations */}
+      {bulkError && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">
+          {bulkError}
+        </div>
+      )}
 
       {/* Media Controls */}
       <MediaControls

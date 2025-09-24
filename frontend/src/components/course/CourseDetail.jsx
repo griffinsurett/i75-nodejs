@@ -2,11 +2,13 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { courseAPI } from "../../services/api";
-import { BookOpen, Loader2, AlertCircle } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import EditActions from "../archive/EditActions";
 import CourseHeader from "./CourseHeader";
 import CourseSections from "../../components/course/sections/lists/CourseSections";
 import BackButton from "../navigation/BackButton";
+import PageLoadingState from "../common/PageLoadingState";
+import PageErrorState from "../common/PageErrorState";
 
 const CourseDetail = () => {
   const { courseId } = useParams();
@@ -53,26 +55,11 @@ const CourseDetail = () => {
   }, [courseId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-2 text-text/70">Loading course details...</span>
-      </div>
-    );
+    return <PageLoadingState message="Loading course details..." />;
   }
 
   if (error) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center min-h-64 text-red-600">
-          <AlertCircle className="w-6 h-6 mr-2" />
-          <span>{error}</span>
-        </div>
-        <div className="mt-4 text-center">
-          <BackButton to="/courses">Back to Courses</BackButton>
-        </div>
-      </div>
-    );
+    return <PageErrorState error={error} backUrl="/courses" backLabel="Back to Courses" />;
   }
 
   if (!course) {

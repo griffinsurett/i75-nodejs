@@ -1,12 +1,14 @@
 // frontend/src/components/course/CourseList.jsx
 import { useNavigate } from "react-router-dom";
 import { courseAPI } from "../../services/api";
-import { Loader2, AlertCircle, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import ActiveArchivedTabs from "../archive/ActiveArchivedTabs";
 import ArchivedNotice from "../archive/ArchivedNotice";
 import useArchiveList from "../archive/hooks/useArchiveList";
 import CourseCard from "./CourseCard";
 import CourseEmptyState from "./CourseEmptyState";
+import PageLoadingState from "../common/PageLoadingState";
+import PageErrorState from "../common/PageErrorState";
 
 const CourseList = () => {
   const navigate = useNavigate();
@@ -24,21 +26,11 @@ const CourseList = () => {
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading courses...</span>
-      </div>
-    );
+    return <PageLoadingState message="Loading courses..." />;
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-64 text-red-600">
-        <AlertCircle className="w-6 h-6 mr-2" />
-        <span>{error}</span>
-      </div>
-    );
+    return <PageErrorState error={error} />;
   }
 
   const handleAddCourse = () => navigate("/courses/new");
