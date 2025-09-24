@@ -17,7 +17,7 @@ export default function SectionEditPage() {
   const location = useLocation();
   const [section, setSection] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
-  const [activeTab, setActiveTab] = useState('section');
+  const [activeTab, setActiveTab] = useState("section");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -36,7 +36,7 @@ export default function SectionEditPage() {
   useEffect(() => {
     // Store the current state
     previousSidebarState.current = sidebarOpen;
-    
+
     // Close the sidebar for this page
     closeSidebar();
 
@@ -49,20 +49,23 @@ export default function SectionEditPage() {
   }, []); // Empty dependency array - only run on mount/unmount
 
   // Use the chapter changes hook
-const {
-  chapters,
-  pendingChanges,
-  addChapter,
-  updateChapter,
-  deleteChapter,
-  undoDeleteChapter,
-  reorderChapters,
-  hasChanges,
-  getChanges,
-  reset: resetChapters
-} = useChapterChanges([]);
+  const {
+    chapters,
+    pendingChanges,
+    addChapter,
+    updateChapter,
+    deleteChapter,
+    undoDeleteChapter,
+    reorderChapters,
+    hasChanges,
+    getChanges,
+    reset: resetChapters,
+  } = useChapterChanges([]);
 
-  const fetchSectionData = async (keepSelection = false, includeArchived = true) => {
+  const fetchSectionData = async (
+    keepSelection = false,
+    includeArchived = true
+  ) => {
     try {
       setLoading(true);
       setError(null);
@@ -72,22 +75,25 @@ const {
       if (response.data.success) {
         const sectionData = response.data.data;
         setSection(sectionData);
-        
+
         // Initialize chapters - include ALL chapters (active and archived)
         const sectionInfo = sectionData.sections || sectionData;
         const chaptersData = sectionInfo.chapters || [];
-        
+
         resetChapters(chaptersData);
-        
+
         // Update selected chapter if it exists in the new data
         if (keepSelection && selectedChapter) {
-          const selectedId = (selectedChapter.chapters || selectedChapter).chapterId;
+          const selectedId = (selectedChapter.chapters || selectedChapter)
+            .chapterId;
           // If it was a temp chapter, try to match by title and number
           if (selectedChapter.isTemp) {
-            const matchingChapter = chaptersData.find(ch => {
+            const matchingChapter = chaptersData.find((ch) => {
               const chData = ch.chapters || ch;
-              return chData.title === selectedChapter.title && 
-                     chData.chapterNumber === selectedChapter.chapterNumber;
+              return (
+                chData.title === selectedChapter.title &&
+                chData.chapterNumber === selectedChapter.chapterNumber
+              );
             });
             if (matchingChapter) {
               setSelectedChapter(matchingChapter);
@@ -97,8 +103,8 @@ const {
             }
           } else {
             // For existing chapters, find by ID
-            const updatedChapter = chaptersData.find(ch => 
-              (ch.chapters || ch).chapterId === selectedId
+            const updatedChapter = chaptersData.find(
+              (ch) => (ch.chapters || ch).chapterId === selectedId
             );
             if (updatedChapter) {
               setSelectedChapter(updatedChapter);
@@ -106,12 +112,18 @@ const {
               setSelectedChapter(null);
             }
           }
-        } else if (!keepSelection && chaptersData.length > 0 && !selectedChapter) {
+        } else if (
+          !keepSelection &&
+          chaptersData.length > 0 &&
+          !selectedChapter
+        ) {
           // Auto-select first active (non-archived) chapter if available
-          const firstActive = chaptersData.find(ch => !(ch.chapters || ch).isArchived);
+          const firstActive = chaptersData.find(
+            (ch) => !(ch.chapters || ch).isArchived
+          );
           if (firstActive) {
             setSelectedChapter(firstActive);
-            setActiveTab('chapter');
+            setActiveTab("chapter");
           }
         }
       } else {
@@ -138,15 +150,14 @@ const {
       setRestoringChapter(true);
       const chapterData = chapter.chapters || chapter;
       await chapterAPI.restoreChapter(chapterData.chapterId);
-      
+
       // Refresh data after restore
       await fetchSectionData(true);
-      
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        err.message ||
-        "Failed to restore chapter"
+          err.message ||
+          "Failed to restore chapter"
       );
     } finally {
       setRestoringChapter(false);
@@ -157,16 +168,14 @@ const {
     try {
       setSaving(true);
       setError(null);
-      
+
       const changes = getChanges();
       const promises = [];
 
       // DELETE chapters (this triggers scheduled deletion, not just archiving)
       for (const chapter of changes.deleted) {
         const chapterData = chapter.chapters || chapter;
-        promises.push(
-          chapterAPI.deleteChapter(chapterData.chapterId)
-        );
+        promises.push(chapterAPI.deleteChapter(chapterData.chapterId));
       }
 
       // Create new chapters
@@ -179,9 +188,7 @@ const {
           imageId: chapter.imageId,
           videoId: chapter.videoId,
         };
-        promises.push(
-          sectionAPI.createSectionChapter(sectionId, chapterData)
-        );
+        promises.push(sectionAPI.createSectionChapter(sectionId, chapterData));
       }
 
       // Update modified chapters
@@ -196,7 +203,11 @@ const {
           videoId: chapterData.videoId,
         };
         promises.push(
-          sectionAPI.updateSectionChapter(sectionId, chapterData.chapterId, updateData)
+          sectionAPI.updateSectionChapter(
+            sectionId,
+            chapterData.chapterId,
+            updateData
+          )
         );
       }
 
@@ -204,7 +215,7 @@ const {
       if (changes.reordered && !changes.added.length) {
         // Update chapter numbers for all non-temp and non-archived chapters
         const reorderPromises = changes.currentOrder
-          .filter(c => !c.isTemp && !(c.chapters || c).isArchived)
+          .filter((c) => !c.isTemp && !(c.chapters || c).isArchived)
           .map((chapter, index) => {
             const chapterData = chapter.chapters || chapter;
             return sectionAPI.updateSectionChapter(
@@ -218,18 +229,16 @@ const {
 
       // Execute all changes
       await Promise.all(promises);
-      
+
       // Refresh data after successful save, keeping selection
       await fetchSectionData(true);
-      
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       setSectionChanges(false);
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to save changes"
+        err.response?.data?.message || err.message || "Failed to save changes"
       );
       console.error("Error saving changes:", err);
     } finally {
@@ -239,37 +248,46 @@ const {
 
   const handleChapterSelect = (chapter) => {
     setSelectedChapter(chapter);
-    setActiveTab('chapter');
+    setActiveTab("chapter");
   };
 
   const handleSectionSelect = () => {
     setSelectedChapter(null);
-    setActiveTab('section');
+    setActiveTab("section");
   };
 
   const handleChapterCreate = () => {
     // Get next chapter number based on active chapters only
-    const activeChapters = chapters.filter(ch => !ch.pendingDeletion && !(ch.chapters || ch).isArchived);
+    const activeChapters = chapters.filter(
+      (ch) => !ch.pendingDeletion && !(ch.chapters || ch).isArchived
+    );
     const nextNumber = getDefaultNextChapterNumber(activeChapters);
     const newChapter = addChapter({
       chapterNumber: nextNumber,
       title: `Chapter ${nextNumber}`,
-      description: '',
-      content: '',
+      description: "",
+      content: "",
     });
     setSelectedChapter(newChapter);
-    setActiveTab('chapter');
+    setActiveTab("chapter");
   };
 
   const handleChapterUpdate = (chapterId, updates) => {
     updateChapter(chapterId, updates);
     // Update selected chapter if it's the one being edited
-    if (selectedChapter && (selectedChapter.chapters || selectedChapter).chapterId === chapterId) {
-      const updatedChapter = chapters.find(c => (c.chapters || c).chapterId === chapterId);
+    if (
+      selectedChapter &&
+      (selectedChapter.chapters || selectedChapter).chapterId === chapterId
+    ) {
+      const updatedChapter = chapters.find(
+        (c) => (c.chapters || c).chapterId === chapterId
+      );
       if (updatedChapter) {
         setSelectedChapter({
           ...updatedChapter,
-          ...(updatedChapter.chapters ? { chapters: { ...updatedChapter.chapters, ...updates } } : updates)
+          ...(updatedChapter.chapters
+            ? { chapters: { ...updatedChapter.chapters, ...updates } }
+            : updates),
         });
       }
     }
@@ -278,14 +296,17 @@ const {
   const handleChapterDelete = (chapter) => {
     const chapterId = (chapter.chapters || chapter).chapterId;
     deleteChapter(chapterId);
-    
+
     // If the deleted chapter was selected, clear selection
-    if (selectedChapter && (selectedChapter.chapters || selectedChapter).chapterId === chapterId) {
+    if (
+      selectedChapter &&
+      (selectedChapter.chapters || selectedChapter).chapterId === chapterId
+    ) {
       // Update the selected chapter to show deletion state
       setSelectedChapter({
         ...chapter,
         pendingDeletion: true,
-        deletedAt: Date.now()
+        deletedAt: Date.now(),
       });
     }
   };
@@ -293,10 +314,15 @@ const {
   const handleChapterUndoDelete = (chapter) => {
     const chapterId = (chapter.chapters || chapter).chapterId;
     undoDeleteChapter(chapterId);
-    
+
     // Update selected chapter if it's the one being restored
-    if (selectedChapter && (selectedChapter.chapters || selectedChapter).chapterId === chapterId) {
-      const restoredChapter = chapters.find(c => (c.chapters || c).chapterId === chapterId);
+    if (
+      selectedChapter &&
+      (selectedChapter.chapters || selectedChapter).chapterId === chapterId
+    ) {
+      const restoredChapter = chapters.find(
+        (c) => (c.chapters || c).chapterId === chapterId
+      );
       if (restoredChapter) {
         const { pendingDeletion, deletedAt, ...cleanChapter } = restoredChapter;
         setSelectedChapter(cleanChapter);
@@ -322,13 +348,14 @@ const {
       if (hasUnsavedChanges && !saving) {
         e.preventDefault();
         // Chrome requires returnValue to be set
-        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
-        return 'You have unsaved changes. Are you sure you want to leave?';
+        e.returnValue =
+          "You have unsaved changes. Are you sure you want to leave?";
+        return "You have unsaved changes. Are you sure you want to leave?";
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges, saving]);
 
   // Handle React Router navigation
@@ -336,7 +363,11 @@ const {
     if (!isBlocking) return;
 
     const unblock = (tx) => {
-      if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+      if (
+        window.confirm(
+          "You have unsaved changes. Are you sure you want to leave?"
+        )
+      ) {
         unblock();
         tx.retry();
       }
@@ -346,51 +377,30 @@ const {
     // We'll use a custom approach since useBlocker is not available in all versions
     const handleLocationChange = (e) => {
       if (hasUnsavedChanges && !saving) {
-        const confirmLeave = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+        const confirmLeave = window.confirm(
+          "You have unsaved changes. Are you sure you want to leave?"
+        );
         if (!confirmLeave) {
           e.preventDefault();
           // Push the current location back to prevent navigation
-          window.history.pushState(null, '', location.pathname);
+          window.history.pushState(null, "", location.pathname);
         }
       }
     };
 
     // Listen for popstate events (browser back/forward)
-    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener("popstate", handleLocationChange);
 
     return () => {
-      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener("popstate", handleLocationChange);
     };
   }, [isBlocking, hasUnsavedChanges, saving, location.pathname]);
-
-  // Custom BackButton with confirmation
-  const BackButtonWithConfirmation = ({ to, children }) => {
-    const handleClick = (e) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
-          navigate(to);
-        }
-      } else {
-        navigate(to);
-      }
-    };
-
-    return (
-      <button
-        onClick={handleClick}
-        className="inline-flex items-center text-primary hover:text-primary/65"
-      >
-        {children}
-      </button>
-    );
-  };
 
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Ctrl/Cmd + S to save
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         if (hasUnsavedChanges && !saving) {
           handleSaveAllChanges();
@@ -398,8 +408,8 @@ const {
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [hasUnsavedChanges, saving]);
 
   if (loading) {
@@ -431,9 +441,13 @@ const {
   const courseId = sectionData.courseId;
 
   // Count active and scheduled for deletion
-  const activeChapterCount = chapters.filter(ch => !ch.pendingDeletion && !(ch.chapters || ch).isArchived).length;
-  const archivedCount = chapters.filter(ch => (ch.chapters || ch).isArchived).length;
-  const scheduledForDeletionCount = chapters.filter(ch => {
+  const activeChapterCount = chapters.filter(
+    (ch) => !ch.pendingDeletion && !(ch.chapters || ch).isArchived
+  ).length;
+  const archivedCount = chapters.filter(
+    (ch) => (ch.chapters || ch).isArchived
+  ).length;
+  const scheduledForDeletionCount = chapters.filter((ch) => {
     const data = ch.chapters || ch;
     return data.isArchived && (data.purgeAfterAt || data.scheduledDeleteAt);
   }).length;
@@ -444,31 +458,37 @@ const {
       <div className="bg-bg border-b border-border-primary px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <BackButtonWithConfirmation to={`/courses/${courseId}/sections/${sectionId}`}>
-              <BackButton to={`/courses/${courseId}/sections/${sectionId}`}>
-                Back to Section
-              </BackButton>
-            </BackButtonWithConfirmation>
+            <BackButton
+              to={`/courses/${courseId}/sections/${sectionId}`}
+              confirmNavigation={true}
+              confirmCondition={hasUnsavedChanges}
+              confirmMessage="You have unsaved changes. Are you sure you want to leave?"
+            >
+              Back to Section
+            </BackButton>
             <div>
               <h1 className="text-xl font-bold text-heading">
                 Edit: {sectionData.title}
               </h1>
               <p className="text-sm text-text/70">
-                {activeChapterCount} active chapter{activeChapterCount !== 1 ? 's' : ''}
+                {activeChapterCount} active chapter
+                {activeChapterCount !== 1 ? "s" : ""}
                 {pendingChanges.deleted.length > 0 && (
                   <span className="text-red-600">
-                    {' '}• {pendingChanges.deleted.length} pending deletion
+                    {" "}
+                    • {pendingChanges.deleted.length} pending deletion
                   </span>
                 )}
                 {scheduledForDeletionCount > 0 && (
                   <span className="text-orange-600">
-                    {' '}• {scheduledForDeletionCount} scheduled for deletion
+                    {" "}
+                    • {scheduledForDeletionCount} scheduled for deletion
                   </span>
                 )}
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {restoringChapter && (
               <div className="flex items-center gap-2 text-blue-600">
@@ -476,36 +496,43 @@ const {
                 <span className="text-sm">Restoring...</span>
               </div>
             )}
-            
+
             {saveSuccess && (
               <div className="flex items-center gap-2 text-green-600 animate-fade-in">
                 <Check className="w-4 h-4" />
                 <span className="text-sm">Saved successfully!</span>
               </div>
             )}
-            
+
             {error && (
-              <div className="text-red-600 text-sm max-w-xs truncate" title={error}>
+              <div
+                className="text-red-600 text-sm max-w-xs truncate"
+                title={error}
+              >
                 {error}
               </div>
             )}
-            
+
             {hasUnsavedChanges && !saveSuccess && (
               <div className="flex items-center gap-2 text-orange-600">
                 <Save className="w-4 h-4" />
                 <span className="text-sm">Unsaved changes</span>
               </div>
             )}
-            
+
             <button
               onClick={handleSaveAllChanges}
               disabled={!hasUnsavedChanges || saving}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 hasUnsavedChanges && !saving
-                  ? 'bg-primary text-white hover:bg-primary/90'
-                  : 'bg-bg2 text-text/60 cursor-not-allowed'
+                  ? "bg-primary text-white hover:bg-primary/90"
+                  : "bg-bg2 text-text/60 cursor-not-allowed"
               }`}
-              title={hasUnsavedChanges ? 'Save all changes (Ctrl+S)' : 'No changes to save'}
+              title={
+                hasUnsavedChanges
+                  ? "Save all changes (Ctrl+S)"
+                  : "No changes to save"
+              }
             >
               {saving ? (
                 <>
@@ -543,7 +570,7 @@ const {
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto">
           <div className="p-6">
-            {activeTab === 'section' ? (
+            {activeTab === "section" ? (
               <SectionEditor
                 section={section}
                 onUpdate={handleSectionUpdate}
@@ -555,12 +582,16 @@ const {
                 chapter={selectedChapter}
                 chapters={chapters}
                 onUpdate={(updates) => {
-                  const chapterId = (selectedChapter.chapters || selectedChapter).chapterId;
+                  const chapterId = (
+                    selectedChapter.chapters || selectedChapter
+                  ).chapterId;
                   handleChapterUpdate(chapterId, updates);
                 }}
                 onDelete={() => handleChapterDelete(selectedChapter)}
                 onUndoDelete={() => handleChapterUndoDelete(selectedChapter)}
-                onRestoreArchived={() => handleRestoreArchivedChapter(selectedChapter)}
+                onRestoreArchived={() =>
+                  handleRestoreArchivedChapter(selectedChapter)
+                }
                 isTemp={selectedChapter.isTemp}
               />
             ) : (
