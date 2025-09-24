@@ -65,72 +65,67 @@ export default function SectionEditPage() {
     reset: resetChapters
   } = useChapterChanges([]);
 
-  const fetchSectionData = async (keepSelection = false, includeArchived = true) => {
-    try {
-      setLoading(true);
-      setError(null);
+const fetchSectionData = async (keepSelection = false, includeArchived = true) => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      // Get section with all chapters (including archived)
-      const response = await sectionAPI.getSection(sectionId);
-      if (response.data.success) {
-        const sectionData = response.data.data;
-        setSection(sectionData);
-        
-        // Initialize chapters - include ALL chapters (active and archived)
-        const sectionInfo = sectionData.sections || sectionData;
-        const chaptersData = sectionInfo.chapters || [];
-        
-        resetChapters(chaptersData);
-        
-        // Update selected chapter if it exists in the new data
-        if (keepSelection && selectedChapter) {
-          const selectedId = (selectedChapter.chapters || selectedChapter).chapterId;
-          // If it was a temp chapter, try to match by title and number
-          if (selectedChapter.isTemp) {
-            const matchingChapter = chaptersData.find(ch => {
-              const chData = ch.chapters || ch;
-              return chData.title === selectedChapter.title && 
-                     chData.chapterNumber === selectedChapter.chapterNumber;
-            });
-            if (matchingChapter) {
-              setSelectedChapter(matchingChapter);
-            } else {
-              // Fallback to first chapter or clear selection
-              setSelectedChapter(chaptersData[0] || null);
-            }
+    // Get section with all chapters (including archived)
+    const response = await sectionAPI.getSection(sectionId);
+    if (response.data.success) {
+      const sectionData = response.data.data;
+      setSection(sectionData);
+      
+      // Initialize chapters - include ALL chapters (active and archived)
+      const sectionInfo = sectionData.sections || sectionData;
+      const chaptersData = sectionInfo.chapters || [];
+      
+      resetChapters(chaptersData);
+      
+      // Update selected chapter if it exists in the new data
+      if (keepSelection && selectedChapter) {
+        const selectedId = (selectedChapter.chapters || selectedChapter).chapterId;
+        // If it was a temp chapter, try to match by title and number
+        if (selectedChapter.isTemp) {
+          const matchingChapter = chaptersData.find(ch => {
+            const chData = ch.chapters || ch;
+            return chData.title === selectedChapter.title && 
+                   chData.chapterNumber === selectedChapter.chapterNumber;
+          });
+          if (matchingChapter) {
+            setSelectedChapter(matchingChapter);
           } else {
-            // For existing chapters, find by ID
-            const updatedChapter = chaptersData.find(ch => 
-              (ch.chapters || ch).chapterId === selectedId
-            );
-            if (updatedChapter) {
-              setSelectedChapter(updatedChapter);
-            } else {
-              setSelectedChapter(null);
-            }
+            // Fallback to first chapter or clear selection
+            setSelectedChapter(chaptersData[0] || null);
           }
-        } else if (!keepSelection && chaptersData.length > 0 && !selectedChapter) {
-          // Auto-select first active (non-archived) chapter if available
-          const firstActive = chaptersData.find(ch => !(ch.chapters || ch).isArchived);
-          if (firstActive) {
-            setSelectedChapter(firstActive);
-            setActiveTab('chapter');
+        } else {
+          // For existing chapters, find by ID
+          const updatedChapter = chaptersData.find(ch => 
+            (ch.chapters || ch).chapterId === selectedId
+          );
+          if (updatedChapter) {
+            setSelectedChapter(updatedChapter);
+          } else {
+            setSelectedChapter(null);
           }
         }
-      } else {
-        throw new Error("Failed to fetch section details");
       }
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to fetch section data"
-      );
-      console.error("Error fetching section data:", err);
-    } finally {
-      setLoading(false);
+      // REMOVED: Auto-selection of first chapter on initial load
+      // The section settings tab will remain active by default
+    } else {
+      throw new Error("Failed to fetch section details");
     }
-  };
+  } catch (err) {
+    setError(
+      err.response?.data?.message ||
+        err.message ||
+        "Failed to fetch section data"
+    );
+    console.error("Error fetching section data:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     if (sectionId) fetchSectionData(false);

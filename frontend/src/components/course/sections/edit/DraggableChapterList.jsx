@@ -104,67 +104,74 @@ export default function DraggableChapterList({
     }
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    
-    if (!draggedItem || !dropPosition) {
-      resetDragState();
-      return;
-    }
-    
-    // Work with active chapters only for reordering
-    const fromIndex = draggedItem.activeIndex;
-    
-    // Calculate the target index in active chapters
-    let targetActiveIndex = 0;
-    if (dropPosition.position === 'before') {
-      // Count how many active chapters come before the drop position
-      for (let i = 0; i < dropPosition.sortedIndex; i++) {
-        const ch = sortedChapters[i];
-        if (!ch.pendingDeletion && !(ch.chapters || ch).isArchived) {
-          targetActiveIndex++;
-        }
-      }
-    } else {
-      // Dropping at the end means after all active chapters
-      targetActiveIndex = activeChapters.length;
-    }
-    
-    // Adjust target index if needed
-    if (fromIndex < targetActiveIndex) {
-      targetActiveIndex = Math.max(0, targetActiveIndex - 1);
-    }
-    
-    if (fromIndex !== targetActiveIndex) {
-      // Create new array with reordered chapters
-      const newActiveChapters = [...activeChapters];
-      const [movedChapter] = newActiveChapters.splice(fromIndex, 1);
-      newActiveChapters.splice(targetActiveIndex, 0, movedChapter);
-      
-      // Renumber the active chapters
-      const renumbered = newActiveChapters.map((ch, idx) => ({
-        ...ch,
-        ...(ch.chapters ? {
-          chapters: { ...ch.chapters, chapterNumber: idx + 1 }
-        } : {
-          chapterNumber: idx + 1
-        })
-      }));
-      
-      // Combine with non-active chapters (keep their original data)
-      const nonActiveChapters = chapters.filter(ch => 
-        ch.pendingDeletion || (ch.chapters || ch).isArchived
-      );
-      
-      // Merge back all chapters
-      const allChapters = [...renumbered, ...nonActiveChapters];
-      
-      // Call the reorder handler with the complete list
-      onReorderChapters(allChapters);
-    }
-    
+const handleDrop = (e) => {
+  e.preventDefault();
+  
+  if (!draggedItem || !dropPosition) {
     resetDragState();
-  };
+    return;
+  }
+  
+  // Work with active chapters only for reordering
+  const fromIndex = draggedItem.activeIndex;
+  
+  // Calculate the target index in active chapters
+  let targetActiveIndex = 0;
+  if (dropPosition.position === 'before') {
+    // Count how many active chapters come before the drop position
+    for (let i = 0; i < dropPosition.sortedIndex; i++) {
+      const ch = sortedChapters[i];
+      if (!ch.pendingDeletion && !(ch.chapters || ch).isArchived) {
+        targetActiveIndex++;
+      }
+    }
+  } else {
+    // Dropping at the end means after all active chapters
+    targetActiveIndex = activeChapters.length;
+  }
+  
+  // Adjust target index if needed
+  if (fromIndex < targetActiveIndex) {
+    targetActiveIndex = Math.max(0, targetActiveIndex - 1);
+  }
+  
+  if (fromIndex !== targetActiveIndex) {
+    // Create new array with reordered chapters
+    const newActiveChapters = [...activeChapters];
+    const [movedChapter] = newActiveChapters.splice(fromIndex, 1);
+    newActiveChapters.splice(targetActiveIndex, 0, movedChapter);
+    
+    // Renumber the active chapters
+    const renumbered = newActiveChapters.map((ch, idx) => ({
+      ...ch,
+      ...(ch.chapters ? {
+        chapters: { ...ch.chapters, chapterNumber: idx + 1 }
+      } : {
+        chapterNumber: idx + 1
+      })
+    }));
+    
+    // Combine with non-active chapters (keep their original data)
+    const nonActiveChapters = chapters.filter(ch => 
+      ch.pendingDeletion || (ch.chapters || ch).isArchived
+    );
+    
+    // Merge back all chapters
+    const allChapters = [...renumbered, ...nonActiveChapters];
+    
+    // Call the reorder handler with the complete list
+    onReorderChapters(allChapters);
+    
+    // SELECT THE DRAGGED CHAPTER AFTER REORDERING
+    // Find the moved chapter in the new list and select it
+    const movedChapterInNewList = renumbered[targetActiveIndex];
+    if (movedChapterInNewList) {
+      onChapterSelect(movedChapterInNewList);
+    }
+  }
+  
+  resetDragState();
+};
 
   const handleDragEnd = (e) => {
     e.currentTarget.classList.remove('opacity-50');
