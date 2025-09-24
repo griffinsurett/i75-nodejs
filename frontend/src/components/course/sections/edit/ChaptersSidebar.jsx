@@ -32,11 +32,13 @@ export default function ChaptersSidebar({
     return data.isArchived && !(data.purgeAfterAt || data.scheduledDeleteAt);
   }).length;
 
-  // Total change count
-  const changeCount =
+  // Total change count (including section changes)
+  const chapterChangeCount =
     pendingChanges.added.length +
     pendingChanges.modified.length +
     pendingChanges.deleted.length;
+  
+  const totalChangeCount = chapterChangeCount + (pendingChanges.sectionChanged ? 1 : 0);
 
   return (
     <div className="w-80 bg-bg border-r border-border-primary flex flex-col h-full">
@@ -81,10 +83,16 @@ export default function ChaptersSidebar({
           </button>
         </div>
 
-        {changeCount > 0 && (
+        {totalChangeCount > 0 && (
           <div className="text-xs text-orange-600 flex items-center gap-1">
             <AlertCircle className="w-3 h-3" />
-            {changeCount} unsaved change{changeCount !== 1 ? "s" : ""}
+            {totalChangeCount} unsaved change{totalChangeCount !== 1 ? "s" : ""}
+          </div>
+        )}
+
+        {pendingChanges.sectionChanged && (
+          <div className="text-xs text-orange-600 mt-1">
+            Section settings modified
           </div>
         )}
 
@@ -161,7 +169,7 @@ export default function ChaptersSidebar({
               <div className="mt-1 text-text/40">Drag chapters to reorder</div>
             </>
           )}
-          {changeCount > 0 && (
+          {totalChangeCount > 0 && (
             <div className="mt-1 text-orange-600">
               Remember to save changes
             </div>
