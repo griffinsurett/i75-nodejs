@@ -11,7 +11,7 @@ import Instructors from "./pages/Instructors";
 import InstructorDetail from "./components/instructor/InstructorDetail";
 import InstructorUpsertPage from "./pages/InstructorUpsertPage";
 import Sections from "./pages/Sections";
-import SectionDetail from "./components/course/sections/SectionDetail";
+import SectionDetail from "./components/course/sections/detail/SectionDetail";
 import SectionUpsertPage from "./pages/SectionUpsertPage";
 import SectionEditPage from "./pages/SectionEditPage";
 

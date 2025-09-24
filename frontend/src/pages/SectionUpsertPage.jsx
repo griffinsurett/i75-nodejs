@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { Edit, Plus, Loader2, AlertCircle } from "lucide-react";
 import { sectionAPI } from "../services/api";
-import SectionForm from "../components/course/sections/SectionForm";
+import SectionForm from "../components/course/sections/forms/SectionForm";
 import BackButton from "../components/navigation/BackButton";
 
 export default function SectionUpsertPage() {

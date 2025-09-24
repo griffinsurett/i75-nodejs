@@ -1,5 +1,5 @@
 // frontend/src/pages/Sections.jsx
-import SectionList from "../components/course/sections/SectionList";
+import SectionList from "../components/course/sections/lists/SectionList";
 
 const Sections = () => {
   return <SectionList />;

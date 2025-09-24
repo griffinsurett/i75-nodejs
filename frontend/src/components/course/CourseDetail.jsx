@@ -5,7 +5,7 @@ import { courseAPI } from "../../services/api";
 import { BookOpen, Loader2, AlertCircle } from "lucide-react";
 import EditActions from "../archive/EditActions";
 import CourseHeader from "./CourseHeader";
-import CourseSections from "./sections/CourseSections";
+import CourseSections from "../../components/course/sections/lists/CourseSections";
 import BackButton from "../navigation/BackButton";
 
 const CourseDetail = () => {

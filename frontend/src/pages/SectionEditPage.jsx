@@ -4,9 +4,9 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Loader2, AlertCircle, Save, Check } from "lucide-react";
 import { sectionAPI, chapterAPI } from "../services/api";
 import BackButton from "../components/navigation/BackButton";
-import ChaptersSidebar from "../components/course/sections/edit/ChaptersSidebar";
-import SectionEditor from "../components/course/sections/edit/SectionEditor";
-import ChapterEditor from "../components/course/sections/edit/ChapterEditor";
+import ChaptersSidebar from "../components/course/sections/content-editor/sidebar/ChaptersSidebar";
+import SectionEditor from "../components/course/sections/content-editor/SectionEditor";
+import ChapterEditor from "../components/course/sections/content-editor/chapter/ChapterEditor";
 import useChapterChanges from "../components/course/sections/hooks/useChapterChanges";
 import { getDefaultNextChapterNumber } from "../components/course/sections/utils/chapterUtils";
 import { useSidebar } from "../context/SidebarContext";
@@ -17,12 +17,12 @@ export default function SectionEditPage() {
   const location = useLocation();
   const [section, setSection] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
-  const [activeTab, setActiveTab] = useState('section');
+  const [activeTab, setActiveTab] = useState("section");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  
+
   // Track section form data changes
   const [sectionFormData, setSectionFormData] = useState(null);
   const [hasSectionChanges, setHasSectionChanges] = useState(false);
@@ -39,7 +39,7 @@ export default function SectionEditPage() {
   useEffect(() => {
     // Store the current state
     previousSidebarState.current = sidebarOpen;
-    
+
     // Close the sidebar for this page
     closeSidebar();
 
@@ -62,70 +62,76 @@ export default function SectionEditPage() {
     reorderChapters,
     hasChanges,
     getChanges,
-    reset: resetChapters
+    reset: resetChapters,
   } = useChapterChanges([]);
 
-const fetchSectionData = async (keepSelection = false, includeArchived = true) => {
-  try {
-    setLoading(true);
-    setError(null);
+  const fetchSectionData = async (
+    keepSelection = false,
+    includeArchived = true
+  ) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    // Get section with all chapters (including archived)
-    const response = await sectionAPI.getSection(sectionId);
-    if (response.data.success) {
-      const sectionData = response.data.data;
-      setSection(sectionData);
-      
-      // Initialize chapters - include ALL chapters (active and archived)
-      const sectionInfo = sectionData.sections || sectionData;
-      const chaptersData = sectionInfo.chapters || [];
-      
-      resetChapters(chaptersData);
-      
-      // Update selected chapter if it exists in the new data
-      if (keepSelection && selectedChapter) {
-        const selectedId = (selectedChapter.chapters || selectedChapter).chapterId;
-        // If it was a temp chapter, try to match by title and number
-        if (selectedChapter.isTemp) {
-          const matchingChapter = chaptersData.find(ch => {
-            const chData = ch.chapters || ch;
-            return chData.title === selectedChapter.title && 
-                   chData.chapterNumber === selectedChapter.chapterNumber;
-          });
-          if (matchingChapter) {
-            setSelectedChapter(matchingChapter);
+      // Get section with all chapters (including archived)
+      const response = await sectionAPI.getSection(sectionId);
+      if (response.data.success) {
+        const sectionData = response.data.data;
+        setSection(sectionData);
+
+        // Initialize chapters - include ALL chapters (active and archived)
+        const sectionInfo = sectionData.sections || sectionData;
+        const chaptersData = sectionInfo.chapters || [];
+
+        resetChapters(chaptersData);
+
+        // Update selected chapter if it exists in the new data
+        if (keepSelection && selectedChapter) {
+          const selectedId = (selectedChapter.chapters || selectedChapter)
+            .chapterId;
+          // If it was a temp chapter, try to match by title and number
+          if (selectedChapter.isTemp) {
+            const matchingChapter = chaptersData.find((ch) => {
+              const chData = ch.chapters || ch;
+              return (
+                chData.title === selectedChapter.title &&
+                chData.chapterNumber === selectedChapter.chapterNumber
+              );
+            });
+            if (matchingChapter) {
+              setSelectedChapter(matchingChapter);
+            } else {
+              // Fallback to first chapter or clear selection
+              setSelectedChapter(chaptersData[0] || null);
+            }
           } else {
-            // Fallback to first chapter or clear selection
-            setSelectedChapter(chaptersData[0] || null);
-          }
-        } else {
-          // For existing chapters, find by ID
-          const updatedChapter = chaptersData.find(ch => 
-            (ch.chapters || ch).chapterId === selectedId
-          );
-          if (updatedChapter) {
-            setSelectedChapter(updatedChapter);
-          } else {
-            setSelectedChapter(null);
+            // For existing chapters, find by ID
+            const updatedChapter = chaptersData.find(
+              (ch) => (ch.chapters || ch).chapterId === selectedId
+            );
+            if (updatedChapter) {
+              setSelectedChapter(updatedChapter);
+            } else {
+              setSelectedChapter(null);
+            }
           }
         }
+        // REMOVED: Auto-selection of first chapter on initial load
+        // The section settings tab will remain active by default
+      } else {
+        throw new Error("Failed to fetch section details");
       }
-      // REMOVED: Auto-selection of first chapter on initial load
-      // The section settings tab will remain active by default
-    } else {
-      throw new Error("Failed to fetch section details");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to fetch section data"
+      );
+      console.error("Error fetching section data:", err);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setError(
-      err.response?.data?.message ||
-        err.message ||
-        "Failed to fetch section data"
-    );
-    console.error("Error fetching section data:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     if (sectionId) fetchSectionData(false);
@@ -136,15 +142,14 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
       setRestoringChapter(true);
       const chapterData = chapter.chapters || chapter;
       await chapterAPI.restoreChapter(chapterData.chapterId);
-      
+
       // Refresh data after restore
       await fetchSectionData(true);
-      
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        err.message ||
-        "Failed to restore chapter"
+          err.message ||
+          "Failed to restore chapter"
       );
     } finally {
       setRestoringChapter(false);
@@ -155,7 +160,7 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
     try {
       setSaving(true);
       setError(null);
-      
+
       const promises = [];
 
       // Save section changes if any
@@ -166,10 +171,8 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
           imageId: sectionFormData.imageId || undefined,
           videoId: sectionFormData.videoId || undefined,
         };
-        
-        promises.push(
-          sectionAPI.updateSection(sectionId, sectionUpdateData)
-        );
+
+        promises.push(sectionAPI.updateSection(sectionId, sectionUpdateData));
       }
 
       // Handle chapter changes
@@ -178,9 +181,7 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
       // DELETE chapters (scheduled deletion)
       for (const chapter of changes.deleted) {
         const chapterData = chapter.chapters || chapter;
-        promises.push(
-          chapterAPI.deleteChapter(chapterData.chapterId)
-        );
+        promises.push(chapterAPI.deleteChapter(chapterData.chapterId));
       }
 
       // Create new chapters
@@ -193,9 +194,7 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
           imageId: chapter.imageId,
           videoId: chapter.videoId,
         };
-        promises.push(
-          sectionAPI.createSectionChapter(sectionId, chapterData)
-        );
+        promises.push(sectionAPI.createSectionChapter(sectionId, chapterData));
       }
 
       // Update modified chapters
@@ -210,14 +209,18 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
           videoId: chapterData.videoId,
         };
         promises.push(
-          sectionAPI.updateSectionChapter(sectionId, chapterData.chapterId, updateData)
+          sectionAPI.updateSectionChapter(
+            sectionId,
+            chapterData.chapterId,
+            updateData
+          )
         );
       }
 
       // Handle reordering if needed
       if (changes.reordered && !changes.added.length) {
         const reorderPromises = changes.currentOrder
-          .filter(c => !c.isTemp && !(c.chapters || c).isArchived)
+          .filter((c) => !c.isTemp && !(c.chapters || c).isArchived)
           .map((chapter, index) => {
             const chapterData = chapter.chapters || chapter;
             return sectionAPI.updateSectionChapter(
@@ -231,21 +234,19 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
 
       // Execute all changes
       await Promise.all(promises);
-      
+
       // Refresh data after successful save
       await fetchSectionData(true);
-      
+
       // Reset section changes flag
       setHasSectionChanges(false);
       setSectionFormData(null);
-      
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to save changes"
+        err.response?.data?.message || err.message || "Failed to save changes"
       );
       console.error("Error saving changes:", err);
     } finally {
@@ -255,37 +256,46 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
 
   const handleChapterSelect = (chapter) => {
     setSelectedChapter(chapter);
-    setActiveTab('chapter');
+    setActiveTab("chapter");
   };
 
   const handleSectionSelect = () => {
     setSelectedChapter(null);
-    setActiveTab('section');
+    setActiveTab("section");
   };
 
   const handleChapterCreate = () => {
     // Get next chapter number based on active chapters only
-    const activeChapters = chapters.filter(ch => !ch.pendingDeletion && !(ch.chapters || ch).isArchived);
+    const activeChapters = chapters.filter(
+      (ch) => !ch.pendingDeletion && !(ch.chapters || ch).isArchived
+    );
     const nextNumber = getDefaultNextChapterNumber(activeChapters);
     const newChapter = addChapter({
       chapterNumber: nextNumber,
       title: `Chapter ${nextNumber}`,
-      description: '',
-      content: '',
+      description: "",
+      content: "",
     });
     setSelectedChapter(newChapter);
-    setActiveTab('chapter');
+    setActiveTab("chapter");
   };
 
   const handleChapterUpdate = (chapterId, updates) => {
     updateChapter(chapterId, updates);
     // Update selected chapter if it's the one being edited
-    if (selectedChapter && (selectedChapter.chapters || selectedChapter).chapterId === chapterId) {
-      const updatedChapter = chapters.find(c => (c.chapters || c).chapterId === chapterId);
+    if (
+      selectedChapter &&
+      (selectedChapter.chapters || selectedChapter).chapterId === chapterId
+    ) {
+      const updatedChapter = chapters.find(
+        (c) => (c.chapters || c).chapterId === chapterId
+      );
       if (updatedChapter) {
         setSelectedChapter({
           ...updatedChapter,
-          ...(updatedChapter.chapters ? { chapters: { ...updatedChapter.chapters, ...updates } } : updates)
+          ...(updatedChapter.chapters
+            ? { chapters: { ...updatedChapter.chapters, ...updates } }
+            : updates),
         });
       }
     }
@@ -294,14 +304,17 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
   const handleChapterDelete = (chapter) => {
     const chapterId = (chapter.chapters || chapter).chapterId;
     deleteChapter(chapterId);
-    
+
     // If the deleted chapter was selected, clear selection
-    if (selectedChapter && (selectedChapter.chapters || selectedChapter).chapterId === chapterId) {
+    if (
+      selectedChapter &&
+      (selectedChapter.chapters || selectedChapter).chapterId === chapterId
+    ) {
       // Update the selected chapter to show deletion state
       setSelectedChapter({
         ...chapter,
         pendingDeletion: true,
-        deletedAt: Date.now()
+        deletedAt: Date.now(),
       });
     }
   };
@@ -309,10 +322,15 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
   const handleChapterUndoDelete = (chapter) => {
     const chapterId = (chapter.chapters || chapter).chapterId;
     undoDeleteChapter(chapterId);
-    
+
     // Update selected chapter if it's the one being restored
-    if (selectedChapter && (selectedChapter.chapters || selectedChapter).chapterId === chapterId) {
-      const restoredChapter = chapters.find(c => (c.chapters || c).chapterId === chapterId);
+    if (
+      selectedChapter &&
+      (selectedChapter.chapters || selectedChapter).chapterId === chapterId
+    ) {
+      const restoredChapter = chapters.find(
+        (c) => (c.chapters || c).chapterId === chapterId
+      );
       if (restoredChapter) {
         const { pendingDeletion, deletedAt, ...cleanChapter } = restoredChapter;
         setSelectedChapter(cleanChapter);
@@ -323,15 +341,15 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
   // Update the handleSectionUpdate function
   const handleSectionUpdate = (formData) => {
     setSectionFormData(formData);
-    
+
     // Check if there are actual changes
     const sectionData = section.sections || section;
-    const hasChanges = 
+    const hasChanges =
       formData.title !== sectionData.title ||
       formData.description !== sectionData.description ||
       formData.imageId !== sectionData.imageId ||
       formData.videoId !== sectionData.videoId;
-    
+
     setHasSectionChanges(hasChanges);
   };
 
@@ -349,13 +367,14 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
       if (hasUnsavedChanges && !saving) {
         e.preventDefault();
         // Chrome requires returnValue to be set
-        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
-        return 'You have unsaved changes. Are you sure you want to leave?';
+        e.returnValue =
+          "You have unsaved changes. Are you sure you want to leave?";
+        return "You have unsaved changes. Are you sure you want to leave?";
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges, saving]);
 
   // Handle React Router navigation
@@ -364,20 +383,22 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
 
     const handleLocationChange = (e) => {
       if (hasUnsavedChanges && !saving) {
-        const confirmLeave = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+        const confirmLeave = window.confirm(
+          "You have unsaved changes. Are you sure you want to leave?"
+        );
         if (!confirmLeave) {
           e.preventDefault();
           // Push the current location back to prevent navigation
-          window.history.pushState(null, '', location.pathname);
+          window.history.pushState(null, "", location.pathname);
         }
       }
     };
 
     // Listen for popstate events (browser back/forward)
-    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener("popstate", handleLocationChange);
 
     return () => {
-      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener("popstate", handleLocationChange);
     };
   }, [isBlocking, hasUnsavedChanges, saving, location.pathname]);
 
@@ -385,7 +406,7 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Ctrl/Cmd + S to save
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         if (hasUnsavedChanges && !saving) {
           handleSaveAllChanges();
@@ -393,8 +414,8 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [hasUnsavedChanges, saving]);
 
   if (loading) {
@@ -426,9 +447,13 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
   const courseId = sectionData.courseId;
 
   // Count active and scheduled for deletion
-  const activeChapterCount = chapters.filter(ch => !ch.pendingDeletion && !(ch.chapters || ch).isArchived).length;
-  const archivedCount = chapters.filter(ch => (ch.chapters || ch).isArchived).length;
-  const scheduledForDeletionCount = chapters.filter(ch => {
+  const activeChapterCount = chapters.filter(
+    (ch) => !ch.pendingDeletion && !(ch.chapters || ch).isArchived
+  ).length;
+  const archivedCount = chapters.filter(
+    (ch) => (ch.chapters || ch).isArchived
+  ).length;
+  const scheduledForDeletionCount = chapters.filter((ch) => {
     const data = ch.chapters || ch;
     return data.isArchived && (data.purgeAfterAt || data.scheduledDeleteAt);
   }).length;
@@ -439,7 +464,7 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
       <div className="bg-bg border-b border-border-primary px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <BackButton 
+            <BackButton
               to={`/courses/${courseId}/sections/${sectionId}`}
               confirmNavigation={true}
               confirmCondition={hasUnsavedChanges}
@@ -452,21 +477,24 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
                 Edit: {sectionData.title}
               </h1>
               <p className="text-sm text-text/70">
-                {activeChapterCount} active chapter{activeChapterCount !== 1 ? 's' : ''}
+                {activeChapterCount} active chapter
+                {activeChapterCount !== 1 ? "s" : ""}
                 {pendingChanges.deleted.length > 0 && (
                   <span className="text-red-600">
-                    {' '}• {pendingChanges.deleted.length} pending deletion
+                    {" "}
+                    • {pendingChanges.deleted.length} pending deletion
                   </span>
                 )}
                 {scheduledForDeletionCount > 0 && (
                   <span className="text-orange-600">
-                    {' '}• {scheduledForDeletionCount} scheduled for deletion
+                    {" "}
+                    • {scheduledForDeletionCount} scheduled for deletion
                   </span>
                 )}
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {restoringChapter && (
               <div className="flex items-center gap-2 text-blue-600">
@@ -474,36 +502,43 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
                 <span className="text-sm">Restoring...</span>
               </div>
             )}
-            
+
             {saveSuccess && (
               <div className="flex items-center gap-2 text-green-600 animate-fade-in">
                 <Check className="w-4 h-4" />
                 <span className="text-sm">Saved successfully!</span>
               </div>
             )}
-            
+
             {error && (
-              <div className="text-red-600 text-sm max-w-xs truncate" title={error}>
+              <div
+                className="text-red-600 text-sm max-w-xs truncate"
+                title={error}
+              >
                 {error}
               </div>
             )}
-            
+
             {hasUnsavedChanges && !saveSuccess && (
               <div className="flex items-center gap-2 text-orange-600">
                 <Save className="w-4 h-4" />
                 <span className="text-sm">Unsaved changes</span>
               </div>
             )}
-            
+
             <button
               onClick={handleSaveAllChanges}
               disabled={!hasUnsavedChanges || saving}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 hasUnsavedChanges && !saving
-                  ? 'bg-primary text-white hover:bg-primary/90'
-                  : 'bg-bg2 text-text/60 cursor-not-allowed'
+                  ? "bg-primary text-white hover:bg-primary/90"
+                  : "bg-bg2 text-text/60 cursor-not-allowed"
               }`}
-              title={hasUnsavedChanges ? 'Save all changes (Ctrl+S)' : 'No changes to save'}
+              title={
+                hasUnsavedChanges
+                  ? "Save all changes (Ctrl+S)"
+                  : "No changes to save"
+              }
             >
               {saving ? (
                 <>
@@ -528,7 +563,10 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
           chapters={chapters}
           selectedChapter={selectedChapter}
           activeTab={activeTab}
-          pendingChanges={{ ...pendingChanges, sectionChanged: hasSectionChanges }}
+          pendingChanges={{
+            ...pendingChanges,
+            sectionChanged: hasSectionChanges,
+          }}
           onChapterSelect={handleChapterSelect}
           onSectionSelect={handleSectionSelect}
           onChapterCreate={handleChapterCreate}
@@ -541,23 +579,24 @@ const fetchSectionData = async (keepSelection = false, includeArchived = true) =
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto">
           <div className="p-6">
-            {activeTab === 'section' ? (
-              <SectionEditor
-                section={section}
-                onUpdate={handleSectionUpdate}
-              />
+            {activeTab === "section" ? (
+              <SectionEditor section={section} onUpdate={handleSectionUpdate} />
             ) : selectedChapter ? (
               <ChapterEditor
                 sectionId={sectionId}
                 chapter={selectedChapter}
                 chapters={chapters}
                 onUpdate={(updates) => {
-                  const chapterId = (selectedChapter.chapters || selectedChapter).chapterId;
+                  const chapterId = (
+                    selectedChapter.chapters || selectedChapter
+                  ).chapterId;
                   handleChapterUpdate(chapterId, updates);
                 }}
                 onDelete={() => handleChapterDelete(selectedChapter)}
                 onUndoDelete={() => handleChapterUndoDelete(selectedChapter)}
-                onRestoreArchived={() => handleRestoreArchivedChapter(selectedChapter)}
+                onRestoreArchived={() =>
+                  handleRestoreArchivedChapter(selectedChapter)
+                }
                 isTemp={selectedChapter.isTemp}
               />
             ) : (

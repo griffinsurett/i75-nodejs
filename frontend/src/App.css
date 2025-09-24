@@ -4,7 +4,7 @@
 /* Import modular CSS files */
 @import "./components/selection/checkbox.css";
 @import "./components/layout/sidebar.css";
-@import "./components/course/sections/edit/styles/drag-drop.css";
+@import "./components/course/sections/content-editor/styles/drag-drop.css";
 
 /* ───────────────────────────────────────────────────── */
 /* CUSTOM VARIANTS FOR LIGHT + DARK                      */
