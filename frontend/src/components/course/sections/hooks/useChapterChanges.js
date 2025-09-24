@@ -1,4 +1,4 @@
-// frontend/src/hooks/useChapterChanges.js
+// useChapterChanges.js
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 /**

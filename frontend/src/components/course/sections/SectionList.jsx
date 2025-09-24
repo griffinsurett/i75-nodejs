@@ -5,7 +5,7 @@ import { sectionAPI } from "../../../services/api";
 import { Loader2, AlertCircle, Plus } from "lucide-react";
 import ActiveArchivedTabs from "../../archive/ActiveArchivedTabs";
 import ArchivedNotice from "../../archive/ArchivedNotice";
-import useArchiveViewParam from "../../../hooks/useArchiveViewParam";
+import useArchiveViewParam from "../../archive/hooks/useArchiveViewParam";
 import SectionCard from "./SectionCard";
 import SectionEmptyState from "./SectionEmptyState";
 

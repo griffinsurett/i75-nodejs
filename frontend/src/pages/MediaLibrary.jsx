@@ -5,7 +5,7 @@ import MediaLibraryContent from "../components/media/MediaLibraryContent";
 import ActiveArchivedTabs from "../components/archive/ActiveArchivedTabs";
 import ConfirmModal from "../components/ConfirmModal";
 import BulkActionsBar from "../components/selection/BulkActionsBar";
-import useArchiveList from "../hooks/useArchiveList";
+import useArchiveList from "../components/archive/hooks/useArchiveList";
 import useBulkOperations from "../hooks/useBulkOperations";
 import { imageAPI, videoAPI } from "../services/api";
 
@@ -15,7 +15,7 @@ const MediaLibrary = () => {
   const [selectionMode, setSelectionMode] = useState(false);
   // Remove filteredMedia state - not needed
   const [totalMediaCount, setTotalMediaCount] = useState(0); // Add this for bulk actions count
-  
+
   const bulkOps = useBulkOperations();
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
@@ -28,34 +28,31 @@ const MediaLibrary = () => {
     loading,
     error,
     isArchived,
-    refresh
-  } = useArchiveList(
-    [imageAPI.getAllImages, videoAPI.getAllVideos],
-    {
-      defaultError: 'Failed to load media library',
-      combineResults: (results) => {
-        const [images, videosRaw] = results;
-        
-        // Transform video data to include thumbnail images
-        const videos = (videosRaw || []).map((item) => {
-          if (item.videos) {
-            return {
-              ...item.videos,
-              imageUrl: item.images?.imageUrl,
-              imageAlt: item.images?.altText,
-            };
-          }
-          return item;
-        });
-        
-        // Return the properly structured data
-        return {
-          images: images || [],
-          videos: videos || []
-        };
-      }
-    }
-  );
+    refresh,
+  } = useArchiveList([imageAPI.getAllImages, videoAPI.getAllVideos], {
+    defaultError: "Failed to load media library",
+    combineResults: (results) => {
+      const [images, videosRaw] = results;
+
+      // Transform video data to include thumbnail images
+      const videos = (videosRaw || []).map((item) => {
+        if (item.videos) {
+          return {
+            ...item.videos,
+            imageUrl: item.images?.imageUrl,
+            imageAlt: item.images?.altText,
+          };
+        }
+        return item;
+      });
+
+      // Return the properly structured data
+      return {
+        images: images || [],
+        videos: videos || [],
+      };
+    },
+  });
 
   // Extract images and videos from the combined data
   const images = mediaData?.images || [];
@@ -80,7 +77,7 @@ const MediaLibrary = () => {
   };
 
   const handleSelectAll = () => {
-    const allIds = allMedia.map(item => item.imageId || item.videoId);
+    const allIds = allMedia.map((item) => item.imageId || item.videoId);
     setSelectedItems(new Set(allIds));
   };
 
@@ -92,9 +89,7 @@ const MediaLibrary = () => {
     await bulkOps.executeBulkOperation(
       selectedItems,
       async (itemId) => {
-        const item = allMedia.find(
-          (m) => (m.imageId || m.videoId) === itemId
-        );
+        const item = allMedia.find((m) => (m.imageId || m.videoId) === itemId);
         if (!item) return;
 
         if (item.type === "video") {
@@ -115,13 +110,11 @@ const MediaLibrary = () => {
     await bulkOps.executeBulkOperation(
       selectedItems,
       async (itemId) => {
-        const item = allMedia.find(
-          (m) => (m.imageId || m.videoId) === itemId
-        );
+        const item = allMedia.find((m) => (m.imageId || m.videoId) === itemId);
         if (!item) return;
 
         const api = item.type === "video" ? videoAPI : imageAPI;
-        
+
         if (isArchived) {
           return item.type === "video"
             ? api.restoreVideo(itemId)
@@ -151,10 +144,10 @@ const MediaLibrary = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold text-heading">
-            {showUploader 
-              ? "Add New Media" 
-              : isArchived 
-              ? "Archived Media" 
+            {showUploader
+              ? "Add New Media"
+              : isArchived
+              ? "Archived Media"
               : "Media Library"}
           </h1>
 

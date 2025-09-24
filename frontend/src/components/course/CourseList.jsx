@@ -1,16 +1,16 @@
 // frontend/src/components/course/CourseList.jsx
-import { useNavigate } from 'react-router-dom';
-import { courseAPI } from '../../services/api';
-import { Loader2, AlertCircle, Plus } from 'lucide-react';
-import ActiveArchivedTabs from '../archive/ActiveArchivedTabs';
-import ArchivedNotice from '../archive/ArchivedNotice';
-import useArchiveList from '../../hooks/useArchiveList';
-import CourseCard from './CourseCard';
-import CourseEmptyState from './CourseEmptyState';
+import { useNavigate } from "react-router-dom";
+import { courseAPI } from "../../services/api";
+import { Loader2, AlertCircle, Plus } from "lucide-react";
+import ActiveArchivedTabs from "../archive/ActiveArchivedTabs";
+import ArchivedNotice from "../archive/ArchivedNotice";
+import useArchiveList from "../archive/hooks/useArchiveList";
+import CourseCard from "./CourseCard";
+import CourseEmptyState from "./CourseEmptyState";
 
 const CourseList = () => {
   const navigate = useNavigate();
-  
+
   const {
     view,
     setView,
@@ -18,9 +18,9 @@ const CourseList = () => {
     loading,
     error,
     isArchived,
-    refresh: fetchCourses
+    refresh: fetchCourses,
   } = useArchiveList(courseAPI.getAllCourses, {
-    defaultError: 'Failed to fetch courses'
+    defaultError: "Failed to fetch courses",
   });
 
   if (loading) {
@@ -41,7 +41,7 @@ const CourseList = () => {
     );
   }
 
-  const handleAddCourse = () => navigate('/courses/new');
+  const handleAddCourse = () => navigate("/courses/new");
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -49,9 +49,13 @@ const CourseList = () => {
       <div className="mb-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold text-heading">
-            {isArchived ? 'Archived Courses' : 'Available Courses'}
+            {isArchived ? "Archived Courses" : "Available Courses"}
           </h1>
-          <ActiveArchivedTabs value={view} onChange={setView} className="ml-2" />
+          <ActiveArchivedTabs
+            value={view}
+            onChange={setView}
+            className="ml-2"
+          />
         </div>
 
         <button
@@ -67,7 +71,10 @@ const CourseList = () => {
 
       {/* Content */}
       {courses.length === 0 ? (
-        <CourseEmptyState isArchived={isArchived} onAddCourse={handleAddCourse} />
+        <CourseEmptyState
+          isArchived={isArchived}
+          onAddCourse={handleAddCourse}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (

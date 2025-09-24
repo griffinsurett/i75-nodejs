@@ -1,4 +1,4 @@
-// frontend/src/utils/chapterUtils.js
+// chapterUtils.js
 /**
  * Reorder chapters after drag and drop
  * Chapters will be automatically renumbered based on their position

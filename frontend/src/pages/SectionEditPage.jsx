@@ -7,8 +7,8 @@ import BackButton from "../components/navigation/BackButton";
 import ChaptersSidebar from "../components/course/sections/edit/ChaptersSidebar";
 import SectionEditor from "../components/course/sections/edit/SectionEditor";
 import ChapterEditor from "../components/course/sections/edit/ChapterEditor";
-import useChapterChanges from "../hooks/useChapterChanges";
-import { getDefaultNextChapterNumber } from "../utils/chapterUtils";
+import useChapterChanges from "../components/course/sections/hooks/useChapterChanges";
+import { getDefaultNextChapterNumber } from "../components/course/sections/utils/chapterUtils";
 import { useSidebar } from "../context/SidebarContext";
 
 export default function SectionEditPage() {
