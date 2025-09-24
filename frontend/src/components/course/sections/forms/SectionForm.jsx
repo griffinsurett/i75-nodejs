@@ -80,27 +80,27 @@ export default function SectionForm({ mode = "create", section }) {
 
   // Handle submission
   const handleSubmit = async (values) => {
-    const finalCourseId = isEdit
-      ? section?.sections?.courseId || section?.courseId
-      : values.courseId || courseIdFromUrl;
-
-    if (!isEdit && !finalCourseId) {
-      throw new Error("Course ID is required");
-    }
-
     if (!isEdit) {
-      const courseIdNum = parseInt(finalCourseId);
-      if (isNaN(courseIdNum)) {
-        throw new Error("Invalid course ID");
+      // Get the final courseId
+      const finalCourseId = values.courseId || courseIdFromUrl;
+      
+      if (!finalCourseId) {
+        throw new Error("Course ID is required");
       }
 
-      const res = await courseAPI.createCourseSection(courseIdNum, values);
+      // Create section with courseId in the body
+      const sectionData = {
+        ...values,
+        courseId: parseInt(finalCourseId)
+      };
+      
+      const res = await sectionAPI.createSection(sectionData);
       const id = res.data?.data?.sectionId;
       return { navigateTo: `/courses/${finalCourseId}` };
     } else {
       const sectionData = section.sections || section;
       const id = sectionData.sectionId;
-      const courseId = sectionData.courseId || values.courseId;
+      const courseId = sectionData.courseId;
 
       await sectionAPI.updateSection(id, values);
       return { navigateTo: `/courses/${courseId}/sections/${id}` };
@@ -113,6 +113,8 @@ export default function SectionForm({ mode = "create", section }) {
     description: values.description?.trim() || undefined,
     imageId: values.imageId || undefined,
     videoId: values.videoId || undefined,
+    // Include courseId if creating
+    ...(mode === 'create' && { courseId: parseInt(values.courseId || courseIdFromUrl) })
   });
 
   return (

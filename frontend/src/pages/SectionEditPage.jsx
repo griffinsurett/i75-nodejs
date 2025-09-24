@@ -158,13 +158,16 @@ export default function SectionEditPage() {
 
       const changes = getChanges();
 
+      // Delete chapters using the single route
       for (const chapter of changes.deleted) {
         const chapterData = chapter.chapters || chapter;
         promises.push(chapterAPI.deleteChapter(chapterData.chapterId));
       }
 
+      // Add new chapters using the single route with sectionId in body
       for (const chapter of changes.added) {
         const chapterData = {
+          sectionId: parseInt(sectionId), // Include sectionId in the body
           chapterNumber: chapter.chapterNumber,
           title: chapter.title,
           description: chapter.description,
@@ -172,9 +175,10 @@ export default function SectionEditPage() {
           imageId: chapter.imageId,
           videoId: chapter.videoId,
         };
-        promises.push(sectionAPI.createSectionChapter(sectionId, chapterData));
+        promises.push(chapterAPI.createChapter(chapterData));
       }
 
+      // Update modified chapters using the single route
       for (const chapter of changes.modified) {
         const chapterData = chapter.chapters || chapter;
         const updateData = {
@@ -185,27 +189,16 @@ export default function SectionEditPage() {
           imageId: chapterData.imageId,
           videoId: chapterData.videoId,
         };
-        promises.push(
-          sectionAPI.updateSectionChapter(
-            sectionId,
-            chapterData.chapterId,
-            updateData
-          )
-        );
+        promises.push(chapterAPI.updateChapter(chapterData.chapterId, updateData));
       }
 
+      // Handle reordering if needed
       if (changes.reordered && !changes.added.length) {
-        const reorderPromises = changes.currentOrder
+        const chapterIds = changes.currentOrder
           .filter((c) => !c.isTemp && !(c.chapters || c).isArchived)
-          .map((chapter, index) => {
-            const chapterData = chapter.chapters || chapter;
-            return sectionAPI.updateSectionChapter(
-              sectionId,
-              chapterData.chapterId,
-              { chapterNumber: index + 1 }
-            );
-          });
-        promises.push(...reorderPromises);
+          .map((chapter) => (chapter.chapters || chapter).chapterId);
+        
+        promises.push(chapterAPI.reorderChapters(sectionId, chapterIds));
       }
 
       await Promise.all(promises);

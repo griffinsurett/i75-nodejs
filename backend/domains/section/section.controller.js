@@ -6,13 +6,11 @@ const {
   images,
   videos,
   chapters,
-  tests,
-  entries,
 } = require("../../config/schema");
 const { eq, desc } = require("drizzle-orm");
 const mediaManager = require("../../shared/utils/mediaManager");
 const BaseController = require("../../shared/utils/baseController");
-const chapterService = require("../chapter/chapter.service");
+
 const TimeUntilDeletion = 60000;
 
 class SectionController extends BaseController {
@@ -24,8 +22,6 @@ class SectionController extends BaseController {
       images,
       videos,
       chapters,
-      tests,
-      entries,
     };
   }
 
@@ -93,64 +89,77 @@ class SectionController extends BaseController {
     }
   }
 
-  // Add these methods to the SectionController class:
-
   /**
-   * POST /api/sections - Create new section (standalone)
+   * POST /api/sections - Create new section (requires courseId in body)
    */
-  async createSection(req, res, next) {
-    try {
-      const result = await this.withTransaction(db, async (tx) => {
-        const {
-          courseId,
-          title,
-          description,
-          imageId,
-          imageUrl,
-          altText,
-          videoId,
-        } = req.body;
+ async createSection(req, res, next) {
+  try {
+    const result = await this.withTransaction(db, async (tx) => {
+      // Try to get courseId from multiple sources
+      let courseId = req.body.courseId || 
+                     req.params.courseId || 
+                     req.query.courseId;
+      
+      const {
+        title,
+        description,
+        imageId,
+        imageUrl,
+        altText,
+        videoId,
+      } = req.body;
 
-        const validatedTitle = this.validateRequired(title, "Section title");
-        const validatedCourseId = this.validateRequired(courseId, "Course ID");
+      // Validate and convert courseId
+      if (!courseId) {
+        throw this.createError("Course ID is required", 400);
+      }
 
-        // Verify course exists
-        await this.getOrThrow(
-          tx,
-          courses,
-          courses.courseId,
-          validatedCourseId,
-          "Course"
-        );
+      courseId = parseInt(courseId, 10);
+      if (isNaN(courseId)) {
+        throw this.createError("Invalid Course ID", 400);
+      }
 
-        const finalImageId = await mediaManager.handleImage(
-          tx,
-          { image_id: imageId, image_url: imageUrl, alt_text: altText },
-          this.imageVideoSchema
-        );
+      const validatedTitle = this.validateRequired(title, "Section title");
 
-        const [section] = await tx
-          .insert(sections)
-          .values({
-            courseId: validatedCourseId,
-            title: validatedTitle,
-            description: description || null,
-            imageId: finalImageId,
-            videoId: videoId || null,
-          })
-          .returning();
+      // Verify course exists
+      await this.getOrThrow(
+        tx,
+        courses,
+        courses.courseId,
+        courseId,
+        "Course"
+      );
 
-        return section;
-      });
+      const finalImageId = await mediaManager.handleImage(
+        tx,
+        { image_id: imageId, image_url: imageUrl, alt_text: altText },
+        this.imageVideoSchema
+      );
 
-      this.success(res, result, null, 201);
-    } catch (error) {
-      this.handleError(error, res, next);
-    }
+      const [section] = await tx
+        .insert(sections)
+        .values({
+          courseId: courseId,  // Use the validated courseId
+          title: validatedTitle,
+          description: description || null,
+          imageId: finalImageId,
+          videoId: videoId || null,
+          isArchived: false,
+          createdAt: new Date(),
+        })
+        .returning();
+
+      return section;
+    });
+
+    this.success(res, result, null, 201);
+  } catch (error) {
+    this.handleError(error, res, next);
   }
+}
 
   /**
-   * PUT /api/sections/:sectionId - Update section (standalone)
+   * PUT /api/sections/:sectionId - Update section
    */
   async updateSection(req, res, next) {
     try {
@@ -321,185 +330,6 @@ class SectionController extends BaseController {
       this.handleError(error, res, next);
     }
   }
-
-  /**
-   * POST /api/sections/:sectionId/chapters - Create chapter within section
-   */
-  async createSectionChapter(req, res, next) {
-    try {
-      const result = await this.withTransaction(db, async (tx) => {
-        const { sectionId } = req.params;
-        const { chapterNumber, title, description, content, imageId, videoId } =
-          req.body;
-
-        // Verify section exists
-        await this.getOrThrow(
-          tx,
-          sections,
-          sections.sectionId,
-          sectionId,
-          "Section"
-        );
-
-        // Auto-generate chapter number if not provided
-        let finalChapterNumber = chapterNumber;
-        if (!finalChapterNumber || finalChapterNumber === 0) {
-          finalChapterNumber = await chapterService.getNextChapterNumber(
-            tx,
-            sectionId
-          );
-        }
-
-        const [chapter] = await tx
-          .insert(chapters)
-          .values({
-            sectionId: parseInt(sectionId),
-            chapterNumber: finalChapterNumber,
-            title: title || `Chapter ${finalChapterNumber}`,
-            description: description || null,
-            content: content || null,
-            imageId: imageId || null,
-            videoId: videoId || null,
-            isArchived: false,
-            createdAt: new Date(),
-          })
-          .returning();
-
-        return chapter;
-      });
-
-      this.success(res, result, null, 201);
-    } catch (error) {
-      this.handleError(error, res, next);
-    }
-  }
-
-  /**
-   * PUT /api/sections/:sectionId/chapters/:chapterId - Update chapter within section
-   */
-  async updateSectionChapter(req, res, next) {
-    try {
-      const result = await this.withTransaction(db, async (tx) => {
-        const { sectionId, chapterId } = req.params;
-        const { chapterNumber, title, description, content, imageId, videoId } =
-          req.body;
-
-        // Verify chapter belongs to section
-        const existing = await tx
-          .select()
-          .from(chapters)
-          .where(eq(chapters.chapterId, chapterId))
-          .limit(1);
-
-        if (!existing[0] || existing[0].sectionId !== parseInt(sectionId)) {
-          this.throwNotFound("Chapter in this section");
-        }
-
-        const updateFields = { updatedAt: new Date() };
-        if (chapterNumber !== undefined)
-          updateFields.chapterNumber = chapterNumber;
-        if (title !== undefined) updateFields.title = title;
-        if (description !== undefined) updateFields.description = description;
-        if (content !== undefined) updateFields.content = content;
-        if (imageId !== undefined) updateFields.imageId = imageId;
-        if (videoId !== undefined) updateFields.videoId = videoId;
-
-        const [updated] = await tx
-          .update(chapters)
-          .set(updateFields)
-          .where(eq(chapters.chapterId, chapterId))
-          .returning();
-
-        return updated;
-      });
-
-      this.success(res, result);
-    } catch (error) {
-      this.handleError(error, res, next);
-    }
-  }
-
-  /**
-   * DELETE /api/sections/:sectionId/chapters/:chapterId - Delete chapter from section
-   */
-  /**
-   * DELETE /api/sections/:sectionId/chapters/:chapterId - Delete chapter from section with scheduled deletion
-   */
- /**
- * DELETE /api/sections/:sectionId/chapters/:chapterId - Delete chapter from section with renumbering
- */
-async deleteSectionChapter(req, res, next) {
-  try {
-    const result = await this.withTransaction(db, async (tx) => {
-      const { sectionId, chapterId } = req.params;
-
-      // Verify chapter belongs to section
-      const chapter = await tx
-        .select()
-        .from(chapters)
-        .where(eq(chapters.chapterId, chapterId))
-        .limit(1);
-
-      if (!chapter[0] || chapter[0].sectionId !== parseInt(sectionId)) {
-        this.throwNotFound("Chapter in this section");
-      }
-
-      const chapterToDelete = chapter[0];
-
-      // Check if chapter has tests or entries
-      const testCount = await this.checkRelatedCount(
-        tx,
-        tests,
-        tests.chapterId,
-        chapterId
-      );
-
-      const entryCount = await this.checkRelatedCount(
-        tx,
-        entries,
-        entries.chapterId,
-        chapterId
-      );
-
-      if (testCount > 0 || entryCount > 0) {
-        throw this.createError(
-          "Cannot delete chapter with existing tests or entries. Delete them first.",
-          400
-        );
-      }
-
-      // Schedule deletion instead of immediate delete
-      const deletedChapter = await mediaManager.deleteWithCascade(
-        tx,
-        chapterToDelete,
-        chapters,
-        chapters.chapterId,
-        chapterId,
-        this.mediaSchema,
-        TimeUntilDeletion
-      );
-
-      // IMPORTANT: Renumber remaining chapters in the section
-      await chapterService.renumberChapters(tx, parseInt(sectionId));
-
-      return deletedChapter;
-    });
-
-    let message = "Chapter scheduled for deletion in 60 seconds. Remaining chapters have been renumbered.";
-    const cascaded = [];
-    if (result.image) cascaded.push("image");
-    if (result.video) cascaded.push("video");
-    if (cascaded.length > 0) {
-      message = `Chapter and its exclusive ${cascaded.join(
-        " and "
-      )} scheduled for deletion in 60 seconds. Remaining chapters have been renumbered.`;
-    }
-
-    this.success(res, result, message);
-  } catch (error) {
-    this.handleError(error, res, next);
-  }
-}
 }
 
 module.exports = new SectionController();

@@ -62,20 +62,9 @@ export const courseAPI = {
 
   // Delete course
   deleteCourse: (courseId) => api.delete(`/courses/${courseId}`),
-
-   // Section management within course context
-  createCourseSection: (courseId, sectionData) => 
-    api.post(`/courses/${courseId}/sections`, sectionData),
-  
-  updateCourseSection: (courseId, sectionId, sectionData) => 
-    api.put(`/courses/${courseId}/sections/${sectionId}`, sectionData),
-  
-  deleteCourseSection: (courseId, sectionId) => 
-    api.delete(`/courses/${courseId}/sections/${sectionId}`),
 };
 
 // Instructor API functions
-// Add these to frontend/src/services/api.js
 export const instructorAPI = {
   getAllInstructors: (params) => api.get("/instructors", { params }),
   getInstructor: (instructorId) => api.get(`/instructors/${instructorId}`),
@@ -93,29 +82,18 @@ export const instructorAPI = {
 };
 
 // Section API functions
-// Add to frontend/src/services/api.js
 export const sectionAPI = {
   getAllSections: (params = {}) => api.get("/sections", { params }),
   getSection: (sectionId) => api.get(`/sections/${sectionId}`),
   getSectionChapters: (sectionId) => api.get(`/sections/${sectionId}/chapters`),
+  
+  // Create section with courseId in body
   createSection: (sectionData) => api.post("/sections", sectionData),
   
-  // Chapter management within section context
-  createSectionChapter: (sectionId, chapterData) => 
-    api.post(`/sections/${sectionId}/chapters`, chapterData),
-  
-  updateSectionChapter: (sectionId, chapterId, chapterData) => 
-    api.put(`/sections/${sectionId}/chapters/${chapterId}`, chapterData),
-  
-  deleteSectionChapter: (sectionId, chapterId) => 
-    api.delete(`/sections/${sectionId}/chapters/${chapterId}`),
-  
-  // Optional: Reorder chapters
-  reorderSectionChapters: (sectionId, chapterIds) => 
-    api.put(`/sections/${sectionId}/chapters/reorder`, { chapterIds }),
-    
+  // Update section
   updateSection: (sectionId, sectionData) =>
     api.put(`/sections/${sectionId}`, sectionData),
+    
   deleteSection: (sectionId) => api.delete(`/sections/${sectionId}`),
   archiveSection: (sectionId) => api.post(`/sections/${sectionId}/archive`),
   restoreSection: (sectionId) => api.post(`/sections/${sectionId}/restore`),
@@ -127,11 +105,20 @@ export const chapterAPI = {
   getChapter: (chapterId) => api.get(`/chapters/${chapterId}`),
   getChapterTests: (chapterId) => api.get(`/chapters/${chapterId}/tests`),
   getChapterEntries: (chapterId) => api.get(`/chapters/${chapterId}/entries`),
+  
+  // Create chapter with sectionId in body
   createChapter: (chapterData) => api.post("/chapters", chapterData),
-  updateChapter: (chapterId, chapterData) => api.put(`/chapters/${chapterId}`, chapterData),
+  
+  updateChapter: (chapterId, chapterData) => 
+    api.put(`/chapters/${chapterId}`, chapterData),
+  
   deleteChapter: (chapterId) => api.delete(`/chapters/${chapterId}`),
   archiveChapter: (chapterId) => api.post(`/chapters/${chapterId}/archive`),
   restoreChapter: (chapterId) => api.post(`/chapters/${chapterId}/restore`),
+  
+  // Reorder chapters in a section
+  reorderChapters: (sectionId, chapterIds) =>
+    api.put(`/chapters/sections/${sectionId}/reorder`, { chapterIds }),
 };
 
 // Test API functions
@@ -212,7 +199,7 @@ export const uploadAPI = {
     });
   },
 
-  // NEW: Upload video (alternative location for consistency)
+  // Upload video (alternative location for consistency)
   uploadVideo: (file, title, description, onUploadProgress) => {
     const formData = new FormData();
     formData.append("file", file); // Backend expects 'file'

@@ -178,55 +178,63 @@ class ChapterController extends BaseController {
   }
 
   /**
-   * POST /api/chapters - Create new chapter with automatic numbering
+   * POST /api/chapters - Create new chapter with sectionId in body
    */
-  async createChapter(req, res, next) {
-    try {
-      const result = await this.withTransaction(db, async (tx) => {
-        const {
-          sectionId,
-          chapterNumber,
-          title,
-          description,
-          content,
-          imageId,
-          videoId,
-        } = req.body;
+async createChapter(req, res, next) {
+  try {
+    const result = await this.withTransaction(db, async (tx) => {
+      const {
+        sectionId,  // Now required in body
+        chapterNumber,
+        title,
+        description,
+        content,
+        imageId,
+        videoId,
+      } = req.body;
 
-        const validatedSectionId = this.validateRequired(sectionId, "Section ID");
-        
-        // Verify section exists
-        await this.getOrThrow(tx, sections, sections.sectionId, validatedSectionId, "Section");
+      // Better validation with clear error message
+      if (!sectionId) {
+        throw this.createError("Section ID is required", 400);
+      }
 
-        // Use service to get next chapter number if not provided or if it's 0
-        let finalChapterNumber = chapterNumber;
-        if (!finalChapterNumber || finalChapterNumber === 0) {
-          finalChapterNumber = await chapterService.getNextChapterNumber(tx, validatedSectionId);
-        }
+      const validatedSectionId = parseInt(sectionId, 10);
+      if (isNaN(validatedSectionId)) {
+        throw this.createError("Invalid Section ID", 400);
+      }
+      
+      // Verify section exists
+      await this.getOrThrow(tx, sections, sections.sectionId, validatedSectionId, "Section");
 
-        const [chapter] = await tx
-          .insert(chapters)
-          .values({
-            sectionId: validatedSectionId,
-            chapterNumber: finalChapterNumber,
-            title: title || `Chapter ${finalChapterNumber}`,
-            description: description || null,
-            content: content || null,
-            imageId: imageId || null,
-            videoId: videoId || null,
-            isArchived: false,
-            createdAt: new Date(),
-          })
-          .returning();
+      // Use service to get next chapter number if not provided or if it's 0
+      let finalChapterNumber = chapterNumber;
+      if (!finalChapterNumber || finalChapterNumber === 0) {
+        finalChapterNumber = await chapterService.getNextChapterNumber(tx, validatedSectionId);
+      }
 
-        return chapter;
-      });
+      const [chapter] = await tx
+        .insert(chapters)
+        .values({
+          sectionId: validatedSectionId,
+          chapterNumber: finalChapterNumber,
+          title: title || `Chapter ${finalChapterNumber}`,
+          description: description || null,
+          content: content || null,
+          imageId: imageId || null,
+          videoId: videoId || null,
+          isArchived: false,
+          createdAt: new Date(),
+        })
+        .returning();
 
-      this.success(res, result, null, 201);
-    } catch (error) {
-      this.handleError(error, res, next);
-    }
+      return chapter;
+    });
+
+    this.success(res, result, null, 201);
+  } catch (error) {
+    this.handleError(error, res, next);
   }
+}
 
   /**
    * PUT /api/chapters/:chapterId - Update chapter
