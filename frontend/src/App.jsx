@@ -8,7 +8,7 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import MediaLibrary from "./pages/MediaLibrary";
 import Instructors from "./pages/Instructors";
-import InstructorDetail from "./components/instructor/InstructorDetail";
+import InstructorDetail from "./components/instructor/views/InstructorDetail";
 import InstructorUpsertPage from "./pages/InstructorUpsertPage";
 import Sections from "./pages/Sections";
 import SectionDetail from "./components/course/sections/detail/SectionDetail";
@@ -52,10 +52,7 @@ function AppContent() {
               path="/instructors/:instructorId"
               element={<InstructorDetail />}
             />
-            <Route
-              path="/instructors/new"
-              element={<InstructorUpsertPage />}
-            />
+            <Route path="/instructors/new" element={<InstructorUpsertPage />} />
             <Route
               path="/instructors/:instructorId/edit"
               element={<InstructorUpsertPage />}
@@ -67,8 +64,14 @@ function AppContent() {
               element={<SectionDetail />}
             />
             <Route path="/sections/new" element={<SectionUpsertPage />} />
-            <Route path="/sections/:sectionId/edit" element={<SectionUpsertPage />} />
-            <Route path="/sections/:sectionId/content" element={<SectionEditPage />} />
+            <Route
+              path="/sections/:sectionId/edit"
+              element={<SectionUpsertPage />}
+            />
+            <Route
+              path="/sections/:sectionId/content"
+              element={<SectionEditPage />}
+            />
             <Route
               path="/sections/:sectionId/chapters"
               element={<PlaceholderPage title="Chapters" />}

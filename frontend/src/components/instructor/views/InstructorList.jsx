@@ -1,14 +1,14 @@
 // frontend/src/components/instructor/InstructorList.jsx
 import { useNavigate } from "react-router-dom";
-import { instructorAPI } from "../../services/api";
+import { instructorAPI } from "../../../services/api";
 import { Plus } from "lucide-react";
-import ActiveArchivedTabs from "../archive/ActiveArchivedTabs";
-import ArchivedNotice from "../archive/ArchivedNotice";
-import useArchiveList from "../archive/hooks/useArchiveList";
-import InstructorCard from "./InstructorCard";
-import InstructorEmptyState from "./InstructorEmptyState";
-import PageLoadingState from "../common/PageLoadingState";
-import PageErrorState from "../common/PageErrorState";
+import ActiveArchivedTabs from "../../archive/ActiveArchivedTabs";
+import ArchivedNotice from "../../archive/ArchivedNotice";
+import useArchiveList from "../../archive/hooks/useArchiveList";
+import InstructorCard from "../components/InstructorCard";
+import InstructorEmptyState from "../components/InstructorEmptyState";
+import PageLoadingState from "../../common/PageLoadingState";
+import PageErrorState from "../../common/PageErrorState";
 
 const InstructorList = () => {
   const navigate = useNavigate();

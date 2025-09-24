@@ -1,13 +1,13 @@
-import { instructorAPI, courseAPI } from "../../services/api";
-import { validators } from "../../utils/forms/validation";
+import { instructorAPI, courseAPI } from "../../../services/api";
+import { validators } from "../../../utils/forms/validation";
 import {
   Form,
   FormField,
   FormInput,
   FormTextarea,
   FormCheckboxList,
-} from "../forms";
-import MediaInput from "../media/MediaInput";
+} from "../../forms";
+import MediaInput from "../../media/MediaInput";
 
 export default function InstructorForm({ mode = "create", instructor }) {
   const isEdit = mode === "edit";

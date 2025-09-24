@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Edit, Plus } from "lucide-react";
 import { instructorAPI } from "../services/api";
-import InstructorForm from "../components/instructor/InstructorForm";
+import InstructorForm from "../components/instructor/forms/InstructorForm";
 import BackButton from "../components/navigation/BackButton";
 import PageLoadingState from "../components/common/PageLoadingState";
 import PageErrorState from "../components/common/PageErrorState";
@@ -39,10 +39,10 @@ export default function InstructorUpsertPage() {
 
   if (isEdit && (err || !instructor)) {
     return (
-      <PageErrorState 
-        error={err || "Instructor not found"} 
-        backUrl="/instructors" 
-        backLabel="Back to Instructors" 
+      <PageErrorState
+        error={err || "Instructor not found"}
+        backUrl="/instructors"
+        backLabel="Back to Instructors"
       />
     );
   }
@@ -50,7 +50,9 @@ export default function InstructorUpsertPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <BackButton to={isEdit ? `/instructors/${instructorId}` : "/instructors"}>
+        <BackButton
+          to={isEdit ? `/instructors/${instructorId}` : "/instructors"}
+        >
           {isEdit ? "Back to Profile" : "Back to Instructors"}
         </BackButton>
       </div>
