@@ -1,15 +1,15 @@
 // frontend/src/components/course/CourseDetail.jsx
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { courseAPI } from "../../services/api";
+import { courseAPI } from "../../../services/api";
 import { BookOpen } from "lucide-react";
-import EditActions from "../archive/EditActions";
-import CourseHeader from "./CourseHeader";
-import CourseSections from "../../components/course/sections/lists/CourseSections";
-import BackButton from "../navigation/BackButton";
-import PageLoadingState from "../common/PageLoadingState";
-import PageErrorState from "../common/PageErrorState";
-import EmptyState from "../common/EmptyState";
+import EditActions from "../../archive/EditActions";
+import CourseHeader from "../components/CourseHeader";
+import CourseSections from "../sections/lists/CourseSections";
+import BackButton from "../../navigation/BackButton";
+import PageLoadingState from "../../common/PageLoadingState";
+import PageErrorState from "../../common/PageErrorState";
+import EmptyState from "../../common/EmptyState";
 
 const CourseDetail = () => {
   const { courseId } = useParams();

@@ -1,4 +1,6 @@
-import { Users, User } from 'lucide-react';
+// frontend/src/components/course/components/CourseInstructors.jsx
+import { Users } from 'lucide-react';
+import ImageWithFallback from '../../common/ImageWithFallback';
 
 export default function CourseInstructors({ instructors }) {
   return (
@@ -14,16 +16,15 @@ export default function CourseInstructors({ instructors }) {
           
           return (
             <div key={inst.instructorId} className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-bg2 rounded-full flex items-center justify-center">
-                {instImage?.imageUrl ? (
-                  <img
-                    src={instImage.imageUrl}
-                    alt={inst.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <User className="w-5 h-5 text-text" />
-                )}
+              <div className="w-10 h-10 bg-bg2 rounded-full overflow-hidden">
+                <ImageWithFallback
+                  src={instImage?.imageUrl}
+                  alt={inst.name}
+                  type="user"
+                  size="full"
+                  iconSize="sm"
+                  className="rounded-full object-cover"
+                />
               </div>
               <div>
                 <div className="font-medium text-heading">{inst.name}</div>

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Edit, Plus } from "lucide-react";
 import { courseAPI } from "../services/api";
-import CourseForm from "../components/course/CourseForm";
+import CourseForm from "../components/course/forms/CourseForm";
 import BackButton from "../components/navigation/BackButton";
 import PageLoadingState from "../components/common/PageLoadingState";
 import PageErrorState from "../components/common/PageErrorState";

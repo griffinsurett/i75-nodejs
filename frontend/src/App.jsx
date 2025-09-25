@@ -16,8 +16,8 @@ import SectionUpsertPage from "./pages/SectionUpsertPage";
 import SectionEditPage from "./pages/SectionEditPage";
 
 // Components
-import CourseList from "./components/course/CourseList";
-import CourseDetail from "./components/course/CourseDetail";
+import CourseList from "./components/course/views/CourseList";
+import CourseDetail from "./components/course/views/CourseDetail";
 import Sidebar from "./components/layout/Sidebar";
 import ThemeToggle from "./components/theme/ThemeToggle";
 

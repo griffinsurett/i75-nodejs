@@ -1,14 +1,14 @@
 // frontend/src/components/course/CourseCard.jsx
 import { Link } from "react-router-dom";
 import { BookOpen, User } from "lucide-react";
-import EditActions from "../archive/EditActions";
-import ArchiveBadge from "../archive/ArchiveBadge";
-import ImageWithFallback from "../common/ImageWithFallback";
-import DateDisplay from "../common/DateDisplay";
-import MediaIndicator from "../common/MediaIndicator";
-import ContentPreview from "../common/ContentPreview";
-import StatsGrid from "../common/StatsGrid";
-import { courseAPI } from "../../services/api";
+import EditActions from "../../archive/EditActions";
+import ArchiveBadge from "../../archive/ArchiveBadge";
+import ImageWithFallback from "../../common/ImageWithFallback";
+import DateDisplay from "../../common/DateDisplay";
+import MediaIndicator from "../../common/MediaIndicator";
+import ContentPreview from "../../common/ContentPreview";
+import StatsGrid from "../../common/StatsGrid";
+import { courseAPI } from "../../../services/api";
 
 export default function CourseCard({ course, onChanged }) {
   // Handle both nested and flat structure
@@ -69,11 +69,7 @@ export default function CourseCard({ course, onChanged }) {
         </h3>
 
         {/* Use ContentPreview instead of custom truncation */}
-        <ContentPreview 
-          content={courseData.description || "No description available"} 
-          maxLength={100} 
-          className="mb-4"
-        />
+        <p className="text-text mb-4">{courseData.description || "No description available"}</p>
 
         <div className="space-y-2 mb-4">
           {videoData?.title && (
