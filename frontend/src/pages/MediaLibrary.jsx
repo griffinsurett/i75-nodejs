@@ -1,7 +1,7 @@
 // frontend/src/pages/MediaLibrary.jsx
 import { useState, useEffect } from "react";
 import { Plus, CheckSquare } from "lucide-react";
-import MediaLibraryContent from "../components/media/MediaLibraryContent";
+import MediaLibraryContent from "../components/media/library/MediaLibraryContent";
 import ActiveArchivedTabs from "../components/archive/ActiveArchivedTabs";
 import ConfirmModal from "../components/ConfirmModal";
 import useArchiveList from "../components/archive/hooks/useArchiveList";
@@ -83,14 +83,16 @@ const MediaLibrary = () => {
   const handleBulkDelete = async () => {
     try {
       setBulkOperationError(""); // Clear any previous errors
-      
+
       const failedItems = [];
       const selectedArray = Array.from(selectedItems);
-      
+
       // Process each item
       for (const itemId of selectedArray) {
         try {
-          const item = allMedia.find((m) => (m.imageId || m.videoId) === itemId);
+          const item = allMedia.find(
+            (m) => (m.imageId || m.videoId) === itemId
+          );
           if (!item) continue;
 
           if (item.type === "video") {
@@ -113,10 +115,14 @@ const MediaLibrary = () => {
         refresh();
       } else if (failedItems.length === selectedArray.length) {
         // All failed
-        setBulkOperationError("Failed to delete all selected items. Please try again.");
+        setBulkOperationError(
+          "Failed to delete all selected items. Please try again."
+        );
       } else {
         // Partial success
-        setBulkOperationError(`Failed to delete ${failedItems.length} of ${selectedArray.length} items. Please try again.`);
+        setBulkOperationError(
+          `Failed to delete ${failedItems.length} of ${selectedArray.length} items. Please try again.`
+        );
         // Remove successfully deleted items from selection
         const newSelection = new Set(failedItems);
         setSelectedItems(newSelection);
@@ -124,21 +130,27 @@ const MediaLibrary = () => {
       }
     } catch (error) {
       console.error("Bulk delete error:", error);
-      setBulkOperationError(error?.response?.data?.message || error?.message || "Failed to delete items");
+      setBulkOperationError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to delete items"
+      );
     }
   };
 
   const handleBulkArchive = async () => {
     try {
       setBulkOperationError(""); // Clear any previous errors
-      
+
       const failedItems = [];
       const selectedArray = Array.from(selectedItems);
-      
+
       // Process each item
       for (const itemId of selectedArray) {
         try {
-          const item = allMedia.find((m) => (m.imageId || m.videoId) === itemId);
+          const item = allMedia.find(
+            (m) => (m.imageId || m.videoId) === itemId
+          );
           if (!item) continue;
 
           const api = item.type === "video" ? videoAPI : imageAPI;
@@ -157,7 +169,10 @@ const MediaLibrary = () => {
             }
           }
         } catch (error) {
-          console.error(`Failed to ${isArchived ? 'restore' : 'archive'} item ${itemId}:`, error);
+          console.error(
+            `Failed to ${isArchived ? "restore" : "archive"} item ${itemId}:`,
+            error
+          );
           failedItems.push(itemId);
         }
       }
@@ -171,10 +186,18 @@ const MediaLibrary = () => {
         refresh();
       } else if (failedItems.length === selectedArray.length) {
         // All failed
-        setBulkOperationError(`Failed to ${isArchived ? 'restore' : 'archive'} all selected items. Please try again.`);
+        setBulkOperationError(
+          `Failed to ${
+            isArchived ? "restore" : "archive"
+          } all selected items. Please try again.`
+        );
       } else {
         // Partial success
-        setBulkOperationError(`Failed to ${isArchived ? 'restore' : 'archive'} ${failedItems.length} of ${selectedArray.length} items. Please try again.`);
+        setBulkOperationError(
+          `Failed to ${isArchived ? "restore" : "archive"} ${
+            failedItems.length
+          } of ${selectedArray.length} items. Please try again.`
+        );
         // Remove successfully processed items from selection
         const newSelection = new Set(failedItems);
         setSelectedItems(newSelection);
@@ -182,7 +205,11 @@ const MediaLibrary = () => {
       }
     } catch (error) {
       console.error("Bulk archive/restore error:", error);
-      setBulkOperationError(error?.response?.data?.message || error?.message || `Failed to ${isArchived ? 'restore' : 'archive'} items`);
+      setBulkOperationError(
+        error?.response?.data?.message ||
+          error?.message ||
+          `Failed to ${isArchived ? "restore" : "archive"} items`
+      );
     }
   };
 

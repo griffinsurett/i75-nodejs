@@ -7,7 +7,7 @@ import {
   FormTextarea,
   FormCheckboxList,
 } from "../../forms";
-import MediaInput from "../../media/MediaInput";
+import MediaInput from "../../media/selection/MediaInput";
 
 export default function InstructorForm({ mode = "create", instructor }) {
   const isEdit = mode === "edit";

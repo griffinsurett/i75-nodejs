@@ -1,20 +1,20 @@
 // frontend/src/components/media/MediaSelector.jsx
-import { useState, useEffect } from 'react';
-import { X, Upload, Grid3x3 } from 'lucide-react';
-import Modal from '../Modal';
-import MediaLibraryContent from './MediaLibraryContent';
-import MediaUploader from './MediaUploader';
+import { useState, useEffect } from "react";
+import { X, Upload, Grid3x3 } from "lucide-react";
+import Modal from "../../Modal";
+import MediaLibraryContent from "../library/MediaLibraryContent";
+import MediaUploader from "../upload/MediaUploader";
 
 export default function MediaSelector({
   isOpen,
   onClose,
   onSelect,
-  mediaType = 'all',
-  title = 'Select Media',
+  mediaType = "all",
+  title = "Select Media",
   allowMultiple = false,
   currentSelection = null,
 }) {
-  const [activeTab, setActiveTab] = useState('library');
+  const [activeTab, setActiveTab] = useState("library");
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -39,20 +39,20 @@ export default function MediaSelector({
     if (selectedItems.size === 0) return;
 
     const selectedIds = Array.from(selectedItems);
-    
+
     if (allowMultiple) {
       onSelect(selectedIds);
     } else {
       onSelect(selectedIds[0]);
     }
-    
+
     onClose();
   };
 
   const handleUploaderComplete = (uploadedMedia) => {
     // Refresh the media library
-    setRefreshTrigger(prev => prev + 1);
-    
+    setRefreshTrigger((prev) => prev + 1);
+
     // If we have uploaded media info and it's single selection mode
     if (uploadedMedia && !allowMultiple) {
       // Auto-select the uploaded media
@@ -63,13 +63,13 @@ export default function MediaSelector({
         return; // Exit early - don't switch tabs
       }
     }
-    
+
     // Switch back to library tab
-    setActiveTab('library');
+    setActiveTab("library");
   };
 
   const handleRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   // Determine selection mode based on allowMultiple
@@ -89,22 +89,22 @@ export default function MediaSelector({
       {/* Tabs */}
       <div className="px-6 py-3 border-b border-border-primary flex gap-4">
         <button
-          onClick={() => setActiveTab('library')}
+          onClick={() => setActiveTab("library")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'library'
-              ? 'bg-primary text-white'
-              : 'bg-bg2 text-text hover:bg-bg3'
+            activeTab === "library"
+              ? "bg-primary text-white"
+              : "bg-bg2 text-text hover:bg-bg3"
           }`}
         >
           <Grid3x3 className="w-4 h-4 inline-block mr-2" />
           Media Library
         </button>
         <button
-          onClick={() => setActiveTab('upload')}
+          onClick={() => setActiveTab("upload")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'upload'
-              ? 'bg-primary text-white'
-              : 'bg-bg2 text-text hover:bg-bg3'
+            activeTab === "upload"
+              ? "bg-primary text-white"
+              : "bg-bg2 text-text hover:bg-bg3"
           }`}
         >
           <Upload className="w-4 h-4 inline-block mr-2" />
@@ -113,8 +113,11 @@ export default function MediaSelector({
       </div>
 
       {/* Content */}
-      <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 200px)' }}>
-        {activeTab === 'library' ? (
+      <div
+        className="p-6 overflow-y-auto"
+        style={{ maxHeight: "calc(90vh - 200px)" }}
+      >
+        {activeTab === "library" ? (
           <MediaLibraryContent
             onSelectionChange={handleSelectionChange}
             selectionMode={selectionMode}
@@ -128,7 +131,7 @@ export default function MediaSelector({
             hideSelectionUI={!allowMultiple}
           />
         ) : (
-          <MediaUploader 
+          <MediaUploader
             onComplete={handleUploaderComplete}
             mediaType={mediaType}
             singleUploadMode={!allowMultiple}
@@ -137,16 +140,17 @@ export default function MediaSelector({
       </div>
 
       {/* Footer */}
-      {activeTab === 'library' && (
+      {activeTab === "library" && (
         <div className="px-6 py-4 border-t border-border-primary flex items-center justify-between">
           <div className="text-sm text-text">
             {selectedItems.size > 0 && allowMultiple && (
               <span>
-                {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
+                {selectedItems.size} item{selectedItems.size !== 1 ? "s" : ""}{" "}
+                selected
               </span>
             )}
           </div>
-          
+
           <div className="flex gap-2">
             <button
               onClick={onClose}
@@ -159,9 +163,11 @@ export default function MediaSelector({
               disabled={selectedItems.size === 0}
               className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
             >
-              {allowMultiple 
-                ? `Select ${selectedItems.size} Item${selectedItems.size !== 1 ? 's' : ''}`
-                : 'Select'}
+              {allowMultiple
+                ? `Select ${selectedItems.size} Item${
+                    selectedItems.size !== 1 ? "s" : ""
+                  }`
+                : "Select"}
             </button>
           </div>
         </div>

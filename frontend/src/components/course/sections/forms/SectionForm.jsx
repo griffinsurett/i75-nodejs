@@ -8,7 +8,7 @@ import {
   FormTextarea,
   FormSelect,
 } from "../../../forms";
-import MediaInput from "../../../media/MediaInput";
+import MediaInput from "../../../media/selection/MediaInput";
 
 export default function SectionForm({ mode = "create", section }) {
   const location = useLocation();
@@ -83,7 +83,7 @@ export default function SectionForm({ mode = "create", section }) {
     if (!isEdit) {
       // Get the final courseId
       const finalCourseId = values.courseId || courseIdFromUrl;
-      
+
       if (!finalCourseId) {
         throw new Error("Course ID is required");
       }
@@ -91,9 +91,9 @@ export default function SectionForm({ mode = "create", section }) {
       // Create section with courseId in the body
       const sectionData = {
         ...values,
-        courseId: parseInt(finalCourseId)
+        courseId: parseInt(finalCourseId),
       };
-      
+
       const res = await sectionAPI.createSection(sectionData);
       const id = res.data?.data?.sectionId;
       return { navigateTo: `/courses/${finalCourseId}` };
@@ -114,7 +114,9 @@ export default function SectionForm({ mode = "create", section }) {
     imageId: values.imageId || undefined,
     videoId: values.videoId || undefined,
     // Include courseId if creating
-    ...(mode === 'create' && { courseId: parseInt(values.courseId || courseIdFromUrl) })
+    ...(mode === "create" && {
+      courseId: parseInt(values.courseId || courseIdFromUrl),
+    }),
   });
 
   return (

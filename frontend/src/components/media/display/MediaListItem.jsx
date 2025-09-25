@@ -1,13 +1,13 @@
 // frontend/src/components/media/MediaListItem.jsx
 import { Eye, Film, Download, Image as ImageIcon } from "lucide-react";
-import DateDisplay from "../common/DateDisplay";
-import { formatFileSize } from "../../utils/formatFileSize";
-import { formatFileType } from "../../utils/formatFileType";
-import { VideoThumbnail } from "../VideoThumbnail";
-import EditActions from "../archive/EditActions";
-import ArchiveBadge from "../archive/ArchiveBadge";
-import SelectionCheckbox from "../selection/SelectionCheckbox";
-import { imageAPI, videoAPI } from "../../services/api";
+import DateDisplay from "../../common/DateDisplay";
+import { formatFileSize } from "../../../utils/formatFileSize";
+import { formatFileType } from "../../../utils/formatFileType";
+import { VideoThumbnail } from "../preview/videoThumbnail";
+import EditActions from "../../archive/EditActions";
+import ArchiveBadge from "../../archive/ArchiveBadge";
+import SelectionCheckbox from "../../selection/SelectionCheckbox";
+import { imageAPI, videoAPI } from "../../../services/api";
 
 export default function MediaListItem({
   item,
@@ -62,10 +62,10 @@ export default function MediaListItem({
   const handleRowClick = (e) => {
     // Don't trigger if clicking on interactive elements
     if (
-      e.target.closest('button') || 
-      e.target.closest('a') || 
-      e.target.closest('input') ||
-      e.target.closest('.actions-cell') // Add class to actions cell
+      e.target.closest("button") ||
+      e.target.closest("a") ||
+      e.target.closest("input") ||
+      e.target.closest(".actions-cell") // Add class to actions cell
     ) {
       return;
     }
@@ -78,7 +78,7 @@ export default function MediaListItem({
   };
 
   return (
-    <tr 
+    <tr
       className={`hover:bg-bg2/50 cursor-pointer transition-colors ${
         isSelected ? "bg-primary/10" : ""
       }`}
@@ -94,14 +94,14 @@ export default function MediaListItem({
           />
         </td>
       )}
-      
+
       {/* Preview */}
       <td className="px-4 py-3">
         <div className="w-12 h-12 rounded overflow-hidden bg-bg2 flex items-center justify-center">
           <ListPreview />
         </div>
       </td>
-      
+
       {/* Name */}
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
@@ -116,7 +116,7 @@ export default function MediaListItem({
           )}
         </div>
       </td>
-      
+
       {/* Type */}
       <td className="px-4 py-3">
         <span
@@ -134,7 +134,7 @@ export default function MediaListItem({
           {isVideo ? "Video" : "Image"}
         </span>
       </td>
-      
+
       {/* Format & Size Combined Column (Optional Enhancement) */}
       <td className="px-4 py-3">
         <div className="space-y-1">
@@ -146,7 +146,7 @@ export default function MediaListItem({
           </span>
         </div>
       </td>
-      
+
       {/* Date */}
       <td className="px-4 py-3">
         <DateDisplay
@@ -155,10 +155,13 @@ export default function MediaListItem({
           className="text-sm"
         />
       </td>
-      
+
       {/* Actions */}
       {!selectionMode && (
-        <td className="px-4 py-3 actions-cell" onClick={(e) => e.stopPropagation()}>
+        <td
+          className="px-4 py-3 actions-cell"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex items-center gap-2">
             <button
               className="text-primary hover:text-primary/80 p-1 rounded hover:bg-primary/10 transition-colors"

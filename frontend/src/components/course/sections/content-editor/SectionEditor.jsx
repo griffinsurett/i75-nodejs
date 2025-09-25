@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { FormField, FormInput, FormTextarea } from "../../../forms";
-import MediaInput from "../../../media/MediaInput";
+import MediaInput from "../../../media/selection/MediaInput";
 
 export default function SectionEditor({ section, onUpdate }) {
   const sectionData = section.sections || section;

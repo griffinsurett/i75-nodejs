@@ -1,28 +1,28 @@
 // frontend/src/components/media/MediaLibraryContent.jsx
 import { useState, useEffect } from "react";
-import { imageAPI, videoAPI } from "../../services/api";
+import { imageAPI, videoAPI } from "../../../services/api";
 import { Image as ImageIcon, Film, FileText } from "lucide-react";
 import MediaControls from "./MediaControls";
-import MediaCard from "./MediaCard";
-import MediaListItem from "./MediaListItem";
-import MediaUploader from "./MediaUploader";
-import MediaPreviewModal from "./MediaPreviewModal";
-import ArchivedNotice from "../archive/ArchivedNotice";
-import SearchInput from "../search/SearchInput";
-import EmptyState from "../common/EmptyState";
-import { useSearch } from "../search/hooks/useSearch";
-import useSelectionMode from "../../hooks/useSelectionMode";
-import useBulkOperations from "../../hooks/useBulkOperations";
-import BulkActionsBar from "../selection/BulkActionsBar";
-import PageLoadingState from "../common/PageLoadingState";
-import PageErrorState from "../common/PageErrorState";
+import MediaCard from "../display/MediaCard";
+import MediaListItem from "../display/MediaListItem";
+import MediaUploader from "../upload/MediaUploader";
+import MediaPreviewModal from "../preview/MediaPreviewModal";
+import ArchivedNotice from "../../archive/ArchivedNotice";
+import SearchInput from "../../search/SearchInput";
+import EmptyState from "../../common/EmptyState";
+import { useSearch } from "../../search/hooks/useSearch";
+import useSelectionMode from "../../../hooks/useSelectionMode";
+import useBulkOperations from "../../../hooks/useBulkOperations";
+import BulkActionsBar from "../../selection/BulkActionsBar";
+import PageLoadingState from "../../common/PageLoadingState";
+import PageErrorState from "../../common/PageErrorState";
 
 export default function MediaLibraryContent({
   onSelectionChange,
   selectionMode: externalSelectionMode = false,
   allowMultiple = false,
   selectedItems: externalSelectedItems = new Set(),
-  mediaTypeFilter = 'all',
+  mediaTypeFilter = "all",
   showArchived = false,
   showUploader = false,
   onUploaderComplete,
@@ -30,7 +30,7 @@ export default function MediaLibraryContent({
   initialImages = null,
   initialVideos = null,
   loading: externalLoading = false,
-  error: externalError = '',
+  error: externalError = "",
   onRefresh = null,
   showSearch = true,
   searchPlaceholder = "Search media...",
@@ -38,7 +38,9 @@ export default function MediaLibraryContent({
   onBulkDelete: externalBulkDelete,
   hideSelectionUI = false,
 }) {
-  const [activeTab, setActiveTab] = useState(mediaTypeFilter !== 'all' ? mediaTypeFilter + 's' : 'all');
+  const [activeTab, setActiveTab] = useState(
+    mediaTypeFilter !== "all" ? mediaTypeFilter + "s" : "all"
+  );
   const [images, setImages] = useState(initialImages || []);
   const [videos, setVideos] = useState(initialVideos || []);
   const [loading, setLoading] = useState(externalLoading);
@@ -51,23 +53,28 @@ export default function MediaLibraryContent({
   const {
     loading: bulkLoading,
     error: bulkError,
-    executeBulkOperation
+    executeBulkOperation,
   } = useBulkOperations();
 
   // Use external or internal selection state
-  const selectionMode = externalSelectionMode || internalSelection.selectionMode;
-  const selectedItems = externalSelectedItems.size > 0 ? externalSelectedItems : internalSelection.selectedItems;
-  const toggleItemSelection = onSelectionChange ? 
-    (id) => {
-      const newSelection = new Set(selectedItems);
-      if (newSelection.has(id)) {
-        newSelection.delete(id);
-      } else {
-        if (!allowMultiple) newSelection.clear();
-        newSelection.add(id);
+  const selectionMode =
+    externalSelectionMode || internalSelection.selectionMode;
+  const selectedItems =
+    externalSelectedItems.size > 0
+      ? externalSelectedItems
+      : internalSelection.selectedItems;
+  const toggleItemSelection = onSelectionChange
+    ? (id) => {
+        const newSelection = new Set(selectedItems);
+        if (newSelection.has(id)) {
+          newSelection.delete(id);
+        } else {
+          if (!allowMultiple) newSelection.clear();
+          newSelection.add(id);
+        }
+        onSelectionChange(newSelection);
       }
-      onSelectionChange(newSelection);
-    } : internalSelection.toggleItemSelection;
+    : internalSelection.toggleItemSelection;
 
   // Determine if we're in controlled mode (data provided externally)
   const isControlledMode = initialImages !== null && initialVideos !== null;
@@ -81,9 +88,17 @@ export default function MediaLibraryContent({
   // Filter media by active tab first
   const tabFilteredMedia = (() => {
     if (activeTab === "images") {
-      return images.map((img) => ({ ...img, type: "image", url: img.imageUrl }));
+      return images.map((img) => ({
+        ...img,
+        type: "image",
+        url: img.imageUrl,
+      }));
     } else if (activeTab === "videos") {
-      return videos.map((vid) => ({ ...vid, type: "video", url: vid.slidesUrl }));
+      return videos.map((vid) => ({
+        ...vid,
+        type: "video",
+        url: vid.slidesUrl,
+      }));
     } else {
       return allMedia;
     }
@@ -98,7 +113,7 @@ export default function MediaLibraryContent({
     isSearchActive,
     searchStats,
   } = useSearch(tabFilteredMedia, {
-    searchFields: ['altText', 'title', 'description'],
+    searchFields: ["altText", "title", "description"],
     debounceMs: 300,
     caseSensitive: false,
   });
@@ -142,26 +157,26 @@ export default function MediaLibraryContent({
   const fetchMedia = async () => {
     // Don't fetch if in controlled mode
     if (isControlledMode) return;
-    
+
     try {
       setLoading(true);
-      setError('');
-      
-      const params = showArchived ? { archived: 'true' } : {};
+      setError("");
+
+      const params = showArchived ? { archived: "true" } : {};
       const requests = [];
 
-      if (mediaTypeFilter === 'all' || mediaTypeFilter === 'image') {
+      if (mediaTypeFilter === "all" || mediaTypeFilter === "image") {
         requests.push(imageAPI.getAllImages(params));
       }
-      
-      if (mediaTypeFilter === 'all' || mediaTypeFilter === 'video') {
+
+      if (mediaTypeFilter === "all" || mediaTypeFilter === "video") {
         requests.push(videoAPI.getAllVideos(params));
       }
 
       const responses = await Promise.all(requests);
       let imageIndex = 0;
 
-      if (mediaTypeFilter === 'all' || mediaTypeFilter === 'image') {
+      if (mediaTypeFilter === "all" || mediaTypeFilter === "image") {
         const imagesRes = responses[imageIndex++];
         if (imagesRes.data?.success) {
           setImages(imagesRes.data.data || []);
@@ -170,7 +185,7 @@ export default function MediaLibraryContent({
         }
       }
 
-      if (mediaTypeFilter === 'all' || mediaTypeFilter === 'video') {
+      if (mediaTypeFilter === "all" || mediaTypeFilter === "video") {
         const videosRes = responses[responses.length - 1];
         if (videosRes.data?.success) {
           const videoData = videosRes.data.data.map((item) => {
@@ -189,8 +204,8 @@ export default function MediaLibraryContent({
         }
       }
     } catch (err) {
-      setError('Failed to load media library');
-      console.error('Error fetching media:', err);
+      setError("Failed to load media library");
+      console.error("Error fetching media:", err);
       setImages([]);
       setVideos([]);
     } finally {
@@ -211,10 +226,10 @@ export default function MediaLibraryContent({
       externalBulkArchive();
       return;
     }
-    
+
     const operation = async (id) => {
-      const item = filteredMedia.find(m => (m.imageId || m.videoId) === id);
-      if (item?.type === 'video') {
+      const item = filteredMedia.find((m) => (m.imageId || m.videoId) === id);
+      if (item?.type === "video") {
         return videoAPI.archiveVideo(id);
       } else {
         return imageAPI.archiveImage(id);
@@ -240,12 +255,13 @@ export default function MediaLibraryContent({
       externalBulkDelete();
       return;
     }
-    
-    if (!window.confirm(`Delete ${selectedItems.size} items permanently?`)) return;
-    
+
+    if (!window.confirm(`Delete ${selectedItems.size} items permanently?`))
+      return;
+
     const operation = async (id) => {
-      const item = filteredMedia.find(m => (m.imageId || m.videoId) === id);
-      if (item?.type === 'video') {
+      const item = filteredMedia.find((m) => (m.imageId || m.videoId) === id);
+      if (item?.type === "video") {
         return videoAPI.deleteVideo(id);
       } else {
         return imageAPI.deleteImage(id);
@@ -267,7 +283,7 @@ export default function MediaLibraryContent({
   };
 
   const selectAll = () => {
-    const allIds = filteredMedia.map(item => item.imageId || item.videoId);
+    const allIds = filteredMedia.map((item) => item.imageId || item.videoId);
     if (onSelectionChange) {
       onSelectionChange(new Set(allIds));
     } else {
@@ -332,9 +348,7 @@ export default function MediaLibraryContent({
       )}
 
       {/* Error from bulk operations */}
-      {bulkError && (
-        <PageErrorState error={bulkError} />
-      )}
+      {bulkError && <PageErrorState error={bulkError} />}
 
       {/* Media Controls */}
       <MediaControls
@@ -360,10 +374,9 @@ export default function MediaLibraryContent({
       {isSearchActive && (
         <div className="flex items-center justify-between text-sm text-text/70 px-1">
           <span>
-            {searchStats.hasResults 
+            {searchStats.hasResults
               ? `Showing ${searchStats.filteredItems} of ${searchStats.totalItems} items`
-              : `No results found for "${searchQuery}"`
-            }
+              : `No results found for "${searchQuery}"`}
           </span>
           {searchStats.filteredItems > 0 && (
             <button
@@ -381,22 +394,32 @@ export default function MediaLibraryContent({
         <EmptyState
           icon={getEmptyIcon()}
           title={
-            isSearchActive 
-              ? `No ${activeTab === 'all' ? 'media' : activeTab} found`
-              : `No ${activeTab === 'all' ? 'media' : activeTab} available`
+            isSearchActive
+              ? `No ${activeTab === "all" ? "media" : activeTab} found`
+              : `No ${activeTab === "all" ? "media" : activeTab} available`
           }
           description={
-            isSearchActive 
-              ? `No ${activeTab === 'all' ? 'media' : activeTab} found matching "${searchQuery}"`
-              : `Upload your first ${activeTab === 'all' ? 'media file' : activeTab === 'images' ? 'image' : 'video'} to get started`
+            isSearchActive
+              ? `No ${
+                  activeTab === "all" ? "media" : activeTab
+                } found matching "${searchQuery}"`
+              : `Upload your first ${
+                  activeTab === "all"
+                    ? "media file"
+                    : activeTab === "images"
+                    ? "image"
+                    : "video"
+                } to get started`
           }
         />
       ) : viewMode === "grid" ? (
-        <div className={`grid gap-4 ${
-          compact 
-            ? 'grid-cols-3 md:grid-cols-4 lg:grid-cols-5' 
-            : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-        }`}>
+        <div
+          className={`grid gap-4 ${
+            compact
+              ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+              : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+          }`}
+        >
           {filteredMedia.map((item) => (
             <MediaCard
               key={item.imageId || item.videoId}
@@ -411,7 +434,9 @@ export default function MediaLibraryContent({
               }}
               selectionMode={selectionMode}
               isSelected={isSelected(item.imageId || item.videoId)}
-              onToggleSelect={() => toggleItemSelection(item.imageId || item.videoId)}
+              onToggleSelect={() =>
+                toggleItemSelection(item.imageId || item.videoId)
+              }
               hideSelectionCheckbox={hideSelectionUI}
             />
           ))}
@@ -480,7 +505,9 @@ export default function MediaLibraryContent({
                   }}
                   selectionMode={selectionMode}
                   isSelected={isSelected(item.imageId || item.videoId)}
-                  onToggleSelect={() => toggleItemSelection(item.imageId || item.videoId)}
+                  onToggleSelect={() =>
+                    toggleItemSelection(item.imageId || item.videoId)
+                  }
                   hideSelectionCheckbox={hideSelectionUI}
                 />
               ))}

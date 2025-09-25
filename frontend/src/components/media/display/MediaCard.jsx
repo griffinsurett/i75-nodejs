@@ -1,16 +1,16 @@
 // MediaCard.jsx
 import { useState } from "react";
 import { Eye, Film, Image as ImageIcon } from "lucide-react";
-import DateDisplay from "../common/DateDisplay";
-import ImageWithFallback from "../common/ImageWithFallback";
-import { formatFileSize } from "../../utils/formatFileSize";
-import { formatFileType } from "../../utils/formatFileType";
-import { VideoThumbnail } from "../VideoThumbnail";
-import EditActions from "../archive/EditActions";
-import ArchiveBadge from "../archive/ArchiveBadge";
-import SelectionCheckbox from "../selection/SelectionCheckbox";
-import { imageAPI, videoAPI } from "../../services/api";
-import StatusIndicator from "../common/StatusIndicator";
+import DateDisplay from "../../common/DateDisplay";
+import ImageWithFallback from "../../common/ImageWithFallback";
+import { formatFileSize } from "../../../utils/formatFileSize";
+import { formatFileType } from "../../../utils/formatFileType";
+import { VideoThumbnail } from "../preview/videoThumbnail";
+import EditActions from "../../archive/EditActions";
+import ArchiveBadge from "../../archive/ArchiveBadge";
+import SelectionCheckbox from "../../selection/SelectionCheckbox";
+import { imageAPI, videoAPI } from "../../../services/api";
+import StatusIndicator from "../../common/StatusIndicator";
 
 export default function MediaCard({
   item,

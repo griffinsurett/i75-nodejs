@@ -9,17 +9,20 @@ import {
   Image,
   Film,
 } from "lucide-react";
-import { uploadAPI } from "../../services/api";
-import { formatFileSize } from "../../utils/formatFileSize";
-import { formatFileType } from "../../utils/formatFileType";
-import { generateVideoThumbnail, VideoThumbnail } from "../VideoThumbnail";
-import StatusIndicator from "../common/StatusIndicator";
-import MediaIndicator from "../common/MediaIndicator";
+import { uploadAPI } from "../../../services/api";
+import { formatFileSize } from "../../../utils/formatFileSize";
+import { formatFileType } from "../../../utils/formatFileType";
+import {
+  generateVideoThumbnail,
+  VideoThumbnail,
+} from "../preview/videoThumbnail";
+import StatusIndicator from "../../common/StatusIndicator";
+import MediaIndicator from "../../common/MediaIndicator";
 
-export default function MediaUploader({ 
-  onComplete, 
-  mediaType = 'all', 
-  singleUploadMode = false 
+export default function MediaUploader({
+  onComplete,
+  mediaType = "all",
+  singleUploadMode = false,
 }) {
   const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
@@ -68,10 +71,10 @@ export default function MediaUploader({
     let validFiles = newFiles.filter((file) => {
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
-      
+
       // Filter based on mediaType
-      if (mediaType === 'image') return isImage;
-      if (mediaType === 'video') return isVideo;
+      if (mediaType === "image") return isImage;
+      if (mediaType === "video") return isVideo;
       return isImage || isVideo;
     });
 
@@ -140,9 +143,7 @@ export default function MediaUploader({
       // Progress callback
       const onUploadProgress = (progress) => {
         setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileObj.id ? { ...f, progress } : f
-          )
+          prev.map((f) => (f.id === fileObj.id ? { ...f, progress } : f))
         );
       };
 
@@ -150,7 +151,7 @@ export default function MediaUploader({
 
       if (fileObj.type === "image") {
         response = await uploadAPI.uploadImage(
-          fileObj.file, 
+          fileObj.file,
           fileObj.altText,
           onUploadProgress
         );
@@ -165,15 +166,17 @@ export default function MediaUploader({
 
       if (response.data?.success) {
         const uploadedMedia = response.data.data;
-        
+
         setFiles((prev) =>
           prev.map((f) =>
-            f.id === fileObj.id ? { 
-              ...f, 
-              status: "success", 
-              progress: 100,
-              uploadedMedia 
-            } : f
+            f.id === fileObj.id
+              ? {
+                  ...f,
+                  status: "success",
+                  progress: 100,
+                  uploadedMedia,
+                }
+              : f
           )
         );
 
@@ -194,7 +197,7 @@ export default function MediaUploader({
                 ...f,
                 status: "error",
                 error: err.response?.data?.message || "Upload failed",
-                progress: 0
+                progress: 0,
               }
             : f
         )
@@ -249,9 +252,9 @@ export default function MediaUploader({
     // Use MediaIndicator for fallback
     return (
       <div className="w-full h-full flex items-center justify-center bg-bg2">
-        <MediaIndicator 
-          type={fileObj.type} 
-          title="" 
+        <MediaIndicator
+          type={fileObj.type}
+          title=""
           className="justify-center"
         />
       </div>
@@ -259,15 +262,15 @@ export default function MediaUploader({
   };
 
   const getAcceptTypes = () => {
-    if (mediaType === 'image') return 'image/*';
-    if (mediaType === 'video') return 'video/*';
-    return 'image/*,video/*';
+    if (mediaType === "image") return "image/*";
+    if (mediaType === "video") return "video/*";
+    return "image/*,video/*";
   };
 
   const getFileTypeText = () => {
-    if (mediaType === 'image') return 'Images';
-    if (mediaType === 'video') return 'Videos';
-    return 'Images and Videos';
+    if (mediaType === "image") return "Images";
+    if (mediaType === "video") return "Videos";
+    return "Images and Videos";
   };
 
   return (
@@ -305,7 +308,7 @@ export default function MediaUploader({
         />
         <p className="text-sm text-text/60 mt-4">
           Accepted file types: {getFileTypeText()}
-          {singleUploadMode && ' (Single file only)'}
+          {singleUploadMode && " (Single file only)"}
         </p>
       </div>
 
@@ -348,8 +351,8 @@ export default function MediaUploader({
                           {fileObj.name}
                         </span>
                         {fileObj.status === "success" && (
-                          <StatusIndicator 
-                            status="saved" 
+                          <StatusIndicator
+                            status="saved"
                             size="xs"
                             showLabel={false}
                           />
@@ -361,7 +364,9 @@ export default function MediaUploader({
                         <div className="mt-2">
                           <div className="flex items-center justify-between text-xs mb-1">
                             <span className="text-text/70">Uploading...</span>
-                            <span className="text-text font-medium">{fileObj.progress}%</span>
+                            <span className="text-text font-medium">
+                              {fileObj.progress}%
+                            </span>
                           </div>
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                             <div
@@ -374,9 +379,9 @@ export default function MediaUploader({
 
                       {/* Use StatusIndicator for success message */}
                       {fileObj.status === "success" && singleUploadMode && (
-                        <StatusIndicator 
-                          status="saved" 
-                          label="Upload complete! Selecting automatically..." 
+                        <StatusIndicator
+                          status="saved"
+                          label="Upload complete! Selecting automatically..."
                           size="xs"
                           showIcon={false}
                         />
@@ -384,9 +389,9 @@ export default function MediaUploader({
 
                       {/* Use StatusIndicator for error */}
                       {fileObj.status === "error" && (
-                        <StatusIndicator 
-                          status="error" 
-                          label={fileObj.error} 
+                        <StatusIndicator
+                          status="error"
+                          label={fileObj.error}
                           size="xs"
                         />
                       )}
@@ -394,9 +399,9 @@ export default function MediaUploader({
 
                     {/* Format - Use MediaIndicator */}
                     <td className="p-3">
-                      <MediaIndicator 
-                        type={fileObj.type} 
-                        title={formatFileType(fileObj.mimeType)} 
+                      <MediaIndicator
+                        type={fileObj.type}
+                        title={formatFileType(fileObj.mimeType)}
                         className="text-sm"
                       />
                     </td>

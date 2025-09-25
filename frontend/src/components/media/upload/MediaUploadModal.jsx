@@ -1,17 +1,17 @@
-import { useState } from 'react';
-import { Upload, X, Film, Image, Loader2 } from 'lucide-react';
-import Modal from '../Modal';
-import { uploadAPI } from '../../services/api';
+import { useState } from "react";
+import { Upload, X, Film, Image, Loader2 } from "lucide-react";
+import Modal from "../../Modal";
+import { uploadAPI } from "../../../services/api";
 
 export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [preview, setPreview] = useState('');
-  const [mediaType, setMediaType] = useState(''); // 'image' or 'video'
-  const [title, setTitle] = useState('');
-  const [altText, setAltText] = useState('');
-  const [description, setDescription] = useState('');
+  const [preview, setPreview] = useState("");
+  const [mediaType, setMediaType] = useState(""); // 'image' or 'video'
+  const [title, setTitle] = useState("");
+  const [altText, setAltText] = useState("");
+  const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleFileSelect = (e) => {
@@ -22,24 +22,24 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
     }
 
     // Validate file type
-    const isImage = file.type.startsWith('image/');
-    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
 
     if (!isImage && !isVideo) {
-      setError('Please select an image or video file');
+      setError("Please select an image or video file");
       return;
     }
 
     // Validate file size (50MB limit for images, 500MB for videos)
     const maxSize = isImage ? 50 * 1024 * 1024 : 500 * 1024 * 1024;
     if (file.size > maxSize) {
-      setError(`File size exceeds ${isImage ? '50MB' : '500MB'} limit`);
+      setError(`File size exceeds ${isImage ? "50MB" : "500MB"} limit`);
       return;
     }
 
-    setError('');
+    setError("");
     setSelectedFile(file);
-    setMediaType(isImage ? 'image' : 'video');
+    setMediaType(isImage ? "image" : "video");
 
     // Create preview
     if (isImage) {
@@ -51,7 +51,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
     }
 
     // Set default title from filename
-    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
     if (!title) {
       setTitle(nameWithoutExt);
       setAltText(nameWithoutExt);
@@ -60,12 +60,12 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
 
   const resetForm = () => {
     setSelectedFile(null);
-    setPreview('');
-    setMediaType('');
-    setTitle('');
-    setAltText('');
-    setDescription('');
-    setError('');
+    setPreview("");
+    setMediaType("");
+    setTitle("");
+    setAltText("");
+    setDescription("");
+    setError("");
     setUploadProgress(0);
   };
 
@@ -73,16 +73,20 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
     if (!selectedFile) return;
 
     setUploading(true);
-    setError('');
+    setError("");
     setUploadProgress(0);
 
     try {
       let response;
-      
-      if (mediaType === 'image') {
+
+      if (mediaType === "image") {
         response = await uploadAPI.uploadImage(selectedFile, altText || title);
       } else {
-        response = await uploadAPI.uploadVideo(selectedFile, title, description);
+        response = await uploadAPI.uploadVideo(
+          selectedFile,
+          title,
+          description
+        );
       }
 
       if (response.data?.success) {
@@ -90,11 +94,11 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
         onClose();
         resetForm();
       } else {
-        throw new Error('Upload failed');
+        throw new Error("Upload failed");
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to upload file');
-      console.error('Upload error:', err);
+      setError(err.response?.data?.message || "Failed to upload file");
+      console.error("Upload error:", err);
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -113,7 +117,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
       isOpen={isOpen}
       onClose={handleClose}
       className="w-screen h-screen bg-bg"
-    //   closeButton={false}
+      //   closeButton={false}
     >
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
@@ -135,7 +139,9 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
             <label className="block w-full">
               <div className="border-2 border-dashed border-border-primary rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
                 <Upload className="w-12 h-12 mx-auto mb-4 text-text/40" />
-                <p className="text-text mb-2">Click to select or drag and drop</p>
+                <p className="text-text mb-2">
+                  Click to select or drag and drop
+                </p>
                 <p className="text-sm text-text/60">
                   Images (max 50MB) or Videos (max 500MB)
                 </p>
@@ -154,7 +160,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
             {/* Preview */}
             <div className="mb-6">
               <div className="relative bg-bg2 rounded-lg overflow-hidden">
-                {mediaType === 'image' ? (
+                {mediaType === "image" ? (
                   <>
                     <img
                       src={preview}
@@ -168,11 +174,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
                   </>
                 ) : (
                   <>
-                    <video
-                      src={preview}
-                      controls
-                      className="w-full max-h-64"
-                    />
+                    <video src={preview} controls className="w-full max-h-64" />
                     <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
                       <Film className="w-3 h-3" />
                       Video
@@ -188,7 +190,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
                 </button>
               </div>
               <p className="mt-2 text-sm text-text/60">
-                {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                {selectedFile.name} (
+                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
               </p>
             </div>
 
@@ -196,23 +199,27 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-text mb-1">
-                  {mediaType === 'video' ? 'Title' : 'Alt Text'} *
+                  {mediaType === "video" ? "Title" : "Alt Text"} *
                 </label>
                 <input
                   type="text"
-                  value={mediaType === 'video' ? title : altText}
-                  onChange={(e) => 
-                    mediaType === 'video' 
+                  value={mediaType === "video" ? title : altText}
+                  onChange={(e) =>
+                    mediaType === "video"
                       ? setTitle(e.target.value)
                       : setAltText(e.target.value)
                   }
                   className="w-full px-3 py-2 bg-bg2 border border-border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder={mediaType === 'video' ? 'Enter video title' : 'Describe the image'}
+                  placeholder={
+                    mediaType === "video"
+                      ? "Enter video title"
+                      : "Describe the image"
+                  }
                   disabled={uploading}
                 />
               </div>
 
-              {mediaType === 'video' && (
+              {mediaType === "video" && (
                 <div>
                   <label className="block text-sm font-medium text-text mb-1">
                     Description
@@ -237,7 +244,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
                   <span className="text-text">{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-bg2 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-primary h-2 rounded-full transition-all"
                     style={{ width: `${uploadProgress}%` }}
                   />
@@ -259,9 +266,9 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }) {
           <button
             onClick={handleUpload}
             disabled={
-              !selectedFile || 
-              uploading || 
-              (mediaType === 'video' ? !title : !altText)
+              !selectedFile ||
+              uploading ||
+              (mediaType === "video" ? !title : !altText)
             }
             className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
           >

@@ -1,21 +1,21 @@
 // frontend/src/components/media/MediaInput.jsx
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Image as ImageIcon, Film, Upload, X } from 'lucide-react';
-import MediaSelector from './MediaSelector';
-import { VideoThumbnail } from '../VideoThumbnail';
-import PageLoadingState from '../common/PageLoadingState';
-import ImageWithFallback from '../common/ImageWithFallback';
-import { imageAPI, videoAPI, uploadAPI } from '../../services/api';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Image as ImageIcon, Film, Upload, X } from "lucide-react";
+import MediaSelector from "./MediaSelector";
+import { VideoThumbnail } from "../preview/videoThumbnail";
+import PageLoadingState from "../../common/PageLoadingState";
+import ImageWithFallback from "../../common/ImageWithFallback";
+import { imageAPI, videoAPI, uploadAPI } from "../../../services/api";
 
 export default function MediaInput({
   label,
   value, // Media ID or array of IDs for multiple
   onChange, // Callback with media ID(s)
-  mediaType = 'all', // 'all' | 'image' | 'video'
-  placeholder = 'Select media',
+  mediaType = "all", // 'all' | 'image' | 'video'
+  placeholder = "Select media",
   required = false,
   error,
-  className = '',
+  className = "",
   allowClear = true,
   allowMultiple = false,
   showPreview = true,
@@ -52,17 +52,20 @@ export default function MediaInput({
     e.stopPropagation();
   }, []);
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragging(false);
-    dragCounter.current = 0;
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragging(false);
+      dragCounter.current = 0;
 
-    const droppedFiles = [...e.dataTransfer.files];
-    if (droppedFiles.length > 0) {
-      handleFileUpload(droppedFiles[0]); // Only take first file for single upload
-    }
-  }, [mediaType]);
+      const droppedFiles = [...e.dataTransfer.files];
+      if (droppedFiles.length > 0) {
+        handleFileUpload(droppedFiles[0]); // Only take first file for single upload
+      }
+    },
+    [mediaType]
+  );
 
   // Load existing media if value is provided
   useEffect(() => {
@@ -73,13 +76,13 @@ export default function MediaInput({
 
   const loadMedia = async (mediaId) => {
     if (!mediaId) return;
-    
+
     // Handle multiple IDs
     if (Array.isArray(mediaId)) {
       // For now, just load the first one for preview
       mediaId = mediaId[0];
     }
-    
+
     setLoading(true);
     try {
       // Try as image first
@@ -89,7 +92,7 @@ export default function MediaInput({
           const imageData = response.data.data;
           setSelectedMedia({
             ...imageData,
-            type: 'image',
+            type: "image",
             url: imageData.imageUrl,
           });
           return;
@@ -104,14 +107,14 @@ export default function MediaInput({
         if (response.data?.success) {
           const videoData = response.data.data;
           setSelectedMedia({
-            ...videoData.videos || videoData,
-            type: 'video',
+            ...(videoData.videos || videoData),
+            type: "video",
             url: videoData.videos?.slidesUrl || videoData.slidesUrl,
             imageUrl: videoData.images?.imageUrl,
           });
         }
       } catch (e) {
-        console.error('Failed to load media:', e);
+        console.error("Failed to load media:", e);
       }
     } finally {
       setLoading(false);
@@ -122,21 +125,21 @@ export default function MediaInput({
     if (!file) return;
 
     // Validate file type
-    const isImage = file.type.startsWith('image/');
-    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
 
     if (!isImage && !isVideo) {
-      console.error('Invalid file type');
+      console.error("Invalid file type");
       return;
     }
 
     // Check media type filter
-    if (mediaType === 'image' && !isImage) {
-      console.error('Only images are allowed');
+    if (mediaType === "image" && !isImage) {
+      console.error("Only images are allowed");
       return;
     }
-    if (mediaType === 'video' && !isVideo) {
-      console.error('Only videos are allowed');
+    if (mediaType === "video" && !isVideo) {
+      console.error("Only videos are allowed");
       return;
     }
 
@@ -149,21 +152,31 @@ export default function MediaInput({
       };
 
       let response;
-      const fileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension for default title
+      const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension for default title
 
       if (isImage) {
-        response = await uploadAPI.uploadImage(file, fileName, onUploadProgress);
+        response = await uploadAPI.uploadImage(
+          file,
+          fileName,
+          onUploadProgress
+        );
       } else {
-        response = await uploadAPI.uploadVideo(file, fileName, '', onUploadProgress);
+        response = await uploadAPI.uploadVideo(
+          file,
+          fileName,
+          "",
+          onUploadProgress
+        );
       }
 
       if (response.data?.success) {
-        const uploadedId = response.data.data.imageId || response.data.data.videoId;
+        const uploadedId =
+          response.data.data.imageId || response.data.data.videoId;
         onChange(uploadedId);
         // loadMedia will be called by useEffect when value changes
       }
     } catch (err) {
-      console.error('Upload failed:', err);
+      console.error("Upload failed:", err);
       // You might want to show an error message to the user here
     } finally {
       setUploading(false);
@@ -184,16 +197,16 @@ export default function MediaInput({
 
   const getPreviewComponent = () => {
     if (!selectedMedia) return null;
-    
-    const isVideo = selectedMedia.type === 'video';
-    
+
+    const isVideo = selectedMedia.type === "video";
+
     if (isVideo) {
       return (
         <div className="relative w-full h-full">
           <VideoThumbnail
             src={selectedMedia.url}
             thumbnailSrc={selectedMedia.imageUrl}
-            alt={selectedMedia.title || 'Video thumbnail'}
+            alt={selectedMedia.title || "Video thumbnail"}
             showPlayButton={true}
             className="w-full h-full"
           />
@@ -204,7 +217,7 @@ export default function MediaInput({
     return (
       <ImageWithFallback
         src={selectedMedia.url}
-        alt={selectedMedia.altText || 'Selected image'}
+        alt={selectedMedia.altText || "Selected image"}
         type="default"
         size="full"
         iconSize="md"
@@ -239,13 +252,16 @@ export default function MediaInput({
               <div className="space-y-2">
                 <div>
                   <p className="text-sm font-medium text-heading">
-                    {selectedMedia.type === 'video' 
-                      ? selectedMedia.title 
-                      : selectedMedia.altText || 'Untitled'}
+                    {selectedMedia.type === "video"
+                      ? selectedMedia.title
+                      : selectedMedia.altText || "Untitled"}
                   </p>
                   <p className="text-xs text-text/60">
-                    {selectedMedia.type === 'video' ? 'Video' : 'Image'}
-                    {selectedMedia.mimeType && ` • ${selectedMedia.mimeType.split('/')[1].toUpperCase()}`}
+                    {selectedMedia.type === "video" ? "Video" : "Image"}
+                    {selectedMedia.mimeType &&
+                      ` • ${selectedMedia.mimeType
+                        .split("/")[1]
+                        .toUpperCase()}`}
                   </p>
                 </div>
 
@@ -290,8 +306,8 @@ export default function MediaInput({
             onDrop={handleDrop}
             className={`relative border-2 border-dashed rounded-lg transition-colors ${
               dragging
-                ? 'border-primary bg-primary/5'
-                : 'border-border-primary hover:border-primary'
+                ? "border-primary bg-primary/5"
+                : "border-border-primary hover:border-primary"
             }`}
           >
             <button
@@ -301,19 +317,16 @@ export default function MediaInput({
             >
               <Upload className="w-5 h-5" />
               <span>
-                {dragging 
-                  ? 'Drop to upload' 
-                  : `${placeholder} or drop files here`
-                }
+                {dragging
+                  ? "Drop to upload"
+                  : `${placeholder} or drop files here`}
               </span>
             </button>
           </div>
         )}
       </div>
 
-      {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
 
       {/* Media Selector Modal */}
       <MediaSelector
@@ -321,7 +334,13 @@ export default function MediaInput({
         onClose={() => setSelectorOpen(false)}
         onSelect={handleSelect}
         mediaType={mediaType}
-        title={`Select ${mediaType === 'video' ? 'Video' : mediaType === 'image' ? 'Image' : 'Media'}`}
+        title={`Select ${
+          mediaType === "video"
+            ? "Video"
+            : mediaType === "image"
+            ? "Image"
+            : "Media"
+        }`}
         currentSelection={value}
         allowMultiple={allowMultiple}
       />

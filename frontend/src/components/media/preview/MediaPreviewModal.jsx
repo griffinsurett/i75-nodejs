@@ -1,9 +1,9 @@
 // frontend/src/components/media/MediaPreviewModal.jsx
 import { Download, X, Film, Image as ImageIcon } from "lucide-react";
-import Modal from "../Modal";
-import DateDisplay from "../common/DateDisplay";
-import { formatFileSize } from "../../utils/formatFileSize";
-import { formatFileType } from "../../utils/formatFileType";
+import Modal from "../../Modal";
+import DateDisplay from "../../common/DateDisplay";
+import { formatFileSize } from "../../../utils/formatFileSize";
+import { formatFileType } from "../../../utils/formatFileType";
 
 export default function MediaPreviewModal({ item, onClose }) {
   if (!item) return null;
@@ -68,8 +68,10 @@ export default function MediaPreviewModal({ item, onClose }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* Left Column - File Info */}
             <div className="space-y-3">
-              <h4 className="text-sm font-medium text-heading mb-2">File Information</h4>
-              
+              <h4 className="text-sm font-medium text-heading mb-2">
+                File Information
+              </h4>
+
               <div className="flex items-center justify-between py-1">
                 <span className="text-sm text-text/70">Type:</span>
                 <span className="text-sm text-heading font-medium flex items-center gap-1">
@@ -86,14 +88,14 @@ export default function MediaPreviewModal({ item, onClose }) {
                   )}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between py-1">
                 <span className="text-sm text-text/70">Format:</span>
                 <span className="text-sm text-heading font-mono bg-bg2 px-2 py-0.5 rounded">
                   {fileFormat}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between py-1">
                 <span className="text-sm text-text/70">Size:</span>
                 <span className="text-sm text-heading font-medium">
@@ -105,7 +107,7 @@ export default function MediaPreviewModal({ item, onClose }) {
             {/* Right Column - Metadata */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-heading mb-2">Details</h4>
-              
+
               <div className="flex items-center justify-between py-1">
                 <span className="text-sm text-text/70">Uploaded:</span>
                 <DateDisplay
@@ -138,7 +140,9 @@ export default function MediaPreviewModal({ item, onClose }) {
           {/* Description */}
           {item.description && (
             <div className="border-t border-border-primary pt-4 mb-4">
-              <h4 className="text-sm font-medium text-heading mb-2">Description</h4>
+              <h4 className="text-sm font-medium text-heading mb-2">
+                Description
+              </h4>
               <p className="text-sm text-text">{item.description}</p>
             </div>
           )}
@@ -146,12 +150,13 @@ export default function MediaPreviewModal({ item, onClose }) {
           {/* Actions */}
           <div className="flex justify-between items-center pt-4 border-t border-border-primary">
             <div className="text-xs text-text/50">
-              ID: <span className="font-mono">{item.imageId || item.videoId}</span>
+              ID:{" "}
+              <span className="font-mono">{item.imageId || item.videoId}</span>
             </div>
-            
+
             <div className="flex gap-2">
-              
-                <a href={item.url}
+              <a
+                href={item.url}
                 download
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
                 onClick={(e) => e.stopPropagation()}
@@ -176,13 +181,15 @@ export default function MediaPreviewModal({ item, onClose }) {
 // Helper function to format video duration
 function formatDuration(seconds) {
   if (!seconds) return "0:00";
-  
+
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
-  
+
   if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
