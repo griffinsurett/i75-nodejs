@@ -6,7 +6,7 @@ import MediaControls from "./MediaControls";
 import MediaCard from "./MediaCard";
 import MediaListItem from "./MediaListItem";
 import MediaUploader from "./MediaUploader";
-import MediaPreviewModal from "./MediaPreviewModal"; // Add this import
+import MediaPreviewModal from "./MediaPreviewModal";
 import ArchivedNotice from "../archive/ArchivedNotice";
 import SearchInput from "../search/SearchInput";
 import EmptyState from "../common/EmptyState";
@@ -36,6 +36,7 @@ export default function MediaLibraryContent({
   searchPlaceholder = "Search media...",
   onBulkArchive: externalBulkArchive,
   onBulkDelete: externalBulkDelete,
+  hideSelectionUI = false,
 }) {
   const [activeTab, setActiveTab] = useState(mediaTypeFilter !== 'all' ? mediaTypeFilter + 's' : 'all');
   const [images, setImages] = useState(initialImages || []);
@@ -43,7 +44,7 @@ export default function MediaLibraryContent({
   const [loading, setLoading] = useState(externalLoading);
   const [error, setError] = useState(externalError);
   const [viewMode, setViewMode] = useState(compact ? "grid" : "grid");
-  const [previewItem, setPreviewItem] = useState(null); // Add state for preview modal
+  const [previewItem, setPreviewItem] = useState(null);
 
   // Use selection mode hook if not controlled externally
   const internalSelection = useSelectionMode();
@@ -117,9 +118,6 @@ export default function MediaLibraryContent({
       setPreviewItem(item);
     }
   };
-
-  // Rest of your existing useEffects and functions...
-  // [Keep all the existing useEffect hooks and fetch functions as they are]
 
   // Use provided data if available
   useEffect(() => {
@@ -207,7 +205,6 @@ export default function MediaLibraryContent({
     }
   }, [showArchived, showUploader, mediaTypeFilter]);
 
-  // [Keep all the bulk operations handlers as they are]
   // Bulk operations handlers
   const handleBulkArchive = async () => {
     if (externalBulkArchive) {
@@ -215,7 +212,7 @@ export default function MediaLibraryContent({
       return;
     }
     
-     const operation = async (id) => {
+    const operation = async (id) => {
       const item = filteredMedia.find(m => (m.imageId || m.videoId) === id);
       if (item?.type === 'video') {
         return videoAPI.archiveVideo(id);
@@ -244,7 +241,7 @@ export default function MediaLibraryContent({
       return;
     }
     
-     if (!window.confirm(`Delete ${selectedItems.size} items permanently?`)) return;
+    if (!window.confirm(`Delete ${selectedItems.size} items permanently?`)) return;
     
     const operation = async (id) => {
       const item = filteredMedia.find(m => (m.imageId || m.videoId) === id);
@@ -321,8 +318,8 @@ export default function MediaLibraryContent({
     <div className="space-y-6">
       {showArchived && <ArchivedNotice />}
 
-      {/* Bulk Actions Bar */}
-      {selectionMode && selectedItems.size > 0 && (
+      {/* Bulk Actions Bar - Only show for multiple selection */}
+      {selectionMode && selectedItems.size > 0 && !hideSelectionUI && (
         <BulkActionsBar
           selectedCount={selectedItems.size}
           totalCount={filteredMedia.length}
@@ -404,7 +401,7 @@ export default function MediaLibraryContent({
             <MediaCard
               key={item.imageId || item.videoId}
               item={item}
-              onClick={() => handleMediaClick(item)} // Fixed: Always pass the click handler
+              onClick={() => handleMediaClick(item)}
               onChanged={() => {
                 if (isControlledMode && onRefresh) {
                   onRefresh();
@@ -415,6 +412,7 @@ export default function MediaLibraryContent({
               selectionMode={selectionMode}
               isSelected={isSelected(item.imageId || item.videoId)}
               onToggleSelect={() => toggleItemSelection(item.imageId || item.videoId)}
+              hideSelectionCheckbox={hideSelectionUI}
             />
           ))}
         </div>
@@ -423,7 +421,7 @@ export default function MediaLibraryContent({
           <table className="w-full">
             <thead className="bg-bg2 border-b border-border-primary">
               <tr>
-                {selectionMode && (
+                {selectionMode && !hideSelectionUI && (
                   <th className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
@@ -472,7 +470,7 @@ export default function MediaLibraryContent({
                 <MediaListItem
                   key={item.imageId || item.videoId}
                   item={item}
-                  onClick={() => handleMediaClick(item)} // Fixed: Always pass the click handler
+                  onClick={() => handleMediaClick(item)}
                   onChanged={() => {
                     if (isControlledMode && onRefresh) {
                       onRefresh();
@@ -483,6 +481,7 @@ export default function MediaLibraryContent({
                   selectionMode={selectionMode}
                   isSelected={isSelected(item.imageId || item.videoId)}
                   onToggleSelect={() => toggleItemSelection(item.imageId || item.videoId)}
+                  hideSelectionCheckbox={hideSelectionUI}
                 />
               ))}
             </tbody>

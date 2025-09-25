@@ -123,7 +123,9 @@ export default function MediaSelector({
             showArchived={false}
             compact={true}
             onRefresh={handleRefresh}
-            key={refreshTrigger} // Force refresh when this changes
+            key={refreshTrigger}
+            allowMultiple={allowMultiple}
+            hideSelectionUI={!allowMultiple}
           />
         ) : (
           <MediaUploader 
@@ -138,7 +140,7 @@ export default function MediaSelector({
       {activeTab === 'library' && (
         <div className="px-6 py-4 border-t border-border-primary flex items-center justify-between">
           <div className="text-sm text-text">
-            {selectedItems.size > 0 && (
+            {selectedItems.size > 0 && allowMultiple && (
               <span>
                 {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
               </span>
