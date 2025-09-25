@@ -1,9 +1,10 @@
-// frontend/src/components/course/sections/edit/ChapterEditor.jsx
+// frontend/src/components/course/sections/content-editor/chapter/ChapterEditor.jsx
 import { useState, useEffect } from "react";
-import { BookOpen, Trash2, RotateCcw, AlertTriangle } from "lucide-react";
+import { BookOpen, Trash2, RotateCcw } from "lucide-react";
 import { FormField, FormInput, FormTextarea } from "../../../../forms";
 import MediaInput from "../../../../media/MediaInput";
 import ChapterDeletionBadge from "./ChapterDeletionBadge";
+import StatusIndicator from "../../../../common/StatusIndicator";
 
 export default function ChapterEditor({
   sectionId,
@@ -18,8 +19,7 @@ export default function ChapterEditor({
   const chapterData = chapter.chapters || chapter;
   const isPendingDeletion = chapter.pendingDeletion;
   const isArchived = chapterData.isArchived;
-  const hasScheduledDeletion =
-    chapterData.purgeAfterAt || chapterData.scheduledDeleteAt;
+  const hasScheduledDeletion = chapterData.purgeAfterAt || chapterData.scheduledDeleteAt;
 
   const [formData, setFormData] = useState({
     chapterNumber: "",
@@ -30,7 +30,6 @@ export default function ChapterEditor({
     videoId: null,
   });
 
-  // Initialize form data when chapter changes
   useEffect(() => {
     setFormData({
       chapterNumber: String(chapterData.chapterNumber || ""),
@@ -43,33 +42,26 @@ export default function ChapterEditor({
   }, [chapter]);
 
   const handleFieldChange = (field, value) => {
-    // Don't allow edits if marked for deletion or archived
     if (isPendingDeletion || isArchived) return;
 
-    // Allow chapter number changes now
     if (field === "chapterNumber") {
       const numValue = parseInt(value, 10);
       if (!isNaN(numValue) && numValue > 0) {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        // Immediately update parent with the number change
         onUpdate({ chapterNumber: numValue });
       } else if (value === "") {
-        // Allow clearing the field for typing
         setFormData((prev) => ({ ...prev, [field]: value }));
       }
       return;
     }
 
     setFormData((prev) => ({ ...prev, [field]: value }));
-
-    // Immediately update parent with changes
     onUpdate({ [field]: value });
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      // The parent component will handle the actual save
     }
   };
 
@@ -103,6 +95,13 @@ export default function ChapterEditor({
     return "text-heading";
   };
 
+  const getSubtitle = () => {
+    if (isPendingDeletion) return "This chapter will be deleted when you save";
+    if (isArchived && hasScheduledDeletion) return "This chapter is scheduled for deletion";
+    if (isArchived) return "This chapter is archived";
+    return "Edit chapter content and settings";
+  };
+
   return (
     <div className="max-w-4xl mx-auto" onKeyDown={handleKeyDown}>
       {/* Header */}
@@ -116,24 +115,18 @@ export default function ChapterEditor({
               Chapter {formData.chapterNumber || chapterData.chapterNumber}:{" "}
               {formData.title || "Untitled"}
               {isTemp && !isPendingDeletion && !isArchived && (
-                <span className="ml-2 text-xs bg-orange-500 text-white px-2 py-0.5 rounded">
-                  Unsaved
-                </span>
+                <StatusIndicator 
+                  status="unsaved" 
+                  size="xs" 
+                  className="ml-2 inline-flex" 
+                />
               )}
             </h2>
-            <p className="text-sm text-text/70">
-              {isPendingDeletion
-                ? "This chapter will be deleted when you save"
-                : isArchived && hasScheduledDeletion
-                ? "This chapter is scheduled for deletion"
-                : isArchived
-                ? "This chapter is archived"
-                : "Edit chapter content and settings"}
-            </p>
+            <p className="text-sm text-text/70">{getSubtitle()}</p>
           </div>
         </div>
 
-        {/* Deletion Badge or Actions */}
+        {/* Actions */}
         {isPendingDeletion ? (
           <ChapterDeletionBadge
             deletedAt={chapter.deletedAt}
@@ -170,8 +163,7 @@ export default function ChapterEditor({
       {isPendingDeletion && (
         <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm text-red-600 dark:text-red-400">
-            This chapter is marked for deletion. Click "Cancel" above to restore
-            it, or save changes to permanently delete it.
+            This chapter is marked for deletion. Click "Cancel" above to restore it, or save changes to permanently delete it.
           </p>
         </div>
       )}
@@ -179,8 +171,7 @@ export default function ChapterEditor({
       {isArchived && hasScheduledDeletion && (
         <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
           <p className="text-sm text-orange-600 dark:text-orange-400">
-            This chapter is scheduled for permanent deletion. Click "Undo" to
-            cancel the deletion.
+            This chapter is scheduled for permanent deletion. Click "Undo" to cancel the deletion.
           </p>
         </div>
       )}
@@ -193,15 +184,10 @@ export default function ChapterEditor({
         </div>
       )}
 
-      {/* Form - Disable all fields if pending deletion or archived */}
-      <div
-        className={`bg-bg rounded-xl border border-border-primary p-6 space-y-6 ${
-          isPendingDeletion || isArchived
-            ? "opacity-50 pointer-events-none"
-            : ""
-        }`}
-      >
-        {/* Rest of the form remains the same */}
+      {/* Form */}
+      <div className={`bg-bg rounded-xl border border-border-primary p-6 space-y-6 ${
+        isPendingDeletion || isArchived ? "opacity-50 pointer-events-none" : ""
+      }`}>
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-heading border-b border-border-primary pb-2">
@@ -209,17 +195,11 @@ export default function ChapterEditor({
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField
-              label="Chapter Number"
-              required
-              help="You can also drag to reorder"
-            >
+            <FormField label="Chapter Number" required help="You can also drag to reorder">
               <FormInput
                 type="number"
                 value={formData.chapterNumber}
-                onChange={(e) =>
-                  handleFieldChange("chapterNumber", e.target.value)
-                }
+                onChange={(e) => handleFieldChange("chapterNumber", e.target.value)}
                 min="1"
                 placeholder="Chapter number"
                 className="text-lg"
@@ -240,10 +220,7 @@ export default function ChapterEditor({
             </div>
           </div>
 
-          <FormField
-            label="Description"
-            help="Brief description of what this chapter covers"
-          >
+          <FormField label="Description" help="Brief description of what this chapter covers">
             <FormTextarea
               value={formData.description}
               onChange={(e) => handleFieldChange("description", e.target.value)}
@@ -260,10 +237,7 @@ export default function ChapterEditor({
             Chapter Content
           </h3>
 
-          <FormField
-            label="Content"
-            help="Main content of the chapter - you can use markdown formatting"
-          >
+          <FormField label="Content" help="Main content of the chapter - you can use markdown formatting">
             <FormTextarea
               value={formData.content}
               onChange={(e) => handleFieldChange("content", e.target.value)}

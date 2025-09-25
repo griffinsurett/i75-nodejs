@@ -1,6 +1,6 @@
 // frontend/src/components/instructor/components/InstructorStats.jsx
-import { BookOpen, Calendar, Users, Award } from "lucide-react";
-import { formatDate } from "../../../utils/formatDate";
+import { BookOpen, Users, Award } from "lucide-react";
+import DateDisplay from "../../common/DateDisplay";
 
 export default function InstructorStats({
   instructor,
@@ -18,12 +18,11 @@ export default function InstructorStats({
         </div>
       )}
 
-      <div className="flex items-center text-text">
-        <Calendar className="w-4 h-4 mr-2" />
-        <span>
-          Joined: {formatDate(instructorData.createdAt, { variant: "short" })}
-        </span>
-      </div>
+      <DateDisplay
+        label="Joined"
+        date={instructorData.createdAt}
+        variant="compact"
+      />
 
       {showExtended && (
         <>

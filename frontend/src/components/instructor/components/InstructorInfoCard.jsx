@@ -1,5 +1,5 @@
 // frontend/src/components/instructor/components/InstructorInfoCard.jsx
-import { formatDate } from "../../../utils/formatDate";
+import DateDisplay from "../../common/DateDisplay";
 
 export default function InstructorInfoCard({
   instructor,
@@ -22,14 +22,24 @@ export default function InstructorInfoCard({
           <div>
             <dt className="text-sm text-text/70">Joined</dt>
             <dd className="text-heading">
-              {formatDate(instructorData.createdAt)}
+              <DateDisplay
+                label=""
+                date={instructorData.createdAt}
+                variant="compact"
+                className="text-heading"
+              />
             </dd>
           </div>
           {instructorData.updatedAt && (
             <div>
               <dt className="text-sm text-text/70">Last Updated</dt>
               <dd className="text-heading">
-                {formatDate(instructorData.updatedAt)}
+                <DateDisplay
+                  label=""
+                  date={instructorData.updatedAt}
+                  variant="compact"
+                  className="text-heading"
+                />
               </dd>
             </div>
           )}
@@ -55,9 +65,12 @@ export default function InstructorInfoCard({
         </div>
         <div className="flex items-center justify-between mt-2">
           <span className="text-sm text-text/70">Joined</span>
-          <span className="text-sm">
-            {formatDate(instructorData.createdAt, { variant: "short" })}
-          </span>
+          <DateDisplay
+            label=""
+            date={instructorData.createdAt}
+            variant="compact"
+            className="text-sm"
+          />
         </div>
       </div>
     );

@@ -1,11 +1,14 @@
+// frontend/src/components/course/sections/cards/SectionCard.jsx
 import { Link } from "react-router-dom";
-import { FileText, Calendar, Play } from "lucide-react";
+import { FileText } from "lucide-react";
 import EditActions from "../../../archive/EditActions";
 import ArchiveBadge from "../../../archive/ArchiveBadge";
-import { formatDate } from "../../../../utils/formatDate";
+import ImageWithFallback from "../../../common/ImageWithFallback";
+import DateDisplay from "../../../common/DateDisplay";
+import MediaIndicator from "../../../common/MediaIndicator";
 import { sectionAPI } from "../../../../services/api";
 
-export default function SectionCard({ section, courseId, onChanged, onEdit }) {
+export default function SectionCard({ section, courseId, onChanged }) {
   const sectionData = section.sections || section;
   const imageData = section.images;
   const videoData = section.videos;
@@ -18,7 +21,7 @@ export default function SectionCard({ section, courseId, onChanged, onEdit }) {
           <EditActions
             id={sectionData.sectionId}
             isArchived={sectionData.isArchived}
-            editTo={`/sections/${sectionData.sectionId}/edit`} // Change from onEdit to editTo
+            editTo={`/sections/${sectionData.sectionId}/edit`}
             entityName="section"
             api={{
               archive: sectionAPI.archiveSection,
@@ -29,17 +32,13 @@ export default function SectionCard({ section, courseId, onChanged, onEdit }) {
           />
         </div>
 
-        {imageData?.imageUrl ? (
-          <img
-            src={imageData.imageUrl}
-            alt={imageData.altText || sectionData.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <FileText className="w-12 h-12 text-bg" />
-          </div>
-        )}
+        <ImageWithFallback
+          src={imageData?.imageUrl}
+          alt={imageData?.altText || sectionData.title}
+          type="section"
+          size="full"
+          iconSize="lg"
+        />
 
         {sectionData.isArchived && (
           <span className="absolute bottom-2 left-2">
@@ -62,17 +61,13 @@ export default function SectionCard({ section, courseId, onChanged, onEdit }) {
 
         <div className="space-y-2 mb-4">
           {videoData?.title && (
-            <div className="flex items-center text-sm text-text">
-              <Play className="w-4 h-4 mr-2" />
-              <span>Video: {videoData.title}</span>
-            </div>
+            <MediaIndicator type="video" title={`Video: ${videoData.title}`} />
           )}
-          <div className="flex items-center text-sm text-text">
-            <Calendar className="w-4 h-4 mr-2" />
-            <span>
-              Created: {formatDate(sectionData.createdAt, { variant: "short" })}
-            </span>
-          </div>
+          <DateDisplay
+            label="Created"
+            date={sectionData.createdAt}
+            variant="compact"
+          />
         </div>
 
         <Link

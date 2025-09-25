@@ -1,6 +1,7 @@
-// frontend/src/components/course/sections/edit/ChaptersSidebar.jsx
-import { Plus, FileText, Layers, AlertCircle, AlertTriangle, Clock } from "lucide-react";
+// frontend/src/components/course/sections/content-editor/sidebar/ChaptersSidebar.jsx
+import { Plus, FileText, Layers } from "lucide-react";
 import DraggableChapterList from "./DraggableChapterList";
+import ChangeIndicator from "../../../../common/ChangeIndicator";
 
 export default function ChaptersSidebar({
   sectionId,
@@ -16,12 +17,10 @@ export default function ChaptersSidebar({
   onChapterRestoreArchived,
   onReorderChapters,
 }) {
-  const selectedChapterId = selectedChapter
-    ? (selectedChapter.chapters || selectedChapter).chapterId
-    : null;
-
-  // Count different states
-  const activeChapterCount = chapters.filter(ch => !ch.pendingDeletion && !(ch.chapters || ch).isArchived).length;
+  const activeChapterCount = chapters.filter(
+    ch => !ch.pendingDeletion && !(ch.chapters || ch).isArchived
+  ).length;
+  
   const pendingDeletionCount = pendingChanges.deleted.length;
   const scheduledDeletionCount = chapters.filter(ch => {
     const data = ch.chapters || ch;
@@ -32,13 +31,19 @@ export default function ChaptersSidebar({
     return data.isArchived && !(data.purgeAfterAt || data.scheduledDeleteAt);
   }).length;
 
-  // Total change count (including section changes)
-  const chapterChangeCount =
-    pendingChanges.added.length +
-    pendingChanges.modified.length +
-    pendingChanges.deleted.length;
-  
-  const totalChangeCount = chapterChangeCount + (pendingChanges.sectionChanged ? 1 : 0);
+  const changesSummary = {
+    added: pendingChanges.added.length,
+    modified: pendingChanges.modified.length,
+    deleted: pendingChanges.deleted.length,
+    reordered: pendingChanges.reordered
+  };
+
+  // Add section change to the modified count if needed
+  if (pendingChanges.sectionChanged) {
+    changesSummary.modified = (changesSummary.modified || 0) + 1;
+  }
+
+  const totalChangeCount = changesSummary.added + changesSummary.modified + changesSummary.deleted + (changesSummary.reordered ? 1 : 0);
 
   return (
     <div className="w-80 bg-bg border-r border-border-primary flex flex-col h-full">
@@ -83,36 +88,11 @@ export default function ChaptersSidebar({
           </button>
         </div>
 
-        {totalChangeCount > 0 && (
-          <div className="text-xs text-orange-600 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            {totalChangeCount} unsaved change{totalChangeCount !== 1 ? "s" : ""}
-          </div>
-        )}
-
+        <ChangeIndicator changes={changesSummary} />
+        
         {pendingChanges.sectionChanged && (
           <div className="text-xs text-orange-600 mt-1">
             Section settings modified
-          </div>
-        )}
-
-        {pendingDeletionCount > 0 && (
-          <div className="text-xs text-red-600 flex items-center gap-1 mt-1">
-            <AlertTriangle className="w-3 h-3" />
-            {pendingDeletionCount} chapter{pendingDeletionCount !== 1 ? "s" : ""} marked for deletion
-          </div>
-        )}
-
-        {scheduledDeletionCount > 0 && (
-          <div className="text-xs text-orange-600 flex items-center gap-1 mt-1">
-            <Clock className="w-3 h-3" />
-            {scheduledDeletionCount} scheduled for deletion
-          </div>
-        )}
-
-        {pendingChanges.reordered && (
-          <div className="text-xs text-orange-600 mt-1">
-            Chapter order changed
           </div>
         )}
       </div>
@@ -165,9 +145,7 @@ export default function ChaptersSidebar({
             </div>
           )}
           {chapters.length > 0 && !pendingDeletionCount && !archivedCount && !scheduledDeletionCount && (
-            <>
-              <div className="mt-1 text-text/40">Drag chapters to reorder</div>
-            </>
+            <div className="mt-1 text-text/40">Drag chapters to reorder</div>
           )}
           {totalChangeCount > 0 && (
             <div className="mt-1 text-orange-600">

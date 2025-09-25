@@ -1,4 +1,4 @@
-// frontend/src/components/instructor/InstructorDetail.jsx
+// frontend/src/components/instructor/views/InstructorDetail.jsx
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { instructorAPI } from "../../../services/api";
@@ -10,6 +10,7 @@ import PageErrorState from "../../common/PageErrorState";
 import InstructorProfileHeader from "../components/InstructorProfileHeader";
 import InstructorInfoCard from "../components/InstructorInfoCard";
 import InstructorCoursesList from "../components/InstructorCoursesList";
+import ListHeader from "../../common/ListHeader";
 
 const InstructorDetail = () => {
   const { instructorId } = useParams();
@@ -111,10 +112,11 @@ const InstructorDetail = () => {
         <InstructorInfoCard instructor={instructor} variant="details" />
 
         <div className="bg-bg rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-heading mb-4 flex items-center">
-            <BookOpen className="w-5 h-5 mr-2" />
-            Assigned Courses
-          </h3>
+          <ListHeader
+            title="Assigned Courses"
+            count={instructorData.courses?.length || 0}
+            icon={BookOpen}
+          />
           <InstructorCoursesList
             courses={instructorData.courses || []}
             showViewAll={false}

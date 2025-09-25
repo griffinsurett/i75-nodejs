@@ -1,16 +1,17 @@
+// frontend/src/components/course/sections/lists/CourseSections.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Plus } from 'lucide-react';
 import ActiveArchivedTabs from '../../../archive/ActiveArchivedTabs';
 import ArchivedNotice from '../../../archive/ArchivedNotice';
 import SectionCard from '../cards/SectionCard';
+import ListHeader from '../../../common/ListHeader';
 
 export default function CourseSections({ courseId, sections, onRefresh }) {
   const navigate = useNavigate();
   const [view, setView] = useState('active');
 
   const handleAddSection = () => {
-    // Navigate to section create page with courseId as a query parameter
     navigate(`/sections/new?courseId=${courseId}`);
   };
 
@@ -20,31 +21,35 @@ export default function CourseSections({ courseId, sections, onRefresh }) {
   const displayedSections = view === 'archived' ? archivedSections : activeSections;
   const sectionCount = view === 'archived' ? archivedSections.length : activeSections.length;
 
+  const tabs = (
+    <ActiveArchivedTabs 
+      value={view} 
+      onChange={setView} 
+      className="ml-2"
+      activeLabel="Active"
+      archivedLabel="Archived"
+    />
+  );
+
+  const actions = (
+    <button
+      onClick={handleAddSection}
+      className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
+    >
+      <Plus className="w-4 h-4" />
+      Add Section
+    </button>
+  );
+
   return (
     <div className="bg-bg rounded-lg shadow-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-heading flex items-center">
-            <FileText className="w-6 h-6 mr-2" />
-            Course Sections ({sectionCount})
-          </h2>
-          <ActiveArchivedTabs 
-            value={view} 
-            onChange={setView} 
-            className="ml-2"
-            activeLabel="Active"
-            archivedLabel="Archived"
-          />
-        </div>
-        
-        <button
-          onClick={handleAddSection}
-          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Section
-        </button>
-      </div>
+      <ListHeader
+        title="Course Sections"
+        count={sectionCount}
+        icon={FileText}
+        tabs={tabs}
+        actions={actions}
+      />
 
       {view === 'archived' && displayedSections.length > 0 && <ArchivedNotice />}
 
