@@ -137,11 +137,11 @@ export default function MediaCard({
             : item.altText || "Untitled Image"}
         </p>
         <div className="flex items-center justify-between text-xs text-text/70 mt-1">
-          <DateDisplay
+          {/* <DateDisplay
             date={item.createdAt}
             variant="compact"
             className="text-xs"
-          />
+          /> */}
           <div className="flex items-center gap-2">
             <span>{formatFileSize(item.fileSize)}</span>
             {fileFormat !== "Unknown" && (
