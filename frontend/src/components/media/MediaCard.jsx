@@ -10,6 +10,7 @@ import EditActions from "../archive/EditActions";
 import ArchiveBadge from "../archive/ArchiveBadge";
 import SelectionCheckbox from "../selection/SelectionCheckbox";
 import { imageAPI, videoAPI } from "../../services/api";
+import StatusIndicator from "../common/StatusIndicator";
 
 export default function MediaCard({
   item,
@@ -145,9 +146,13 @@ export default function MediaCard({
           <div className="flex items-center gap-2">
             <span>{formatFileSize(item.fileSize)}</span>
             {fileFormat !== "Unknown" && (
-              <span className="bg-bg2 text-text px-2 py-0.5 rounded text-xs font-medium">
-                {fileFormat}
-              </span>
+              <StatusIndicator
+                status="custom"
+                label={fileFormat}
+                size="xs"
+                showIcon={false}
+                className="bg-bg2 text-text"
+              />
             )}
           </div>
         </div>
