@@ -1,3 +1,4 @@
+// frontend/src/components/media/MediaUploader.jsx
 import { useState, useRef, useCallback } from "react";
 import {
   Upload,
@@ -12,6 +13,8 @@ import { uploadAPI } from "../../services/api";
 import { formatFileSize } from "../../utils/formatFileSize";
 import { formatFileType } from "../../utils/formatFileType";
 import { generateVideoThumbnail, VideoThumbnail } from "../VideoThumbnail";
+import StatusIndicator from "../common/StatusIndicator";
+import MediaIndicator from "../common/MediaIndicator";
 
 export default function MediaUploader({ 
   onComplete, 
@@ -93,7 +96,7 @@ export default function MediaUploader({
       altText: file.name.replace(/\.[^/.]+$/, ""),
       title: file.name.replace(/\.[^/.]+$/, ""),
       description: "",
-      uploadedMedia: null, // Store the response data here
+      uploadedMedia: null,
     }));
 
     // Create previews
@@ -243,14 +246,14 @@ export default function MediaUploader({
       );
     }
 
-    // Default icon fallback
+    // Use MediaIndicator for fallback
     return (
       <div className="w-full h-full flex items-center justify-center bg-bg2">
-        {fileObj.type === "video" ? (
-          <Film className="w-6 h-6 text-text/40" />
-        ) : (
-          <Image className="w-6 h-6 text-text/40" />
-        )}
+        <MediaIndicator 
+          type={fileObj.type} 
+          title="" 
+          className="justify-center"
+        />
       </div>
     );
   };
@@ -345,11 +348,15 @@ export default function MediaUploader({
                           {fileObj.name}
                         </span>
                         {fileObj.status === "success" && (
-                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <StatusIndicator 
+                            status="saved" 
+                            size="xs"
+                            showLabel={false}
+                          />
                         )}
                       </div>
 
-                      {/* Enhanced Progress Bar with percentage */}
+                      {/* Progress Bar */}
                       {fileObj.status === "uploading" && (
                         <div className="mt-2">
                           <div className="flex items-center justify-between text-xs mb-1">
@@ -365,24 +372,33 @@ export default function MediaUploader({
                         </div>
                       )}
 
-                      {/* Success Message */}
+                      {/* Use StatusIndicator for success message */}
                       {fileObj.status === "success" && singleUploadMode && (
-                        <div className="mt-1 text-xs text-green-600">
-                          Upload complete! Selecting automatically...
-                        </div>
+                        <StatusIndicator 
+                          status="saved" 
+                          label="Upload complete! Selecting automatically..." 
+                          size="xs"
+                          showIcon={false}
+                        />
                       )}
 
-                      {/* Error Message */}
+                      {/* Use StatusIndicator for error */}
                       {fileObj.status === "error" && (
-                        <div className="mt-1 text-xs text-red-600">
-                          {fileObj.error}
-                        </div>
+                        <StatusIndicator 
+                          status="error" 
+                          label={fileObj.error} 
+                          size="xs"
+                        />
                       )}
                     </td>
 
-                    {/* Format */}
-                    <td className="p-3 text-sm text-text font-mono">
-                      {formatFileType(fileObj.mimeType)}
+                    {/* Format - Use MediaIndicator */}
+                    <td className="p-3">
+                      <MediaIndicator 
+                        type={fileObj.type} 
+                        title={formatFileType(fileObj.mimeType)} 
+                        className="text-sm"
+                      />
                     </td>
 
                     {/* Size */}

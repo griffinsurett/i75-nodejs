@@ -7,6 +7,7 @@ import EditActions from "../../archive/EditActions";
 import BackButton from "../../navigation/BackButton";
 import PageLoadingState from "../../common/PageLoadingState";
 import PageErrorState from "../../common/PageErrorState";
+import EmptyState from "../../common/EmptyState";
 import InstructorProfileHeader from "../components/InstructorProfileHeader";
 import InstructorInfoCard from "../components/InstructorInfoCard";
 import InstructorCoursesList from "../components/InstructorCoursesList";
@@ -63,16 +64,14 @@ const InstructorDetail = () => {
   if (!instructor) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12">
-          <User className="w-12 h-12 mx-auto text-text mb-4" />
-          <h3 className="text-lg font-medium text-heading mb-2">
-            Instructor not found
-          </h3>
-          <p className="text-text mb-4">
-            The requested instructor could not be found.
-          </p>
-          <BackButton to="/instructors">Back to Instructors</BackButton>
-        </div>
+        <EmptyState
+          icon={User}
+          title="Instructor not found"
+          description="The requested instructor could not be found."
+          action={
+            <BackButton to="/instructors">Back to Instructors</BackButton>
+          }
+        />
       </div>
     );
   }

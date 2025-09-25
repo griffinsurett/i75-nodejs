@@ -9,6 +9,7 @@ import CourseSections from "../../components/course/sections/lists/CourseSection
 import BackButton from "../navigation/BackButton";
 import PageLoadingState from "../common/PageLoadingState";
 import PageErrorState from "../common/PageErrorState";
+import EmptyState from "../common/EmptyState";
 
 const CourseDetail = () => {
   const { courseId } = useParams();
@@ -59,22 +60,26 @@ const CourseDetail = () => {
   }
 
   if (error) {
-    return <PageErrorState error={error} backUrl="/courses" backLabel="Back to Courses" />;
+    return (
+      <PageErrorState
+        error={error}
+        backUrl="/courses"
+        backLabel="Back to Courses"
+      />
+    );
   }
 
   if (!course) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12">
-          <BookOpen className="w-12 h-12 mx-auto text-text mb-4" />
-          <h3 className="text-lg font-medium text-heading mb-2">
-            Course not found
-          </h3>
-          <p className="text-text mb-4">
-            The requested course could not be found.
-          </p>
-          <BackButton to="/courses">Back to Courses</BackButton>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title="Course not found"
+          description="The requested course could not be found."
+          action={
+            <BackButton to="/courses">Back to Courses</BackButton>
+          }
+        />
       </div>
     );
   }

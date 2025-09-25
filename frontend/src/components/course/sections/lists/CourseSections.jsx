@@ -6,6 +6,7 @@ import ActiveArchivedTabs from '../../../archive/ActiveArchivedTabs';
 import ArchivedNotice from '../../../archive/ArchivedNotice';
 import SectionCard from '../cards/SectionCard';
 import ListHeader from '../../../common/ListHeader';
+import EmptyState from '../../../common/EmptyState';
 
 export default function CourseSections({ courseId, sections, onRefresh }) {
   const navigate = useNavigate();
@@ -65,26 +66,26 @@ export default function CourseSections({ courseId, sections, onRefresh }) {
           ))}
         </div>
       ) : (
-        <div className="text-center py-8">
-          <FileText className="w-12 h-12 mx-auto text-text/70 mb-4" />
-          <h3 className="text-lg font-medium text-heading mb-2">
-            {view === 'archived' ? 'No archived sections' : 'No sections yet'}
-          </h3>
-          <p className="text-text mb-4">
-            {view === 'archived' 
+        <EmptyState
+          icon={FileText}
+          title={view === 'archived' ? 'No archived sections' : 'No sections yet'}
+          description={
+            view === 'archived' 
               ? 'Archived sections you hide will appear here.'
-              : 'Create your first section to organize your course content.'}
-          </p>
-          {view === 'active' && (
-            <button
-              onClick={handleAddSection}
-              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Create First Section
-            </button>
-          )}
-        </div>
+              : 'Create your first section to organize your course content.'
+          }
+          action={
+            view === 'active' && (
+              <button
+                onClick={handleAddSection}
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Create First Section
+              </button>
+            )
+          }
+        />
       )}
     </div>
   );

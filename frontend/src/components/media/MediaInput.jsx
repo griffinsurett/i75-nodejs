@@ -4,6 +4,7 @@ import { Image as ImageIcon, Film, Upload, X } from 'lucide-react';
 import MediaSelector from './MediaSelector';
 import { VideoThumbnail } from '../VideoThumbnail';
 import PageLoadingState from '../common/PageLoadingState';
+import ImageWithFallback from '../common/ImageWithFallback';
 import { imageAPI, videoAPI, uploadAPI } from '../../services/api';
 
 export default function MediaInput({
@@ -200,16 +201,15 @@ export default function MediaInput({
       );
     }
 
-    return selectedMedia.url ? (
-      <img
+    return (
+      <ImageWithFallback
         src={selectedMedia.url}
         alt={selectedMedia.altText || 'Selected image'}
+        type="default"
+        size="full"
+        iconSize="md"
         className="w-full h-full object-cover"
       />
-    ) : (
-      <div className="w-full h-full flex items-center justify-center bg-bg2">
-        <ImageIcon className="w-6 h-6 text-text/40" />
-      </div>
     );
   };
 
@@ -273,10 +273,8 @@ export default function MediaInput({
         ) : uploading ? (
           /* Upload Progress */
           <div className="p-4 border border-border-primary rounded-lg bg-bg2">
-            <div className="flex items-center gap-3 mb-3">
-              <PageLoadingState message={`Uploading... ${uploadProgress}%`} />
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <PageLoadingState message={`Uploading... ${uploadProgress}%`} />
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-3">
               <div
                 className="bg-primary h-2 rounded-full transition-all duration-300"
                 style={{ width: `${uploadProgress}%` }}

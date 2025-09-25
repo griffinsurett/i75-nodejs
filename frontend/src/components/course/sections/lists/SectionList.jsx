@@ -2,14 +2,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { sectionAPI } from "../../../../services/api";
-import { Plus } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import ActiveArchivedTabs from "../../../archive/ActiveArchivedTabs";
 import ArchivedNotice from "../../../archive/ArchivedNotice";
 import useArchiveViewParam from "../../../archive/hooks/useArchiveViewParam";
 import SectionCard from "../cards/SectionCard";
-import SectionEmptyState from "../detail/SectionEmptyState";
+import EmptyState from "../../../common/EmptyState";
 import PageLoadingState from "../../../common/PageLoadingState";
 import PageErrorState from "../../../common/PageErrorState";
+import ListHeader from "../../../common/ListHeader";
 
 const SectionList = () => {
   const navigate = useNavigate();
@@ -55,34 +56,50 @@ const SectionList = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-heading">
-            {isArchivedView ? "Archived Sections" : "Course Sections"}
-          </h1>
+      <ListHeader
+        title={isArchivedView ? "Archived Sections" : "Course Sections"}
+        icon={FileText}
+        tabs={
           <ActiveArchivedTabs
             value={view}
             onChange={setView}
             className="ml-2"
           />
-        </div>
-
-        <button
-          onClick={handleAddSection}
-          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Section
-        </button>
-      </div>
+        }
+        actions={
+          <button
+            onClick={handleAddSection}
+            className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Section
+          </button>
+        }
+      />
 
       {isArchivedView && <ArchivedNotice />}
 
       {/* Content */}
       {sections.length === 0 ? (
-        <SectionEmptyState
-          isArchived={isArchivedView}
-          onAddSection={handleAddSection}
+        <EmptyState
+          icon={FileText}
+          title={isArchivedView ? "No archived sections" : "No sections available"}
+          description={
+            isArchivedView 
+              ? "Archived sections you hide will appear here."
+              : "Create your first section to organize your course content."
+          }
+          action={
+            !isArchivedView && (
+              <button
+                onClick={handleAddSection}
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Create First Section
+              </button>
+            )
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

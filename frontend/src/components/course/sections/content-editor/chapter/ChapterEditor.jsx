@@ -5,6 +5,7 @@ import { FormField, FormInput, FormTextarea } from "../../../../forms";
 import MediaInput from "../../../../media/MediaInput";
 import ChapterDeletionBadge from "./ChapterDeletionBadge";
 import StatusIndicator from "../../../../common/StatusIndicator";
+import NumberBadge from "../../../../common/NumberBadge";
 
 export default function ChapterEditor({
   sectionId,
@@ -102,6 +103,14 @@ export default function ChapterEditor({
     return "Edit chapter content and settings";
   };
 
+  const getStatusType = () => {
+    if (isPendingDeletion) return "pendingDeletion";
+    if (isArchived && hasScheduledDeletion) return "scheduledDeletion";
+    if (isArchived) return "archived";
+    if (isTemp) return "unsaved";
+    return null;
+  };
+
   return (
     <div className="max-w-4xl mx-auto" onKeyDown={handleKeyDown}>
       {/* Header */}
@@ -110,19 +119,27 @@ export default function ChapterEditor({
           <div className={`p-2 rounded-lg ${getHeaderColor()}`}>
             <BookOpen className={`w-5 h-5 ${getIconColor()}`} />
           </div>
-          <div>
-            <h2 className={`text-xl font-bold ${getTitleStyle()}`}>
-              Chapter {formData.chapterNumber || chapterData.chapterNumber}:{" "}
-              {formData.title || "Untitled"}
-              {isTemp && !isPendingDeletion && !isArchived && (
-                <StatusIndicator 
-                  status="unsaved" 
-                  size="xs" 
-                  className="ml-2 inline-flex" 
-                />
-              )}
-            </h2>
-            <p className="text-sm text-text/70">{getSubtitle()}</p>
+          <div className="flex items-center gap-2">
+            <NumberBadge 
+              number={formData.chapterNumber || chapterData.chapterNumber}
+              variant={isPendingDeletion || (isArchived && hasScheduledDeletion) ? "danger" : isArchived ? "warning" : "primary"}
+              size="sm"
+            />
+            <div>
+              <h2 className={`text-xl font-bold ${getTitleStyle()} flex items-center gap-2`}>
+                {formData.title || "Untitled"}
+                {getStatusType() && (
+                  <StatusIndicator 
+                    status={getStatusType()} 
+                    label={isTemp ? "New" : undefined}
+                    size="xs" 
+                    showIcon={!isTemp}
+                    className="inline-flex" 
+                  />
+                )}
+              </h2>
+              <p className="text-sm text-text/70">{getSubtitle()}</p>
+            </div>
           </div>
         </div>
 
@@ -159,28 +176,40 @@ export default function ChapterEditor({
         )}
       </div>
 
-      {/* Warning Messages */}
+      {/* Status Messages using StatusIndicator component style */}
       {isPendingDeletion && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            This chapter is marked for deletion. Click "Cancel" above to restore it, or save changes to permanently delete it.
-          </p>
+        <div className="mb-6">
+          <StatusIndicator 
+            status="pendingDeletion"
+            label="This chapter is marked for deletion. Click 'Cancel' above to restore it, or save changes to permanently delete it."
+            size="md"
+            showIcon={true}
+            className="w-full justify-start p-4 rounded-lg"
+          />
         </div>
       )}
 
       {isArchived && hasScheduledDeletion && (
-        <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-          <p className="text-sm text-orange-600 dark:text-orange-400">
-            This chapter is scheduled for permanent deletion. Click "Undo" to cancel the deletion.
-          </p>
+        <div className="mb-6">
+          <StatusIndicator 
+            status="scheduledDeletion"
+            label="This chapter is scheduled for permanent deletion. Click 'Undo' to cancel the deletion."
+            size="md"
+            showIcon={true}
+            className="w-full justify-start p-4 rounded-lg"
+          />
         </div>
       )}
 
       {isArchived && !hasScheduledDeletion && (
-        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-          <p className="text-sm text-yellow-600 dark:text-yellow-400">
-            This chapter is archived. Click "Restore" to make it active again.
-          </p>
+        <div className="mb-6">
+          <StatusIndicator 
+            status="archived"
+            label="This chapter is archived. Click 'Restore' to make it active again."
+            size="md"
+            showIcon={true}
+            className="w-full justify-start p-4 rounded-lg"
+          />
         </div>
       )}
 
@@ -276,9 +305,13 @@ export default function ChapterEditor({
           </div>
         </div>
 
-        {/* Save Hint */}
+        {/* Save Hint with Status */}
         <div className="flex items-center gap-2 text-sm text-text/70 bg-bg2 p-3 rounded-lg">
-          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+          <StatusIndicator 
+            status={isPendingDeletion ? "pendingDeletion" : isArchived ? "archived" : "unsaved"}
+            size="xs"
+            showLabel={false}
+          />
           <span>
             {isPendingDeletion
               ? "This chapter will be deleted when you save all changes."

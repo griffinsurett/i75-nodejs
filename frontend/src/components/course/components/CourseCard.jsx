@@ -1,18 +1,29 @@
-// frontend/src/components/course/components/CourseCard.jsx
+// frontend/src/components/course/CourseCard.jsx
 import { Link } from "react-router-dom";
-import { BookOpen } from "lucide-react";
-import EditActions from "../../archive/EditActions";
-import ArchiveBadge from "../../archive/ArchiveBadge";
-import ImageWithFallback from "../../common/ImageWithFallback";
-import DateDisplay from "../../common/DateDisplay";
-import MediaIndicator from "../../common/MediaIndicator";
-import { courseAPI } from "../../../services/api";
+import { BookOpen, User } from "lucide-react";
+import EditActions from "../archive/EditActions";
+import ArchiveBadge from "../archive/ArchiveBadge";
+import ImageWithFallback from "../common/ImageWithFallback";
+import DateDisplay from "../common/DateDisplay";
+import MediaIndicator from "../common/MediaIndicator";
+import ContentPreview from "../common/ContentPreview";
+import StatsGrid from "../common/StatsGrid";
+import { courseAPI } from "../../services/api";
 
 export default function CourseCard({ course, onChanged }) {
   // Handle both nested and flat structure
   const courseData = course.courses || course;
   const imageData = course.images;
   const videoData = course.videos;
+
+  // Prepare stats if available
+  const stats = [];
+  if (courseData.sectionCount !== undefined) {
+    stats.push({ label: "Sections", value: courseData.sectionCount });
+  }
+  if (courseData.studentCount !== undefined) {
+    stats.push({ label: "Students", value: courseData.studentCount });
+  }
 
   return (
     <div className="bg-bg rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden">
@@ -39,6 +50,7 @@ export default function CourseCard({ course, onChanged }) {
           type="course"
           size="full"
           iconSize="lg"
+          className="w-full h-full object-cover"
         />
 
         {courseData.isArchived && (
@@ -56,9 +68,12 @@ export default function CourseCard({ course, onChanged }) {
           {courseData.courseName}
         </h3>
 
-        <p className="text-text mb-4 line-clamp-3">
-          {courseData.description || "No description available"}
-        </p>
+        {/* Use ContentPreview instead of custom truncation */}
+        <ContentPreview 
+          content={courseData.description || "No description available"} 
+          maxLength={100} 
+          className="mb-4"
+        />
 
         <div className="space-y-2 mb-4">
           {videoData?.title && (
@@ -68,15 +83,22 @@ export default function CourseCard({ course, onChanged }) {
             label="Created"
             date={courseData.createdAt}
             variant="compact"
+            icon="calendar"
           />
           {courseData.updatedAt && (
             <DateDisplay
               label="Updated"
               date={courseData.updatedAt}
               variant="compact"
+              icon="clock"
             />
           )}
         </div>
+
+        {/* Add stats if available */}
+        {stats.length > 0 && (
+          <StatsGrid stats={stats} className="mb-4" />
+        )}
 
         <Link
           to={`/courses/${courseData.courseId}`}

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Eye, Film, Image as ImageIcon } from "lucide-react";
 import DateDisplay from "../common/DateDisplay";
+import ImageWithFallback from "../common/ImageWithFallback";
 import { formatFileSize } from "../../utils/formatFileSize";
 import { formatFileType } from "../../utils/formatFileType";
 import { VideoThumbnail } from "../VideoThumbnail";
@@ -100,20 +101,14 @@ export default function MediaCard({
             </div>
           </>
         ) : (
-          <>
-            {item.url ? (
-              <img
-                src={item.url}
-                alt={item.altText || "Image"}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ImageIcon className="w-12 h-12 text-text/40" />
-              </div>
-            )}
-          </>
+          <ImageWithFallback
+            src={item.url}
+            alt={item.altText || "Image"}
+            type="default"
+            size="full"
+            iconSize="lg"
+            className="w-full h-full object-cover"
+          />
         )}
 
         {/* Archive Badge - inside image container */}

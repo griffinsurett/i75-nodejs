@@ -1,14 +1,15 @@
-// frontend/src/components/instructor/InstructorList.jsx
+// frontend/src/components/instructor/views/InstructorList.jsx
 import { useNavigate } from "react-router-dom";
 import { instructorAPI } from "../../../services/api";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import ActiveArchivedTabs from "../../archive/ActiveArchivedTabs";
 import ArchivedNotice from "../../archive/ArchivedNotice";
 import useArchiveList from "../../archive/hooks/useArchiveList";
 import InstructorCard from "../components/InstructorCard";
-import InstructorEmptyState from "../components/InstructorEmptyState";
+import EmptyState from "../../common/EmptyState";
 import PageLoadingState from "../../common/PageLoadingState";
 import PageErrorState from "../../common/PageErrorState";
+import ListHeader from "../../common/ListHeader";
 
 const InstructorList = () => {
   const navigate = useNavigate();
@@ -38,34 +39,50 @@ const InstructorList = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-heading">
-            {isArchived ? "Archived Instructors" : "Instructors"}
-          </h1>
+      <ListHeader
+        title={isArchived ? "Archived Instructors" : "Instructors"}
+        icon={Users}
+        tabs={
           <ActiveArchivedTabs
             value={view}
             onChange={setView}
             className="ml-2"
           />
-        </div>
-
-        <button
-          onClick={handleAddInstructor}
-          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Instructor
-        </button>
-      </div>
+        }
+        actions={
+          <button
+            onClick={handleAddInstructor}
+            className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Instructor
+          </button>
+        }
+      />
 
       {isArchived && <ArchivedNotice />}
 
       {/* Content */}
       {instructors.length === 0 ? (
-        <InstructorEmptyState
-          isArchived={isArchived}
-          onAddInstructor={handleAddInstructor}
+        <EmptyState
+          icon={Users}
+          title={isArchived ? "No archived instructors" : "No instructors available"}
+          description={
+            isArchived 
+              ? "Archived instructors you hide will appear here."
+              : "Get started by adding your first instructor."
+          }
+          action={
+            !isArchived && (
+              <button
+                onClick={handleAddInstructor}
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Instructor
+              </button>
+            )
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

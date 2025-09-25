@@ -1,6 +1,7 @@
-// frontend/src/components/chapter/ChapterPreviewCard.jsx
+// frontend/src/components/course/sections/cards/ChapterPreviewCard.jsx
 import MediaIndicator from '../../../common/MediaIndicator';
 import ContentPreview from '../../../common/ContentPreview';
+import NumberBadge from '../../../common/NumberBadge';
 
 export default function ChapterPreviewCard({ chapter, showContent = true }) {
   const chapterData = chapter.chapters || chapter;
@@ -12,9 +13,11 @@ export default function ChapterPreviewCard({ chapter, showContent = true }) {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-              {chapterData.chapterNumber}
-            </div>
+            <NumberBadge
+              number={chapterData.chapterNumber}
+              variant="primary"
+              size="md"
+            />
             <h3 className="font-semibold text-lg text-heading">
               {chapterData.title}
             </h3>

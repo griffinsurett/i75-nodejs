@@ -46,10 +46,6 @@ export default function SectionChaptersPreview({ section, onEditClick }) {
             ))}
           </div>
 
-          {/* Quick stats */}
-          <div className="mt-6 pt-4 border-t border-border-primary">
-            <StatsGrid stats={stats} />
-          </div>
         </>
       ) : (
         <div className="text-center py-12">

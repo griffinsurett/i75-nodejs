@@ -1,12 +1,14 @@
 // frontend/src/components/media/MediaLibraryContent.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { imageAPI, videoAPI } from "../../services/api";
+import { Image as ImageIcon, Film, FileText } from "lucide-react";
 import MediaControls from "./MediaControls";
 import MediaCard from "./MediaCard";
 import MediaListItem from "./MediaListItem";
 import MediaUploader from "./MediaUploader";
 import ArchivedNotice from "../archive/ArchivedNotice";
 import SearchInput from "../search/SearchInput";
+import EmptyState from "../common/EmptyState";
 import { useSearch } from "../search/hooks/useSearch";
 import useSelectionMode from "../../hooks/useSelectionMode";
 import useBulkOperations from "../../hooks/useBulkOperations";
@@ -185,7 +187,7 @@ export default function MediaLibraryContent({
     if (!isControlledMode && !showUploader) {
       fetchMedia();
     }
-  }, [showArchived, showUploader, mediaTypeFilter]); // Don't include isControlledMode in deps
+  }, [showArchived, showUploader, mediaTypeFilter]);
 
   // Bulk operations handlers
   const handleBulkArchive = async () => {
@@ -267,6 +269,13 @@ export default function MediaLibraryContent({
     }
   };
 
+  // Get appropriate icon based on active tab
+  const getEmptyIcon = () => {
+    if (activeTab === "images") return ImageIcon;
+    if (activeTab === "videos") return Film;
+    return FileText;
+  };
+
   if (loading && !showUploader) {
     return <PageLoadingState message="Loading media library..." />;
   }
@@ -343,14 +352,19 @@ export default function MediaLibraryContent({
 
       {/* Media Grid/List */}
       {filteredMedia.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-text/60">
-            {isSearchActive 
-              ? `No ${activeTab === 'all' ? 'media' : activeTab} found matching "${searchQuery}"`
+        <EmptyState
+          icon={getEmptyIcon()}
+          title={
+            isSearchActive 
+              ? `No ${activeTab === 'all' ? 'media' : activeTab} found`
               : `No ${activeTab === 'all' ? 'media' : activeTab} available`
-            }
-          </p>
-        </div>
+          }
+          description={
+            isSearchActive 
+              ? `No ${activeTab === 'all' ? 'media' : activeTab} found matching "${searchQuery}"`
+              : `Upload your first ${activeTab === 'all' ? 'media file' : activeTab === 'images' ? 'image' : 'video'} to get started`
+          }
+        />
       ) : viewMode === "grid" ? (
         <div className={`grid gap-4 ${
           compact 

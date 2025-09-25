@@ -1,14 +1,15 @@
-// frontend/src/components/course/CourseList.jsx
+// frontend/src/components/course/views/CourseList.jsx
 import { useNavigate } from "react-router-dom";
 import { courseAPI } from "../../../services/api";
-import { Plus } from "lucide-react";
+import { Plus, BookOpen } from "lucide-react";
 import ActiveArchivedTabs from "../../archive/ActiveArchivedTabs";
 import ArchivedNotice from "../../archive/ArchivedNotice";
 import useArchiveList from "../../archive/hooks/useArchiveList";
 import CourseCard from "../components/CourseCard";
-import CourseEmptyState from "../components/CourseEmptyState";
+import EmptyState from "../../common/EmptyState";
 import PageLoadingState from "../../common/PageLoadingState";
 import PageErrorState from "../../common/PageErrorState";
+import ListHeader from "../../common/ListHeader";
 
 const CourseList = () => {
   const navigate = useNavigate();
@@ -38,34 +39,50 @@ const CourseList = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-heading">
-            {isArchived ? "Archived Courses" : "Available Courses"}
-          </h1>
+      <ListHeader
+        title={isArchived ? "Archived Courses" : "Available Courses"}
+        icon={BookOpen}
+        tabs={
           <ActiveArchivedTabs
             value={view}
             onChange={setView}
             className="ml-2"
           />
-        </div>
-
-        <button
-          onClick={handleAddCourse}
-          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Course
-        </button>
-      </div>
+        }
+        actions={
+          <button
+            onClick={handleAddCourse}
+            className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Course
+          </button>
+        }
+      />
 
       {isArchived && <ArchivedNotice />}
 
       {/* Content */}
       {courses.length === 0 ? (
-        <CourseEmptyState
-          isArchived={isArchived}
-          onAddCourse={handleAddCourse}
+        <EmptyState
+          icon={BookOpen}
+          title={isArchived ? "No archived courses" : "No courses available"}
+          description={
+            isArchived 
+              ? "Archived courses you hide will appear here."
+              : "Get started by creating your first course."
+          }
+          action={
+            !isArchived && (
+              <button
+                onClick={handleAddCourse}
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-bg px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Course
+              </button>
+            )
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
