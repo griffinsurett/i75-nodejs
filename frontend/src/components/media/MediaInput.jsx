@@ -1,8 +1,9 @@
 // frontend/src/components/media/MediaInput.jsx
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Image as ImageIcon, Film, Upload, X, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, Film, Upload, X } from 'lucide-react';
 import MediaSelector from './MediaSelector';
 import { VideoThumbnail } from '../VideoThumbnail';
+import PageLoadingState from '../common/PageLoadingState';
 import { imageAPI, videoAPI, uploadAPI } from '../../services/api';
 
 export default function MediaInput({
@@ -227,9 +228,7 @@ export default function MediaInput({
             {/* Preview Thumbnail */}
             <div className="w-32 h-32 rounded-lg overflow-hidden border border-border-primary relative bg-bg2">
               {loading ? (
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="animate-pulse text-text/60">Loading...</div>
-                </div>
+                <PageLoadingState message="" />
               ) : (
                 getPreviewComponent()
               )}
@@ -275,9 +274,7 @@ export default function MediaInput({
           /* Upload Progress */
           <div className="p-4 border border-border-primary rounded-lg bg-bg2">
             <div className="flex items-center gap-3 mb-3">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <span className="text-sm text-text">Uploading...</span>
-              <span className="text-sm font-medium text-text">{uploadProgress}%</span>
+              <PageLoadingState message={`Uploading... ${uploadProgress}%`} />
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div

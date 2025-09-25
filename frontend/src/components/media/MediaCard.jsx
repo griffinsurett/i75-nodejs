@@ -1,7 +1,7 @@
 // MediaCard.jsx
 import { useState } from "react";
 import { Eye, Film, Image as ImageIcon } from "lucide-react";
-import { formatDate } from "../../utils/formatDate";
+import DateDisplay from "../common/DateDisplay";
 import { formatFileSize } from "../../utils/formatFileSize";
 import { formatFileType } from "../../utils/formatFileType";
 import { VideoThumbnail } from "../VideoThumbnail";
@@ -69,7 +69,7 @@ export default function MediaCard({
           <EditActions
             id={item.imageId || item.videoId}
             isArchived={item.isArchived}
-            entityName={isVideo ? "video" : "image"} // Add this
+            entityName={isVideo ? "video" : "image"}
             api={api}
             onChanged={onChanged}
             buttonClassName="w-8 h-8 bg-black/50 backdrop-blur-sm hover:bg-black/70"
@@ -142,12 +142,11 @@ export default function MediaCard({
             : item.altText || "Untitled Image"}
         </p>
         <div className="flex items-center justify-between text-xs text-text/70 mt-1">
-          <span>
-            {formatDate(item.createdAt, {
-              variant: "short",
-              empty: "Unknown date",
-            })}
-          </span>
+          <DateDisplay
+            date={item.createdAt}
+            variant="compact"
+            className="text-xs"
+          />
           <div className="flex items-center gap-2">
             <span>{formatFileSize(item.fileSize)}</span>
             {fileFormat !== "Unknown" && (

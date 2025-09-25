@@ -16,14 +16,14 @@ export default function CourseInstructors({ instructors }) {
           
           return (
             <div key={inst.instructorId} className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-bg2 rounded-full flex items-center justify-center overflow-hidden">
+              <div className="w-10 h-10 bg-bg2 rounded-full overflow-hidden">
                 <ImageWithFallback
                   src={instImage?.imageUrl}
                   alt={inst.name}
                   type="user"
-                  size="sm"
+                  size="full"
                   iconSize="sm"
-                  className="rounded-full"
+                  className="rounded-full object-cover"
                 />
               </div>
               <div>

@@ -14,6 +14,7 @@ import { useForm } from "./hooks/useForm";
 import { FormError } from "./FormError";
 import { FormActions } from "./FormActions";
 import useFormAutosave from "./hooks/useFormAutosave";
+import PageLoadingState from "../common/PageLoadingState";
 
 export const Form = forwardRef(
   (
@@ -322,12 +323,7 @@ export const Form = forwardRef(
 
     // Show loading state
     if (showLoadingState && loading) {
-      return (
-        <div className="flex items-center gap-2 text-text/70">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>{loadingText}</span>
-        </div>
-      );
+      return <PageLoadingState message={loadingText} />;
     }
 
     // Simple form element (no built-in features)

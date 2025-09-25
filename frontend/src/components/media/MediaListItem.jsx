@@ -1,5 +1,5 @@
 import { Eye, Film, Download, Image as ImageIcon } from "lucide-react";
-import { formatDate } from "../../utils/formatDate";
+import DateDisplay from "../common/DateDisplay";
 import { formatFileSize } from "../../utils/formatFileSize";
 import { formatFileType } from "../../utils/formatFileType";
 import { VideoThumbnail } from "../VideoThumbnail";
@@ -109,8 +109,12 @@ export default function MediaListItem({
       <td className="px-4 py-3 text-sm text-text">
         {formatFileSize(item.fileSize)}
       </td>
-      <td className="px-4 py-3 text-sm text-text">
-        {formatDate(item.createdAt, { variant: "short", empty: "-" })}
+      <td className="px-4 py-3">
+        <DateDisplay
+          date={item.createdAt}
+          variant="compact"
+          className="text-sm"
+        />
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">

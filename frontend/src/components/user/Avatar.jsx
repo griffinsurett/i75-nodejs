@@ -1,3 +1,5 @@
+import ImageWithFallback from '../common/ImageWithFallback';
+
 /**
  * Avatar
  * Renders a circular avatar image or fallback initials.
@@ -18,14 +20,20 @@ export default function Avatar({
 
   if (src) {
     return (
-      <img
-        src={src}
-        alt={alt || `${name} avatar`}
-        className={`${className} rounded-full object-cover border border-border-primary`}
-      />
+      <div className={`${className} rounded-full overflow-hidden border border-border-primary`}>
+        <ImageWithFallback
+          src={src}
+          alt={alt || `${name} avatar`}
+          type="user"
+          size="full"
+          iconSize="sm"
+          className="rounded-full object-cover"
+        />
+      </div>
     );
   }
 
+  // Fallback to initials when no image
   return (
     <div
       className={`${className} rounded-full bg-text/10 text-heading flex items-center justify-center font-semibold`}

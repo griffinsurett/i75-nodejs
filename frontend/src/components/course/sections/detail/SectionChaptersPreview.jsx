@@ -8,6 +8,13 @@ export default function SectionChaptersPreview({ section, onEditClick }) {
   const sectionData = section.sections || section;
   const chapters = sectionData.chapters || [];
 
+  const stats = [
+    { value: chapters.length, label: "Total Chapters" },
+    { value: chapters.filter(c => (c.chapters || c).content).length, label: "With Content" },
+    { value: chapters.filter(c => c.videos).length, label: "With Videos" },
+    { value: chapters.filter(c => c.images).length, label: "With Images" }
+  ];
+
   const actions = (
     <button
       onClick={onEditClick}
@@ -41,14 +48,7 @@ export default function SectionChaptersPreview({ section, onEditClick }) {
 
           {/* Quick stats */}
           <div className="mt-6 pt-4 border-t border-border-primary">
-            <StatsGrid
-              stats={[
-                { value: chapters.length, label: "Total Chapters" },
-                { value: chapters.filter(c => (c.chapters || c).content).length, label: "With Content" },
-                { value: chapters.filter(c => c.videos).length, label: "With Videos" },
-                { value: chapters.filter(c => c.images).length, label: "With Images" }
-              ]}
-            />
+            <StatsGrid stats={stats} />
           </div>
         </>
       ) : (

@@ -1,5 +1,5 @@
 import { Download } from "lucide-react";
-import { formatDate } from "../../utils/formatDate";
+import DateDisplay from "../common/DateDisplay";
 import { formatFileSize } from "../../utils/formatFileSize";
 import { formatFileType } from "../../utils/formatFileType";
 
@@ -67,9 +67,11 @@ export default function MediaPreviewModal({ item, onClose }) {
             </div>
             <div className="flex justify-between">
               <span className="text-text/70">Uploaded:</span>
-              <span className="text-heading">
-                {formatDate(item.createdAt, { variant: "short" })}
-              </span>
+              <DateDisplay
+                date={item.createdAt}
+                variant="compact"
+                className="text-heading"
+              />
             </div>
             {item.description && (
               <div className="pt-2 border-t border-border-primary">

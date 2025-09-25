@@ -1,8 +1,15 @@
 import { BookOpen, Users, Video, Settings } from 'lucide-react';
 import FeatureCard from '../components/FeatureCard';
-import StatCard from '../components/StatCard';
+import StatsGrid from '../components/common/StatsGrid';
 
 const HomePage = () => {
+  const stats = [
+    { label: "Active Courses", value: "--" },
+    { label: "Instructors", value: "--" },
+    { label: "Students", value: "--" },
+    { label: "Video Hours", value: "--" }
+  ];
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="text-center mb-12">
@@ -47,12 +54,7 @@ const HomePage = () => {
         <h2 className="text-2xl font-bold text-heading mb-6 text-center">
           Platform Statistics
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <StatCard label="Active Courses" value="--" />
-          <StatCard label="Instructors" value="--" />
-          <StatCard label="Students" value="--" />
-          <StatCard label="Video Hours" value="--" />
-        </div>
+        <StatsGrid stats={stats} />
       </div>
     </div>
   );

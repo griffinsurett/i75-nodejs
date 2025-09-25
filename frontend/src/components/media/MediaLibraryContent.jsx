@@ -298,9 +298,7 @@ export default function MediaLibraryContent({
 
       {/* Error from bulk operations */}
       {bulkError && (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">
-          {bulkError}
-        </div>
+        <PageErrorState error={bulkError} />
       )}
 
       {/* Media Controls */}

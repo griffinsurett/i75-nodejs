@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
-import { BookOpen, Calendar, User } from "lucide-react";
+import { BookOpen, User } from "lucide-react";
 import EditActions from "../archive/EditActions";
 import ArchiveBadge from "../archive/ArchiveBadge";
-import { formatDate } from "../../utils/formatDate";
+import ImageWithFallback from "../common/ImageWithFallback";
+import DateDisplay from "../common/DateDisplay";
+import MediaIndicator from "../common/MediaIndicator";
 import { courseAPI } from "../../services/api";
 
 export default function CourseCard({ course, onChanged }) {
@@ -30,17 +32,14 @@ export default function CourseCard({ course, onChanged }) {
           />
         </div>
 
-        {imageData?.imageUrl ? (
-          <img
-            src={imageData.imageUrl}
-            alt={imageData.altText || courseData.courseName}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <BookOpen className="w-12 h-12 text-bg" />
-          </div>
-        )}
+        <ImageWithFallback
+          src={imageData?.imageUrl}
+          alt={imageData?.altText || courseData.courseName}
+          type="course"
+          size="full"
+          iconSize="lg"
+          className="w-full h-full object-cover"
+        />
 
         {courseData.isArchived && (
           <span className="absolute bottom-2 left-2">
@@ -63,24 +62,21 @@ export default function CourseCard({ course, onChanged }) {
 
         <div className="space-y-2 mb-4">
           {videoData?.title && (
-            <div className="flex items-center text-sm text-text">
-              <User className="w-4 h-4 mr-2" />
-              <span>Video: {videoData.title}</span>
-            </div>
+            <MediaIndicator type="video" title={`Video: ${videoData.title}`} />
           )}
-          <div className="flex items-center text-sm text-text">
-            <Calendar className="w-4 h-4 mr-2" />
-            <span>
-              Created: {formatDate(courseData.createdAt, { variant: "short" })}
-            </span>
-          </div>
+          <DateDisplay
+            label="Created"
+            date={courseData.createdAt}
+            variant="compact"
+            icon="calendar"
+          />
           {courseData.updatedAt && (
-            <div className="flex items-center text-sm text-text">
-              <Calendar className="w-4 h-4 mr-2" />
-              <span>
-                Updated: {formatDate(courseData.updatedAt, { variant: "short" })}
-              </span>
-            </div>
+            <DateDisplay
+              label="Updated"
+              date={courseData.updatedAt}
+              variant="compact"
+              icon="clock"
+            />
           )}
         </div>
 

@@ -15,18 +15,23 @@ export default function InstructorAvatar({
     large: 'w-40 h-40'
   };
 
+  const iconSizes = {
+    small: 'md',
+    medium: 'lg',
+    large: 'xl'
+  };
+
   const borderClass = showBorder ? 'border-4 border-white shadow-lg' : '';
 
   return (
-    <div className={`${containerSizes[size]} rounded-full ${borderClass} ${className} overflow-hidden`}>
+    <div className={`${containerSizes[size]} rounded-full ${borderClass} ${className} overflow-hidden bg-white/20 backdrop-blur`}>
       <ImageWithFallback
         src={imageUrl}
         alt={altText || name}
         type="user"
         size="full"
-        iconSize={size === 'large' ? 'xl' : size === 'medium' ? 'lg' : 'md'}
-        className="rounded-full"
-        containerClassName="bg-white/20 backdrop-blur"
+        iconSize={iconSizes[size]}
+        className="rounded-full object-cover"
       />
     </div>
   );
