@@ -6,6 +6,7 @@ import MediaControls from "./MediaControls";
 import MediaCard from "./MediaCard";
 import MediaListItem from "./MediaListItem";
 import MediaUploader from "./MediaUploader";
+import MediaPreviewModal from "./MediaPreviewModal"; // Add this import
 import ArchivedNotice from "../archive/ArchivedNotice";
 import SearchInput from "../search/SearchInput";
 import EmptyState from "../common/EmptyState";
@@ -33,6 +34,8 @@ export default function MediaLibraryContent({
   onRefresh = null,
   showSearch = true,
   searchPlaceholder = "Search media...",
+  onBulkArchive: externalBulkArchive,
+  onBulkDelete: externalBulkDelete,
 }) {
   const [activeTab, setActiveTab] = useState(mediaTypeFilter !== 'all' ? mediaTypeFilter + 's' : 'all');
   const [images, setImages] = useState(initialImages || []);
@@ -40,6 +43,7 @@ export default function MediaLibraryContent({
   const [loading, setLoading] = useState(externalLoading);
   const [error, setError] = useState(externalError);
   const [viewMode, setViewMode] = useState(compact ? "grid" : "grid");
+  const [previewItem, setPreviewItem] = useState(null); // Add state for preview modal
 
   // Use selection mode hook if not controlled externally
   const internalSelection = useSelectionMode();
@@ -102,6 +106,20 @@ export default function MediaLibraryContent({
   const filteredMedia = searchFilteredMedia.sort(
     (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
   );
+
+  // Handle media item click
+  const handleMediaClick = (item) => {
+    if (selectionMode) {
+      // In selection mode, toggle selection
+      toggleItemSelection(item.imageId || item.videoId);
+    } else {
+      // Not in selection mode, open preview
+      setPreviewItem(item);
+    }
+  };
+
+  // Rest of your existing useEffects and functions...
+  // [Keep all the existing useEffect hooks and fetch functions as they are]
 
   // Use provided data if available
   useEffect(() => {
@@ -189,9 +207,15 @@ export default function MediaLibraryContent({
     }
   }, [showArchived, showUploader, mediaTypeFilter]);
 
+  // [Keep all the bulk operations handlers as they are]
   // Bulk operations handlers
   const handleBulkArchive = async () => {
-    const operation = async (id) => {
+    if (externalBulkArchive) {
+      externalBulkArchive();
+      return;
+    }
+    
+     const operation = async (id) => {
       const item = filteredMedia.find(m => (m.imageId || m.videoId) === id);
       if (item?.type === 'video') {
         return videoAPI.archiveVideo(id);
@@ -215,7 +239,12 @@ export default function MediaLibraryContent({
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Delete ${selectedItems.size} items permanently?`)) return;
+    if (externalBulkDelete) {
+      externalBulkDelete();
+      return;
+    }
+    
+     if (!window.confirm(`Delete ${selectedItems.size} items permanently?`)) return;
     
     const operation = async (id) => {
       const item = filteredMedia.find(m => (m.imageId || m.videoId) === id);
@@ -375,7 +404,7 @@ export default function MediaLibraryContent({
             <MediaCard
               key={item.imageId || item.videoId}
               item={item}
-              onClick={() => !selectionMode && toggleItemSelection(item.imageId || item.videoId)}
+              onClick={() => handleMediaClick(item)} // Fixed: Always pass the click handler
               onChanged={() => {
                 if (isControlledMode && onRefresh) {
                   onRefresh();
@@ -443,7 +472,7 @@ export default function MediaLibraryContent({
                 <MediaListItem
                   key={item.imageId || item.videoId}
                   item={item}
-                  onClick={() => !selectionMode && toggleItemSelection(item.imageId || item.videoId)}
+                  onClick={() => handleMediaClick(item)} // Fixed: Always pass the click handler
                   onChanged={() => {
                     if (isControlledMode && onRefresh) {
                       onRefresh();
@@ -459,6 +488,14 @@ export default function MediaLibraryContent({
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Media Preview Modal */}
+      {previewItem && (
+        <MediaPreviewModal
+          item={previewItem}
+          onClose={() => setPreviewItem(null)}
+        />
       )}
     </div>
   );

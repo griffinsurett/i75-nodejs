@@ -4,7 +4,6 @@ import { Plus, CheckSquare } from "lucide-react";
 import MediaLibraryContent from "../components/media/MediaLibraryContent";
 import ActiveArchivedTabs from "../components/archive/ActiveArchivedTabs";
 import ConfirmModal from "../components/ConfirmModal";
-import BulkActionsBar from "../components/selection/BulkActionsBar";
 import useArchiveList from "../components/archive/hooks/useArchiveList";
 import useBulkOperations from "../hooks/useBulkOperations";
 import { imageAPI, videoAPI } from "../services/api";
@@ -13,8 +12,7 @@ const MediaLibrary = () => {
   const [showUploader, setShowUploader] = useState(false);
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
-  // Remove filteredMedia state - not needed
-  const [totalMediaCount, setTotalMediaCount] = useState(0); // Add this for bulk actions count
+  const [totalMediaCount, setTotalMediaCount] = useState(0);
 
   const bulkOps = useBulkOperations();
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -191,20 +189,9 @@ const MediaLibrary = () => {
         </div>
       </div>
 
-      {/* Bulk Actions Bar */}
-      {!showUploader && selectionMode && selectedItems.size > 0 && (
-        <BulkActionsBar
-          selectedCount={selectedItems.size}
-          totalCount={totalMediaCount}
-          onSelectAll={handleSelectAll}
-          onClearSelection={handleClearSelection}
-          onArchive={() => setBulkArchiveOpen(true)}
-          onDelete={() => setBulkDeleteOpen(true)}
-          archiveLabel={isArchived ? "Restore" : "Archive"}
-        />
-      )}
+      {/* REMOVED: Bulk Actions Bar from here - it's already in MediaLibraryContent */}
 
-      {/* Content - Remove onMediaDataChange prop */}
+      {/* Content */}
       <MediaLibraryContent
         onSelectionChange={setSelectedItems}
         selectionMode={selectionMode}
@@ -217,13 +204,15 @@ const MediaLibrary = () => {
           setShowUploader(false);
           refresh();
         }}
-        // Remove onMediaDataChange prop - not needed!
         compact={false}
         initialImages={images}
         initialVideos={videos}
         loading={loading}
         error={error}
         onRefresh={refresh}
+        // Pass bulk operation handlers to MediaLibraryContent
+        onBulkArchive={() => setBulkArchiveOpen(true)}
+        onBulkDelete={() => setBulkDeleteOpen(true)}
       />
 
       {/* Bulk Modals */}
