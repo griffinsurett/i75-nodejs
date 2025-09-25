@@ -84,12 +84,6 @@ export default function MediaSelector({
       {/* Header */}
       <div className="px-6 py-4 border-b border-border-primary flex items-center justify-between">
         <h2 className="text-xl font-bold text-heading">{title}</h2>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-bg2 rounded-lg transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
       </div>
 
       {/* Tabs */}
