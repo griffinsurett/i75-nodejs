@@ -17,6 +17,7 @@ const MediaLibrary = () => {
   const bulkOps = useBulkOperations();
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
+  const [bulkOperationError, setBulkOperationError] = useState("");
 
   // Use the unified archive hook with proper data transformation
   const {
@@ -65,6 +66,7 @@ const MediaLibrary = () => {
   // Clear selections when view changes
   useEffect(() => {
     setSelectedItems(new Set());
+    setSelectionMode(false); // Also turn off selection mode when switching views
   }, [view]);
 
   const toggleSelectionMode = () => {
@@ -74,67 +76,139 @@ const MediaLibrary = () => {
     }
   };
 
-  const handleSelectAll = () => {
-    const allIds = allMedia.map((item) => item.imageId || item.videoId);
-    setSelectedItems(new Set(allIds));
-  };
-
   const handleClearSelection = () => {
     setSelectedItems(new Set());
   };
 
   const handleBulkDelete = async () => {
-    await bulkOps.executeBulkOperation(
-      selectedItems,
-      async (itemId) => {
-        const item = allMedia.find((m) => (m.imageId || m.videoId) === itemId);
-        if (!item) return;
+    try {
+      setBulkOperationError(""); // Clear any previous errors
+      
+      const failedItems = [];
+      const selectedArray = Array.from(selectedItems);
+      
+      // Process each item
+      for (const itemId of selectedArray) {
+        try {
+          const item = allMedia.find((m) => (m.imageId || m.videoId) === itemId);
+          if (!item) continue;
 
-        if (item.type === "video") {
-          return videoAPI.deleteVideo(itemId);
-        } else {
-          return imageAPI.deleteImage(itemId);
+          if (item.type === "video") {
+            await videoAPI.deleteVideo(itemId);
+          } else {
+            await imageAPI.deleteImage(itemId);
+          }
+        } catch (error) {
+          console.error(`Failed to delete item ${itemId}:`, error);
+          failedItems.push(itemId);
         }
-      },
-      () => {
+      }
+
+      // Check if all operations succeeded
+      if (failedItems.length === 0) {
+        // All successful - close modal and reset
         handleClearSelection();
         setBulkDeleteOpen(false);
+        setSelectionMode(false);
         refresh();
+      } else if (failedItems.length === selectedArray.length) {
+        // All failed
+        setBulkOperationError("Failed to delete all selected items. Please try again.");
+      } else {
+        // Partial success
+        setBulkOperationError(`Failed to delete ${failedItems.length} of ${selectedArray.length} items. Please try again.`);
+        // Remove successfully deleted items from selection
+        const newSelection = new Set(failedItems);
+        setSelectedItems(newSelection);
+        refresh(); // Still refresh to update the successfully deleted ones
       }
-    );
+    } catch (error) {
+      console.error("Bulk delete error:", error);
+      setBulkOperationError(error?.response?.data?.message || error?.message || "Failed to delete items");
+    }
   };
 
   const handleBulkArchive = async () => {
-    await bulkOps.executeBulkOperation(
-      selectedItems,
-      async (itemId) => {
-        const item = allMedia.find((m) => (m.imageId || m.videoId) === itemId);
-        if (!item) return;
+    try {
+      setBulkOperationError(""); // Clear any previous errors
+      
+      const failedItems = [];
+      const selectedArray = Array.from(selectedItems);
+      
+      // Process each item
+      for (const itemId of selectedArray) {
+        try {
+          const item = allMedia.find((m) => (m.imageId || m.videoId) === itemId);
+          if (!item) continue;
 
-        const api = item.type === "video" ? videoAPI : imageAPI;
+          const api = item.type === "video" ? videoAPI : imageAPI;
 
-        if (isArchived) {
-          return item.type === "video"
-            ? api.restoreVideo(itemId)
-            : api.restoreImage(itemId);
-        } else {
-          return item.type === "video"
-            ? api.archiveVideo(itemId)
-            : api.archiveImage(itemId);
+          if (isArchived) {
+            if (item.type === "video") {
+              await api.restoreVideo(itemId);
+            } else {
+              await api.restoreImage(itemId);
+            }
+          } else {
+            if (item.type === "video") {
+              await api.archiveVideo(itemId);
+            } else {
+              await api.archiveImage(itemId);
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to ${isArchived ? 'restore' : 'archive'} item ${itemId}:`, error);
+          failedItems.push(itemId);
         }
-      },
-      () => {
+      }
+
+      // Check if all operations succeeded
+      if (failedItems.length === 0) {
+        // All successful - close modal and reset
         handleClearSelection();
         setBulkArchiveOpen(false);
+        setSelectionMode(false);
         refresh();
+      } else if (failedItems.length === selectedArray.length) {
+        // All failed
+        setBulkOperationError(`Failed to ${isArchived ? 'restore' : 'archive'} all selected items. Please try again.`);
+      } else {
+        // Partial success
+        setBulkOperationError(`Failed to ${isArchived ? 'restore' : 'archive'} ${failedItems.length} of ${selectedArray.length} items. Please try again.`);
+        // Remove successfully processed items from selection
+        const newSelection = new Set(failedItems);
+        setSelectedItems(newSelection);
+        refresh(); // Still refresh to update the successfully processed ones
       }
-    );
+    } catch (error) {
+      console.error("Bulk archive/restore error:", error);
+      setBulkOperationError(error?.response?.data?.message || error?.message || `Failed to ${isArchived ? 'restore' : 'archive'} items`);
+    }
   };
 
   // Update total count when media changes
   useEffect(() => {
     setTotalMediaCount(allMedia.length);
   }, [images.length, videos.length]); // Only depend on array lengths
+
+  // Turn off selection mode when switching to uploader
+  useEffect(() => {
+    if (showUploader && selectionMode) {
+      setSelectionMode(false);
+      setSelectedItems(new Set());
+    }
+  }, [showUploader]);
+
+  // Clear errors when closing modals
+  const handleCloseDeleteModal = () => {
+    setBulkDeleteOpen(false);
+    setBulkOperationError("");
+  };
+
+  const handleCloseArchiveModal = () => {
+    setBulkArchiveOpen(false);
+    setBulkOperationError("");
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -189,8 +263,6 @@ const MediaLibrary = () => {
         </div>
       </div>
 
-      {/* REMOVED: Bulk Actions Bar from here - it's already in MediaLibraryContent */}
-
       {/* Content */}
       <MediaLibraryContent
         onSelectionChange={setSelectedItems}
@@ -215,22 +287,23 @@ const MediaLibrary = () => {
         onBulkDelete={() => setBulkDeleteOpen(true)}
       />
 
-      {/* Bulk Modals */}
+      {/* Bulk Delete Modal */}
       <ConfirmModal
         isOpen={bulkDeleteOpen}
-        onClose={() => setBulkDeleteOpen(false)}
+        onClose={handleCloseDeleteModal}
         title={`Delete ${selectedItems.size} items?`}
         description="This will permanently delete the selected items. This action cannot be undone."
         confirmLabel="Delete All"
         confirmClass="bg-red-600"
         onConfirm={handleBulkDelete}
         busy={bulkOps.loading}
-        error={bulkOps.error}
+        error={bulkOperationError}
       />
 
+      {/* Bulk Archive/Restore Modal */}
       <ConfirmModal
         isOpen={bulkArchiveOpen}
-        onClose={() => setBulkArchiveOpen(false)}
+        onClose={handleCloseArchiveModal}
         title={
           isArchived
             ? `Restore ${selectedItems.size} items?`
@@ -244,7 +317,7 @@ const MediaLibrary = () => {
         confirmLabel={isArchived ? "Restore All" : "Archive All"}
         onConfirm={handleBulkArchive}
         busy={bulkOps.loading}
-        error={bulkOps.error}
+        error={bulkOperationError}
       />
     </div>
   );
