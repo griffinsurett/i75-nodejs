@@ -21,7 +21,7 @@ export default function SectionCard({ section, courseId, onChanged }) {
           <EditActions
             id={sectionData.sectionId}
             isArchived={sectionData.isArchived}
-            editTo={`/sections/${sectionData.sectionId}/edit`}
+            editTo={`/sections/${sectionData.sectionId}/content`}
             entityName="section"
             api={{
               archive: sectionAPI.archiveSection,
