@@ -24,7 +24,7 @@ export default function SectionEditPage() {
   const [section, setSection] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [activeTab, setActiveTab] = useState("section");
-  const [currentView, setCurrentView] = useState("settings"); // 'curriculum' or 'settings'
+  const [currentView, setCurrentView] = useState("curriculum"); // 'curriculum' or 'settings'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
