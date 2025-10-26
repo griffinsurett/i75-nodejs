@@ -5,6 +5,7 @@ import { sectionAPI, chapterAPI } from "../services/api";
 import ChaptersSidebar from "../components/course/sections/content-editor/sidebar/ChaptersSidebar";
 import SectionEditor from "../components/course/sections/content-editor/SectionEditor";
 import ChapterEditor from "../components/course/sections/content-editor/chapter/ChapterEditor";
+import SectionTabNavigation from "../components/course/sections/content-editor/SectionTabNavigation";
 import useChapterChanges from "../components/course/sections/hooks/useChapterChanges";
 import { getDefaultNextChapterNumber } from "../components/course/sections/utils/chapterUtils";
 import { useSidebar } from "../context/SidebarContext";
@@ -23,6 +24,7 @@ export default function SectionEditPage() {
   const [section, setSection] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [activeTab, setActiveTab] = useState("section");
+  const [currentView, setCurrentView] = useState("settings"); // 'curriculum' or 'settings'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -364,6 +366,7 @@ export default function SectionEditPage() {
 
   return (
     <div className="min-h-screen bg-bg2">
+      {/* Header */}
       <EditorHeader
         title={`Edit: ${sectionData.title}`}
         subtitle={subtitle}
@@ -382,7 +385,15 @@ export default function SectionEditPage() {
         />
       </EditorHeader>
 
-      <div className="flex h-[calc(100vh-73px)]">
+      {/* Tab Navigation - NEW */}
+      <SectionTabNavigation 
+        activeTab={currentView}
+        onTabChange={setCurrentView}
+      />
+
+      {/* Content Area */}
+      <div className="flex h-[calc(100vh-121px)]">
+        {/* Sidebar - shows in both views */}
         <ChaptersSidebar
           sectionId={sectionId}
           chapters={chapters}
@@ -401,34 +412,52 @@ export default function SectionEditPage() {
           onReorderChapters={reorderChapters}
         />
 
+        {/* Main Content */}
         <div className="flex-1 overflow-auto">
-          <div className="p-6">
-            {activeTab === "section" ? (
-              <SectionEditor section={section} onUpdate={handleSectionUpdate} />
-            ) : selectedChapter ? (
-              <ChapterEditor
-                sectionId={sectionId}
-                chapter={selectedChapter}
-                chapters={chapters}
-                onUpdate={(updates) => {
-                  const chapterId = (
-                    selectedChapter.chapters || selectedChapter
-                  ).chapterId;
-                  handleChapterUpdate(chapterId, updates);
-                }}
-                onDelete={() => handleChapterDelete(selectedChapter)}
-                onUndoDelete={() => handleChapterUndoDelete(selectedChapter)}
-                onRestoreArchived={() =>
-                  handleRestoreArchivedChapter(selectedChapter)
-                }
-                isTemp={selectedChapter.isTemp}
-              />
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-text/60">Select a chapter to edit</p>
+          {currentView === 'curriculum' ? (
+            // Curriculum View - Placeholder for now
+            <div className="p-6">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-bg rounded-xl border border-border-primary p-8 text-center">
+                  <h2 className="text-xl font-semibold text-heading mb-2">
+                    Curriculum View
+                  </h2>
+                  <p className="text-text/70">
+                    Curriculum content will be displayed here
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            // Settings View - Existing editor
+            <div className="p-6">
+              {activeTab === "section" ? (
+                <SectionEditor section={section} onUpdate={handleSectionUpdate} />
+              ) : selectedChapter ? (
+                <ChapterEditor
+                  sectionId={sectionId}
+                  chapter={selectedChapter}
+                  chapters={chapters}
+                  onUpdate={(updates) => {
+                    const chapterId = (
+                      selectedChapter.chapters || selectedChapter
+                    ).chapterId;
+                    handleChapterUpdate(chapterId, updates);
+                  }}
+                  onDelete={() => handleChapterDelete(selectedChapter)}
+                  onUndoDelete={() => handleChapterUndoDelete(selectedChapter)}
+                  onRestoreArchived={() =>
+                    handleRestoreArchivedChapter(selectedChapter)
+                  }
+                  isTemp={selectedChapter.isTemp}
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-text/60">Select a chapter to edit</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
