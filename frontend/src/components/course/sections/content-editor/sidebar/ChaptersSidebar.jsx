@@ -47,35 +47,10 @@ export default function ChaptersSidebar({
 
   return (
     <div className="w-80 bg-bg border-r border-border-primary flex flex-col h-full">
-      {/* Section Header */}
-      <div className="p-4 border-b border-border-primary">
-        <button
-          onClick={onSectionSelect}
-          className={`w-full text-left p-3 rounded-lg transition-colors ${
-            activeTab === "section"
-              ? "bg-primary/10 text-primary border border-primary/20"
-              : "hover:bg-bg2"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 rounded bg-primary/10">
-              <Layers className="w-4 h-4 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-medium text-heading text-sm">
-                Section Settings
-              </div>
-              <div className="text-xs text-text/70">
-                Title, description, media
-              </div>
-            </div>
-          </div>
-        </button>
-      </div>
 
       {/* Chapters Header */}
       <div className="p-4 border-b border-border-primary">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between my-1">
           <h3 className="font-medium text-heading">
             Chapters ({activeChapterCount})
           </h3>
