@@ -115,7 +115,7 @@ export default function ChapterEditor({
   };
 
   return (
-    <div className="max-w-4xl mx-auto" onKeyDown={handleKeyDown}>
+    <div className="mx-auto" onKeyDown={handleKeyDown}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -203,7 +203,7 @@ export default function ChapterEditor({
 
       {/* Form */}
       <div
-        className={`bg-bg rounded-xl border border-border-primary p-6 space-y-6 ${
+        className={`bg-bg rounded-xl border border-border-primary p-5 space-y-6 ${
           isPendingDeletion || isArchived
             ? "opacity-50 pointer-events-none"
             : ""
@@ -215,7 +215,7 @@ export default function ChapterEditor({
           <button
             type="button"
             onClick={() => setBasicInfoOpen(!basicInfoOpen)}
-            className="w-full flex items-center justify-between text-lg font-semibold text-heading border-b border-border-primary pb-2 hover:text-primary transition-colors"
+            className="w-full flex items-center justify-between text-lg font-semibold text-heading hover:text-primary transition-colors"
           >
             <span>Basic Information</span>
             {basicInfoOpen ? (
@@ -297,27 +297,6 @@ export default function ChapterEditor({
           )}
         </div>
 
-        {/* Save Hint with Status */}
-        <div className="flex items-center gap-2 text-sm text-text/70 bg-bg2 p-3 rounded-lg">
-          <StatusIndicator
-            status={
-              isPendingDeletion
-                ? "pendingDeletion"
-                : isArchived
-                ? "archived"
-                : "unsaved"
-            }
-            size="xs"
-            showLabel={false}
-          />
-          <span>
-            {isPendingDeletion
-              ? "This chapter will be deleted when you save all changes."
-              : isArchived
-              ? "This chapter is archived and cannot be edited."
-              : 'Changes will be saved when you click "Save All Changes" in the header.'}
-          </span>
-        </div>
       </div>
     </div>
   );
