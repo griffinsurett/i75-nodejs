@@ -24,7 +24,7 @@ export default function SectionEditPage() {
   const [section, setSection] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [activeTab, setActiveTab] = useState("section");
-  const [currentView, setCurrentView] = useState("curriculum"); // 'curriculum' or 'settings'
+  const [currentView, setCurrentView] = useState("curriculum"); // 'curriculum' or 'settings' - DEFAULT TO CURRICULUM
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -173,7 +173,6 @@ export default function SectionEditPage() {
           chapterNumber: chapter.chapterNumber,
           title: chapter.title,
           description: chapter.description,
-          content: chapter.content,
           imageId: chapter.imageId,
           videoId: chapter.videoId,
         };
@@ -187,7 +186,6 @@ export default function SectionEditPage() {
           chapterNumber: chapterData.chapterNumber,
           title: chapterData.title,
           description: chapterData.description,
-          content: chapterData.content,
           imageId: chapterData.imageId,
           videoId: chapterData.videoId,
         };
@@ -224,11 +222,15 @@ export default function SectionEditPage() {
   const handleChapterSelect = (chapter) => {
     setSelectedChapter(chapter);
     setActiveTab("chapter");
+    // Ensure we're on curriculum view when selecting a chapter
+    setCurrentView("curriculum");
   };
 
   const handleSectionSelect = () => {
     setSelectedChapter(null);
     setActiveTab("section");
+    // Switch to settings view when selecting section settings
+    setCurrentView("settings");
   };
 
   const handleChapterCreate = () => {
@@ -240,10 +242,11 @@ export default function SectionEditPage() {
       chapterNumber: nextNumber,
       title: `Chapter ${nextNumber}`,
       description: "",
-      content: "",
     });
     setSelectedChapter(newChapter);
     setActiveTab("chapter");
+    // Stay on curriculum view when creating a chapter
+    setCurrentView("curriculum");
   };
 
   const handleChapterUpdate = (chapterId, updates) => {
@@ -385,7 +388,7 @@ export default function SectionEditPage() {
         />
       </EditorHeader>
 
-      {/* Tab Navigation - NEW */}
+      {/* Tab Navigation */}
       <SectionTabNavigation 
         activeTab={currentView}
         onTabChange={setCurrentView}
@@ -415,25 +418,9 @@ export default function SectionEditPage() {
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
           {currentView === 'curriculum' ? (
-            // Curriculum View - Placeholder for now
+            // Curriculum View - Shows chapter editor when chapter selected
             <div className="p-6">
-              <div className="max-w-4xl mx-auto">
-                <div className="bg-bg rounded-xl border border-border-primary p-8 text-center">
-                  <h2 className="text-xl font-semibold text-heading mb-2">
-                    Curriculum View
-                  </h2>
-                  <p className="text-text/70">
-                    Curriculum content will be displayed here
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            // Settings View - Existing editor
-            <div className="p-6">
-              {activeTab === "section" ? (
-                <SectionEditor section={section} onUpdate={handleSectionUpdate} />
-              ) : selectedChapter ? (
+              {selectedChapter ? (
                 <ChapterEditor
                   sectionId={sectionId}
                   chapter={selectedChapter}
@@ -453,9 +440,14 @@ export default function SectionEditPage() {
                 />
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-text/60">Select a chapter to edit</p>
+                  <p className="text-text/60">Select a chapter to edit or create a new one</p>
                 </div>
               )}
+            </div>
+          ) : (
+            // Settings View - ALWAYS shows section settings
+            <div className="p-6">
+              <SectionEditor section={section} onUpdate={handleSectionUpdate} />
             </div>
           )}
         </div>

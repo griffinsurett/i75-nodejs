@@ -1,6 +1,6 @@
 // frontend/src/components/course/sections/content-editor/chapter/ChapterEditor.jsx
 import { useState, useEffect } from "react";
-import { BookOpen, Trash2, RotateCcw } from "lucide-react";
+import { BookOpen, Trash2, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { FormField, FormInput, FormTextarea } from "../../../../forms";
 import MediaInput from "../../../../media/selection/MediaInput";
 import ChapterDeletionBadge from "./ChapterDeletionBadge";
@@ -23,11 +23,13 @@ export default function ChapterEditor({
   const hasScheduledDeletion =
     chapterData.purgeAfterAt || chapterData.scheduledDeleteAt;
 
+  // Accordion state - open by default for new chapters, closed for existing
+  const [basicInfoOpen, setBasicInfoOpen] = useState(isTemp);
+
   const [formData, setFormData] = useState({
     chapterNumber: "",
     title: "",
     description: "",
-    content: "",
     imageId: null,
     videoId: null,
   });
@@ -37,7 +39,6 @@ export default function ChapterEditor({
       chapterNumber: String(chapterData.chapterNumber || ""),
       title: chapterData.title || "",
       description: chapterData.description || "",
-      content: chapterData.content || "",
       imageId: chapterData.imageId || null,
       videoId: chapterData.videoId || null,
     });
@@ -170,15 +171,16 @@ export default function ChapterEditor({
         ) : isArchived ? (
           <button
             onClick={onRestoreArchived}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
-            Restore
+            Restore Chapter
           </button>
         ) : (
           <button
             onClick={onDelete}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            disabled={isPendingDeletion}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Trash2 className="w-4 h-4" />
             Delete
@@ -186,36 +188,12 @@ export default function ChapterEditor({
         )}
       </div>
 
-      {/* Status Messages using StatusIndicator component style */}
-      {isPendingDeletion && (
-        <div className="mb-6">
-          <StatusIndicator
-            status="pendingDeletion"
-            label="This chapter is marked for deletion. Click 'Cancel' above to restore it, or save changes to permanently delete it."
-            size="md"
-            showIcon={true}
-            className="w-full justify-start p-4 rounded-lg"
-          />
-        </div>
-      )}
-
-      {isArchived && hasScheduledDeletion && (
-        <div className="mb-6">
-          <StatusIndicator
-            status="scheduledDeletion"
-            label="This chapter is scheduled for permanent deletion. Click 'Undo' to cancel the deletion."
-            size="md"
-            showIcon={true}
-            className="w-full justify-start p-4 rounded-lg"
-          />
-        </div>
-      )}
-
+      {/* Archived Notice */}
       {isArchived && !hasScheduledDeletion && (
         <div className="mb-6">
           <StatusIndicator
             status="archived"
-            label="This chapter is archived. Click 'Restore' to make it active again."
+            message="This chapter is archived and cannot be edited. Click 'Restore' to make it active again."
             size="md"
             showIcon={true}
             className="w-full justify-start p-4 rounded-lg"
@@ -231,104 +209,92 @@ export default function ChapterEditor({
             : ""
         }`}
       >
-        {/* Basic Information */}
+        {/* Basic Information - ACCORDION */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-heading border-b border-border-primary pb-2">
-            Basic Information
-          </h3>
+          {/* Accordion Header */}
+          <button
+            type="button"
+            onClick={() => setBasicInfoOpen(!basicInfoOpen)}
+            className="w-full flex items-center justify-between text-lg font-semibold text-heading border-b border-border-primary pb-2 hover:text-primary transition-colors"
+          >
+            <span>Basic Information</span>
+            {basicInfoOpen ? (
+              <ChevronUp className="w-5 h-5" />
+            ) : (
+              <ChevronDown className="w-5 h-5" />
+            )}
+          </button>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField
-              label="Chapter Number"
-              required
-              help="You can also drag to reorder"
-            >
-              <FormInput
-                type="number"
-                value={formData.chapterNumber}
-                onChange={(e) =>
-                  handleFieldChange("chapterNumber", e.target.value)
-                }
-                min="1"
-                placeholder="Chapter number"
-                className="text-lg"
-                disabled={isPendingDeletion || isArchived}
-              />
-            </FormField>
+          {/* Accordion Content */}
+          {basicInfoOpen && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  label="Chapter Number"
+                  required
+                  help="You can also drag to reorder"
+                >
+                  <FormInput
+                    type="number"
+                    value={formData.chapterNumber}
+                    onChange={(e) =>
+                      handleFieldChange("chapterNumber", e.target.value)
+                    }
+                    min="1"
+                    placeholder="Chapter number"
+                    className="text-lg"
+                    disabled={isPendingDeletion || isArchived}
+                  />
+                </FormField>
 
-            <div className="md:col-span-2">
-              <FormField label="Chapter Title" required>
-                <FormInput
-                  value={formData.title}
-                  onChange={(e) => handleFieldChange("title", e.target.value)}
-                  placeholder="e.g., Introduction"
-                  className="text-lg"
+                <div className="md:col-span-2">
+                  <FormField label="Chapter Title" required>
+                    <FormInput
+                      value={formData.title}
+                      onChange={(e) => handleFieldChange("title", e.target.value)}
+                      placeholder="e.g., Introduction"
+                      className="text-lg"
+                      disabled={isPendingDeletion || isArchived}
+                    />
+                  </FormField>
+                </div>
+              </div>
+
+              <FormField
+                label="Description"
+                help="Brief description of what this chapter covers"
+              >
+                <FormTextarea
+                  value={formData.description}
+                  onChange={(e) => handleFieldChange("description", e.target.value)}
+                  placeholder="Describe what students will learn in this chapter..."
+                  rows={3}
                   disabled={isPendingDeletion || isArchived}
                 />
               </FormField>
+
+              {/* Media - Now inside Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                <MediaInput
+                  label="Chapter Image"
+                  value={formData.imageId}
+                  onChange={(imageId) => handleFieldChange("imageId", imageId)}
+                  mediaType="image"
+                  placeholder="Select or upload chapter image"
+                  showPreview={true}
+                />
+
+                <MediaInput
+                  label="Chapter Video"
+                  value={formData.videoId}
+                  onChange={(videoId) => handleFieldChange("videoId", videoId)}
+                  mediaType="video"
+                  placeholder="Select or upload chapter video"
+                  showPreview={true}
+                />
+              </div>
             </div>
-          </div>
-
-          <FormField
-            label="Description"
-            help="Brief description of what this chapter covers"
-          >
-            <FormTextarea
-              value={formData.description}
-              onChange={(e) => handleFieldChange("description", e.target.value)}
-              placeholder="Describe what students will learn in this chapter..."
-              rows={3}
-              disabled={isPendingDeletion || isArchived}
-            />
-          </FormField>
-        </div>
-
-        {/* Chapter Content */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-heading border-b border-border-primary pb-2">
-            Chapter Content
-          </h3>
-
-          <FormField
-            label="Content"
-            help="Main content of the chapter - you can use markdown formatting"
-          >
-            <FormTextarea
-              value={formData.content}
-              onChange={(e) => handleFieldChange("content", e.target.value)}
-              placeholder="Enter the chapter content here..."
-              rows={12}
-              className="font-mono text-sm"
-              disabled={isPendingDeletion || isArchived}
-            />
-          </FormField>
-        </div>
-
-        {/* Media */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-heading border-b border-border-primary pb-2">
-            Chapter Media
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <MediaInput
-              label="Chapter Image"
-              value={formData.imageId}
-              onChange={(imageId) => handleFieldChange("imageId", imageId)}
-              mediaType="image"
-              placeholder="Select or upload chapter image"
-              showPreview={true}
-            />
-
-            <MediaInput
-              label="Chapter Video"
-              value={formData.videoId}
-              onChange={(videoId) => handleFieldChange("videoId", videoId)}
-              mediaType="video"
-              placeholder="Select or upload chapter video"
-              showPreview={true}
-            />
-          </div>
+          )}
         </div>
 
         {/* Save Hint with Status */}
