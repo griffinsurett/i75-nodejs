@@ -179,6 +179,7 @@ export const videoAPI = {
   },
 };
 
+
 // Upload API functions
 export const uploadAPI = {
   uploadImage: (file, altText, onUploadProgress) => {
