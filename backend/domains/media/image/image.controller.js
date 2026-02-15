@@ -4,6 +4,7 @@ const imageService = require('./image.service');
 const { images, courses, sections, chapters, tests, instructors, videos } = require("../../../config/schema");
 const { eq } = require("drizzle-orm");
 const BaseController = require("../../../shared/utils/baseController");
+const { schedulePurge } = require("../../../shared/workers/archivePurger");
 
 const TimeUntilDeletion = 60000;
 
@@ -225,6 +226,8 @@ class ImageController extends BaseController {
 
         return updated;
       });
+
+      schedulePurge(TimeUntilDeletion);
 
       this.success(res, result, "Image scheduled for deletion in 60 seconds. Restore within a minute to cancel.");
     } catch (error) {

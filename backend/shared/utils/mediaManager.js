@@ -1,6 +1,7 @@
 // backend/shared/utils/mediaManager.js
 const { eq, count } = require("drizzle-orm");
 const { cascadeDeleteMedia, archiveEntity } = require("./cascadeDelete");
+const { schedulePurge } = require("../workers/archivePurger");
 
 /**
  * Comprehensive media management utility for all domains
@@ -194,7 +195,10 @@ class MediaManager {
     
     // Use the existing archive entity utility
     await archiveEntity(tx, entityTable, entityIdField, entityId, purgeAfterMs);
-    
+
+    // Schedule a one-shot purge to fire after the countdown expires
+    schedulePurge(purgeAfterMs);
+
     return cascadedMedia;
   }
 

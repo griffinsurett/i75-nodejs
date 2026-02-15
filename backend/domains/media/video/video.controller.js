@@ -14,6 +14,7 @@ const {
 const { eq } = require("drizzle-orm");
 const BaseController = require("../../../shared/utils/baseController");
 const videoService = require("./video.service");
+const { schedulePurge } = require("../../../shared/workers/archivePurger");
 
 const TimeUntilDeletion = 60000;
 
@@ -318,6 +319,8 @@ class VideoController extends BaseController {
 
         return updated;
       });
+
+      schedulePurge(TimeUntilDeletion);
 
       this.success(
         res,

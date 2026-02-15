@@ -3,29 +3,31 @@ const { db } = require("../../config/database");
 const { sql } = require("drizzle-orm");
 
 /**
- * Archive Purger Worker
- * Dynamically determines deletion order based on foreign key dependencies
+ * Archive Purger — on-demand only.
+ * Instead of polling on an interval, callers schedule a purge via
+ * schedulePurge(delayMs) which fires a single setTimeout.
  */
 
-const PURGE_INTERVAL = 10000; // 10 seconds
+// Track active timers so they can be cleared on shutdown
+const activeTimers = new Set();
 
 /**
  * Get foreign key dependencies from PostgreSQL information schema
  */
 async function getForeignKeyDependencies() {
   const query = sql`
-    SELECT 
+    SELECT
       tc.table_name as child_table,
       ccu.table_name AS parent_table
-    FROM 
-      information_schema.table_constraints AS tc 
+    FROM
+      information_schema.table_constraints AS tc
       JOIN information_schema.key_column_usage AS kcu
         ON tc.constraint_name = kcu.constraint_name
         AND tc.table_schema = kcu.table_schema
       JOIN information_schema.constraint_column_usage AS ccu
         ON ccu.constraint_name = tc.constraint_name
         AND ccu.table_schema = tc.table_schema
-    WHERE tc.constraint_type = 'FOREIGN KEY' 
+    WHERE tc.constraint_type = 'FOREIGN KEY'
       AND tc.table_schema = 'public'
   `;
 
@@ -57,13 +59,13 @@ function topologicalSort(tables, dependencies) {
   // Build adjacency list
   const graph = {};
   const inDegree = {};
-  
+
   // Initialize
   tables.forEach(table => {
     graph[table] = [];
     inDegree[table] = 0;
   });
-  
+
   // Build graph
   dependencies.forEach(dep => {
     if (tables.includes(dep.child_table) && tables.includes(dep.parent_table)) {
@@ -71,22 +73,22 @@ function topologicalSort(tables, dependencies) {
       inDegree[dep.child_table]++;
     }
   });
-  
+
   // Kahn's algorithm for topological sort
   const queue = [];
   const sorted = [];
-  
+
   // Find nodes with no dependencies
   Object.keys(inDegree).forEach(table => {
     if (inDegree[table] === 0) {
       queue.push(table);
     }
   });
-  
+
   while (queue.length > 0) {
     const table = queue.shift();
     sorted.push(table);
-    
+
     graph[table].forEach(child => {
       inDegree[child]--;
       if (inDegree[child] === 0) {
@@ -94,7 +96,7 @@ function topologicalSort(tables, dependencies) {
       }
     });
   }
-  
+
   // Reverse to get deletion order (children before parents)
   return sorted.reverse();
 }
@@ -126,7 +128,7 @@ async function purgeTableExpiredItems(tableName) {
 }
 
 /**
- * Main purge function - dynamically determines order and purges
+ * Main purge function - dynamically determines order and purges all expired records
  */
 async function purgeExpiredSnapshots() {
   try {
@@ -135,22 +137,22 @@ async function purgeExpiredSnapshots() {
       getArchivableTables(),
       getForeignKeyDependencies()
     ]);
-    
+
     if (tables.length === 0) {
       return;
     }
-    
+
     // Determine deletion order
     const deletionOrder = topologicalSort(tables, dependencies);
-    
+
     let totalDeleted = 0;
-    
+
     // Process tables in dependency order
     for (const tableName of deletionOrder) {
       const deletedCount = await purgeTableExpiredItems(tableName);
       totalDeleted += deletedCount;
     }
-    
+
     if (totalDeleted > 0) {
       console.log(`[purger] Total purged across all tables: ${totalDeleted} items`);
     }
@@ -160,31 +162,32 @@ async function purgeExpiredSnapshots() {
 }
 
 /**
- * Start the archive purger
+ * Schedule a purge to run after a delay (fires once via setTimeout).
+ * Adds a small buffer (2s) to ensure the purge_after_at timestamp has passed.
  */
-function startArchivePurger() {
-  console.log("[purger] Archive purger started");
-  
-  // Run immediately on startup
-  purgeExpiredSnapshots();
-  
-  // Then run periodically
-  setInterval(purgeExpiredSnapshots, PURGE_INTERVAL);
+function schedulePurge(delayMs) {
+  const timerDelay = delayMs + 2000; // 2s buffer past the purge_after_at timestamp
+  const timer = setTimeout(async () => {
+    activeTimers.delete(timer);
+    await purgeExpiredSnapshots();
+  }, timerDelay);
+
+  activeTimers.add(timer);
+  return timer;
 }
 
-// Handle graceful shutdown
-process.on("SIGINT", () => {
-  console.log("[purger] Shutting down archive purger...");
-  process.exit(0);
-});
+/**
+ * Clear all pending purge timers (for graceful shutdown)
+ */
+function clearAllTimers() {
+  for (const timer of activeTimers) {
+    clearTimeout(timer);
+  }
+  activeTimers.clear();
+}
 
-process.on("SIGTERM", () => {
-  console.log("[purger] Shutting down archive purger...");
-  process.exit(0);
-});
-
-// Export both functions
-module.exports = { 
-  startArchivePurger,
-  purgeExpiredSnapshots 
+module.exports = {
+  purgeExpiredSnapshots,
+  schedulePurge,
+  clearAllTimers,
 };
