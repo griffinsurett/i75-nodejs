@@ -1,19 +1,28 @@
-// ==================== controllers/entryController.js ====================
+// backend/domains/entry/entry.controller.js
 const { db } = require("../../config/database");
-const { 
-  entries, 
-  chapters, 
-  sections, 
-  courses, 
-  tests, 
-  videos 
+const {
+  entries,
+  chapters,
+  sections,
+  courses,
+  tests,
+  videos,
 } = require("../../config/schema");
-const { eq, count } = require("drizzle-orm");
+const { eq } = require("drizzle-orm");
+const BaseController = require("../../shared/utils/baseController");
+const { archiveEntity } = require("../../shared/utils/cascadeDelete");
+const { schedulePurge } = require("../../shared/workers/archivePurger");
 
-const entryController = {
-  // Get all entries
-  getAllEntries: async (req, res, next) => {
+const TimeUntilDeletion = 60000;
+
+class EntryController extends BaseController {
+  /**
+   * GET /api/entries - Get all entries with optional archive filter
+   */
+  async getAllEntries(req, res, next) {
     try {
+      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+
       const result = await db
         .select({
           entry_id: entries.entryId,
@@ -33,62 +42,19 @@ const entryController = {
         .innerJoin(courses, eq(sections.courseId, courses.courseId))
         .leftJoin(tests, eq(entries.testId, tests.testId))
         .leftJoin(videos, eq(entries.videoId, videos.videoId))
+        .where(eq(entries.isArchived, showArchived))
         .orderBy(courses.courseName, sections.title, chapters.chapterNumber, entries.sequenceNumber);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get entries by chapter
-  getEntriesByChapter: async (req, res, next) => {
-    try {
-      const { chapterId } = req.params;
-
-      // Check if chapter exists
-      const chapterCheck = await db
-        .select({ count: count() })
-        .from(chapters)
-        .where(eq(chapters.chapterId, chapterId));
-
-      if (chapterCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Chapter not found",
-        });
-      }
-
-      const result = await db
-        .select({
-          entry_id: entries.entryId,
-          chapter_id: entries.chapterId,
-          sequence_number: entries.sequenceNumber,
-          test_id: entries.testId,
-          video_id: entries.videoId,
-          test_title: tests.title,
-          video_title: videos.title,
-        })
-        .from(entries)
-        .leftJoin(tests, eq(entries.testId, tests.testId))
-        .leftJoin(videos, eq(entries.videoId, videos.videoId))
-        .where(eq(entries.chapterId, chapterId))
-        .orderBy(entries.sequenceNumber);
-
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Get single entry
-  getEntryById: async (req, res, next) => {
+  /**
+   * GET /api/entries/:entryId - Get single entry
+   */
+  async getEntryById(req, res, next) {
     try {
       const { entryId } = req.params;
 
@@ -114,206 +80,151 @@ const entryController = {
         .where(eq(entries.entryId, entryId));
 
       if (result.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Entry not found",
-        });
+        this.throwNotFound("Entry");
       }
 
-      res.json({
-        success: true,
-        data: result[0],
-      });
+      this.success(res, result[0]);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Create entry
-  createEntry: async (req, res, next) => {
+  /**
+   * POST /api/entries - Create entry
+   */
+  async createEntry(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { chapter_id, sequence_number, test_id, video_id } = req.body;
 
         if (!chapter_id || sequence_number === undefined) {
-          throw new Error("Chapter ID and sequence number are required");
+          throw this.createError("Chapter ID and sequence number are required", 400);
         }
 
-        // Must have either test_id or video_id, not both or neither
         if ((!test_id && !video_id) || (test_id && video_id)) {
-          throw new Error("Entry must have either a test_id or video_id, but not both");
+          throw this.createError("Entry must have either a test_id or video_id, but not both", 400);
         }
 
-        // Check if chapter exists
-        const chapterCheck = await tx
-          .select({ count: count() })
-          .from(chapters)
-          .where(eq(chapters.chapterId, chapter_id));
+        await this.getOrThrow(tx, chapters, chapters.chapterId, chapter_id, "Chapter");
 
-        if (chapterCheck[0].count === 0) {
-          throw new Error("Chapter not found");
-        }
-
-        // Check if test exists (if provided)
         if (test_id) {
-          const testCheck = await tx
-            .select({ count: count() })
-            .from(tests)
-            .where(eq(tests.testId, test_id));
-
-          if (testCheck[0].count === 0) {
-            throw new Error("Test not found");
-          }
+          await this.getOrThrow(tx, tests, tests.testId, test_id, "Test");
         }
 
-        // Check if video exists (if provided)
         if (video_id) {
-          const videoCheck = await tx
-            .select({ count: count() })
-            .from(videos)
-            .where(eq(videos.videoId, video_id));
-
-          if (videoCheck[0].count === 0) {
-            throw new Error("Video not found");
-          }
+          await this.getOrThrow(tx, videos, videos.videoId, video_id, "Video");
         }
 
-        const entryResult = await tx
+        const [entry] = await tx
           .insert(entries)
           .values({
             chapterId: chapter_id,
             sequenceNumber: sequence_number,
-            testId: test_id,
-            videoId: video_id,
+            testId: test_id || null,
+            videoId: video_id || null,
+            isArchived: false,
+            createdAt: new Date(),
           })
           .returning();
 
-        return entryResult[0];
+        return entry;
       });
 
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result, null, 201);
     } catch (error) {
-      if (error.message.includes("required") || 
-          error.message.includes("not found") ||
-          error.message.includes("must have either")) {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Update entry
-  updateEntry: async (req, res, next) => {
+  /**
+   * PUT /api/entries/:entryId - Update entry
+   */
+  async updateEntry(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { entryId } = req.params;
         const { sequence_number, test_id, video_id } = req.body;
 
-        // Check if entry exists
-        const existingEntry = await tx
-          .select()
-          .from(entries)
-          .where(eq(entries.entryId, entryId));
+        await this.getOrThrow(tx, entries, entries.entryId, entryId, "Entry");
 
-        if (existingEntry.length === 0) {
-          throw new Error("Entry not found");
-        }
-
-        // Must have either test_id or video_id, not both or neither
         if ((!test_id && !video_id) || (test_id && video_id)) {
-          throw new Error("Entry must have either a test_id or video_id, but not both");
+          throw this.createError("Entry must have either a test_id or video_id, but not both", 400);
         }
 
-        // Check if test exists (if provided)
         if (test_id) {
-          const testCheck = await tx
-            .select({ count: count() })
-            .from(tests)
-            .where(eq(tests.testId, test_id));
-
-          if (testCheck[0].count === 0) {
-            throw new Error("Test not found");
-          }
+          await this.getOrThrow(tx, tests, tests.testId, test_id, "Test");
         }
 
-        // Check if video exists (if provided)
         if (video_id) {
-          const videoCheck = await tx
-            .select({ count: count() })
-            .from(videos)
-            .where(eq(videos.videoId, video_id));
-
-          if (videoCheck[0].count === 0) {
-            throw new Error("Video not found");
-          }
+          await this.getOrThrow(tx, videos, videos.videoId, video_id, "Video");
         }
 
-        const updateResult = await tx
+        const updateFields = { updatedAt: new Date() };
+        if (sequence_number !== undefined) updateFields.sequenceNumber = sequence_number;
+        if (test_id !== undefined) updateFields.testId = test_id;
+        if (video_id !== undefined) updateFields.videoId = video_id;
+
+        const [updated] = await tx
           .update(entries)
-          .set({
-            sequenceNumber: sequence_number,
-            testId: test_id,
-            videoId: video_id,
-          })
+          .set(updateFields)
           .where(eq(entries.entryId, entryId))
           .returning();
 
-        return updateResult[0];
+        return updated;
       });
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      if (error.message === "Entry not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      if (error.message.includes("not found") || 
-          error.message.includes("must have either")) {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Delete entry
-  deleteEntry: async (req, res, next) => {
+  /**
+   * POST /api/entries/:entryId/archive - Archive entry indefinitely
+   */
+  async archiveEntry(req, res, next) {
     try {
       const { entryId } = req.params;
-
-      const deleteResult = await db
-        .delete(entries)
-        .where(eq(entries.entryId, entryId))
-        .returning();
-
-      if (deleteResult.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Entry not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Entry deleted successfully",
-      });
+      const updated = await this.archive(db, entries, entries.entryId, entryId, "Entry");
+      this.success(res, updated, "Entry archived");
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
-};
+  }
 
-module.exports = entryController;
+  /**
+   * POST /api/entries/:entryId/restore - Restore archived entry
+   */
+  async restoreEntry(req, res, next) {
+    try {
+      const { entryId } = req.params;
+      const updated = await this.restore(db, entries, entries.entryId, entryId, "Entry");
+      this.success(res, updated, "Entry restored");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * DELETE /api/entries/:entryId - Soft delete with countdown
+   */
+  async deleteEntry(req, res, next) {
+    try {
+      await this.withTransaction(db, async (tx) => {
+        const { entryId } = req.params;
+
+        await this.getOrThrow(tx, entries, entries.entryId, entryId, "Entry");
+
+        await archiveEntity(tx, entries, entries.entryId, entryId, TimeUntilDeletion);
+      });
+
+      schedulePurge(TimeUntilDeletion);
+
+      this.success(res, null, "Entry scheduled for deletion in 60 seconds.");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+}
+
+module.exports = new EntryController();

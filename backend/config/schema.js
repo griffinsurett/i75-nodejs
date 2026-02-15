@@ -141,6 +141,11 @@ const tests = pgTable("tests", {
   description: text("description"),
   imageId: integer("image_id").references(() => images.imageId),
   videoId: integer("video_id").references(() => videos.videoId),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 // Questions table
@@ -150,6 +155,11 @@ const questions = pgTable("questions", {
     .notNull()
     .references(() => tests.testId),
   questionText: text("question_text").notNull(),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 // Options table
@@ -162,6 +172,11 @@ const options = pgTable("options", {
   isCorrect: boolean("is_correct").notNull(),
   explanation: text("explanation"),
   videoId: integer("video_id").references(() => videos.videoId),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 // Entries table
@@ -173,6 +188,11 @@ const entries = pgTable("entries", {
   sequenceNumber: integer("sequence_number").notNull(),
   testId: integer("test_id").references(() => tests.testId),
   videoId: integer("video_id").references(() => videos.videoId),
+  isArchived: boolean("is_archived").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  purgeAfterAt: timestamp("purge_after_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 // Junction tables

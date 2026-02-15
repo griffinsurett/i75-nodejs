@@ -1,19 +1,28 @@
-// ==================== controllers/optionController.js ====================
+// backend/domains/option/option.controller.js
 const { db } = require("../../config/database");
-const { 
-  options, 
-  questions, 
-  videos, 
-  images, 
-  optionImages, 
-  optionVideos 
+const {
+  options,
+  questions,
+  videos,
+  images,
+  optionImages,
+  optionVideos,
 } = require("../../config/schema");
-const { eq, count } = require("drizzle-orm");
+const { eq } = require("drizzle-orm");
+const BaseController = require("../../shared/utils/baseController");
+const { archiveEntity } = require("../../shared/utils/cascadeDelete");
+const { schedulePurge } = require("../../shared/workers/archivePurger");
 
-const optionController = {
-  // Get all options
-  getAllOptions: async (req, res, next) => {
+const TimeUntilDeletion = 60000;
+
+class OptionController extends BaseController {
+  /**
+   * GET /api/options - Get all options with optional archive filter
+   */
+  async getAllOptions(req, res, next) {
     try {
+      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+
       const result = await db
         .select({
           option_id: options.optionId,
@@ -28,61 +37,19 @@ const optionController = {
         .from(options)
         .innerJoin(questions, eq(options.questionId, questions.questionId))
         .leftJoin(videos, eq(options.videoId, videos.videoId))
+        .where(eq(options.isArchived, showArchived))
         .orderBy(questions.questionId, options.optionId);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get options by question
-  getOptionsByQuestion: async (req, res, next) => {
-    try {
-      const { questionId } = req.params;
-
-      // Check if question exists
-      const questionCheck = await db
-        .select({ count: count() })
-        .from(questions)
-        .where(eq(questions.questionId, questionId));
-
-      if (questionCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Question not found",
-        });
-      }
-
-      const result = await db
-        .select({
-          option_id: options.optionId,
-          question_id: options.questionId,
-          option_text: options.optionText,
-          is_correct: options.isCorrect,
-          explanation: options.explanation,
-          video_id: options.videoId,
-          explanation_video_title: videos.title,
-        })
-        .from(options)
-        .leftJoin(videos, eq(options.videoId, videos.videoId))
-        .where(eq(options.questionId, questionId))
-        .orderBy(options.optionId);
-
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Get single option
-  getOptionById: async (req, res, next) => {
+  /**
+   * GET /api/options/:optionId - Get single option
+   */
+  async getOptionById(req, res, next) {
     try {
       const { optionId } = req.params;
 
@@ -103,37 +70,25 @@ const optionController = {
         .where(eq(options.optionId, optionId));
 
       if (result.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Option not found",
-        });
+        this.throwNotFound("Option");
       }
 
-      res.json({
-        success: true,
-        data: result[0],
-      });
+      this.success(res, result[0]);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get option images
-  getOptionImages: async (req, res, next) => {
+  /**
+   * GET /api/options/:optionId/images - Get images for an option
+   */
+  async getOptionImages(req, res, next) {
     try {
       const { optionId } = req.params;
 
-      // Check if option exists
-      const optionCheck = await db
-        .select({ count: count() })
-        .from(options)
-        .where(eq(options.optionId, optionId));
-
-      if (optionCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Option not found",
-        });
+      const optionExists = await this.checkRelatedCount(db, options, options.optionId, optionId);
+      if (optionExists === 0) {
+        this.throwNotFound("Option");
       }
 
       const result = await db
@@ -147,31 +102,22 @@ const optionController = {
         .where(eq(optionImages.optionId, optionId))
         .orderBy(images.imageId);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get option videos
-  getOptionVideos: async (req, res, next) => {
+  /**
+   * GET /api/options/:optionId/videos - Get videos for an option
+   */
+  async getOptionVideos(req, res, next) {
     try {
       const { optionId } = req.params;
 
-      // Check if option exists
-      const optionCheck = await db
-        .select({ count: count() })
-        .from(options)
-        .where(eq(options.optionId, optionId));
-
-      if (optionCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Option not found",
-        });
+      const optionExists = await this.checkRelatedCount(db, options, options.optionId, optionId);
+      if (optionExists === 0) {
+        this.throwNotFound("Option");
       }
 
       const result = await db
@@ -187,19 +133,18 @@ const optionController = {
         .where(eq(optionVideos.optionId, optionId))
         .orderBy(videos.videoId);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Create option
-  createOption: async (req, res, next) => {
+  /**
+   * POST /api/options - Create option
+   */
+  async createOption(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const {
           question_id,
           option_text,
@@ -210,74 +155,57 @@ const optionController = {
           video_ids,
         } = req.body;
 
-        if (!question_id || !option_text || is_correct === undefined) {
-          throw new Error("Question ID, option text, and is_correct flag are required");
+        const validatedText = this.validateRequired(option_text, "Option text");
+
+        if (!question_id) {
+          throw this.createError("Question ID is required", 400);
+        }
+        if (is_correct === undefined) {
+          throw this.createError("is_correct flag is required", 400);
         }
 
-        // Check if question exists
-        const questionCheck = await tx
-          .select({ count: count() })
-          .from(questions)
-          .where(eq(questions.questionId, question_id));
+        await this.getOrThrow(tx, questions, questions.questionId, question_id, "Question");
 
-        if (questionCheck[0].count === 0) {
-          throw new Error("Question not found");
-        }
-
-        const optionResult = await tx
+        const [option] = await tx
           .insert(options)
           .values({
             questionId: question_id,
-            optionText: option_text,
+            optionText: validatedText,
             isCorrect: is_correct,
-            explanation,
-            videoId: video_id,
+            explanation: explanation || null,
+            videoId: video_id || null,
+            isArchived: false,
+            createdAt: new Date(),
           })
           .returning();
 
-        const option = optionResult[0];
-
-        // Add image associations if provided
-        if (image_ids && image_ids.length > 0) {
-          const imageValues = image_ids.map(image_id => ({
-            optionId: option.optionId,
-            imageId: image_id,
-          }));
-          await tx.insert(optionImages).values(imageValues);
+        if (image_ids?.length > 0) {
+          await tx.insert(optionImages).values(
+            image_ids.map(imageId => ({ optionId: option.optionId, imageId }))
+          );
         }
 
-        // Add video associations if provided
-        if (video_ids && video_ids.length > 0) {
-          const videoValues = video_ids.map(video_id => ({
-            optionId: option.optionId,
-            videoId: video_id,
-          }));
-          await tx.insert(optionVideos).values(videoValues);
+        if (video_ids?.length > 0) {
+          await tx.insert(optionVideos).values(
+            video_ids.map(videoId => ({ optionId: option.optionId, videoId }))
+          );
         }
 
         return option;
       });
 
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result, null, 201);
     } catch (error) {
-      if (error.message === "Question ID, option text, and is_correct flag are required" ||
-          error.message === "Question not found") {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Update option
-  updateOption: async (req, res, next) => {
+  /**
+   * PUT /api/options/:optionId - Update option
+   */
+  async updateOption(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { optionId } = req.params;
         const {
           option_text,
@@ -288,122 +216,93 @@ const optionController = {
           video_ids,
         } = req.body;
 
-        // Check if option exists
-        const existingOption = await tx
-          .select()
-          .from(options)
-          .where(eq(options.optionId, optionId));
+        await this.getOrThrow(tx, options, options.optionId, optionId, "Option");
 
-        if (existingOption.length === 0) {
-          throw new Error("Option not found");
-        }
+        const updateFields = { updatedAt: new Date() };
+        if (option_text !== undefined) updateFields.optionText = option_text;
+        if (is_correct !== undefined) updateFields.isCorrect = is_correct;
+        if (explanation !== undefined) updateFields.explanation = explanation;
+        if (video_id !== undefined) updateFields.videoId = video_id;
 
-        const updateResult = await tx
+        const [updated] = await tx
           .update(options)
-          .set({
-            optionText: option_text,
-            isCorrect: is_correct,
-            explanation,
-            videoId: video_id,
-          })
+          .set(updateFields)
           .where(eq(options.optionId, optionId))
           .returning();
 
-        // Update image associations if provided
         if (image_ids !== undefined) {
-          // Delete existing associations
-          await tx
-            .delete(optionImages)
-            .where(eq(optionImages.optionId, optionId));
-
-          // Add new associations
+          await tx.delete(optionImages).where(eq(optionImages.optionId, optionId));
           if (image_ids.length > 0) {
-            const imageValues = image_ids.map(image_id => ({
-              optionId,
-              imageId: image_id,
-            }));
-            await tx.insert(optionImages).values(imageValues);
+            await tx.insert(optionImages).values(
+              image_ids.map(imageId => ({ optionId: Number(optionId), imageId }))
+            );
           }
         }
 
-        // Update video associations if provided
         if (video_ids !== undefined) {
-          // Delete existing associations
-          await tx
-            .delete(optionVideos)
-            .where(eq(optionVideos.optionId, optionId));
-
-          // Add new associations
+          await tx.delete(optionVideos).where(eq(optionVideos.optionId, optionId));
           if (video_ids.length > 0) {
-            const videoValues = video_ids.map(video_id => ({
-              optionId,
-              videoId: video_id,
-            }));
-            await tx.insert(optionVideos).values(videoValues);
+            await tx.insert(optionVideos).values(
+              video_ids.map(videoId => ({ optionId: Number(optionId), videoId }))
+            );
           }
         }
 
-        return updateResult[0];
+        return updated;
       });
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      if (error.message === "Option not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Delete option
-  deleteOption: async (req, res, next) => {
+  /**
+   * POST /api/options/:optionId/archive - Archive option indefinitely
+   */
+  async archiveOption(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const { optionId } = req.params;
+      const updated = await this.archive(db, options, options.optionId, optionId, "Option");
+      this.success(res, updated, "Option archived");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * POST /api/options/:optionId/restore - Restore archived option
+   */
+  async restoreOption(req, res, next) {
+    try {
+      const { optionId } = req.params;
+      const updated = await this.restore(db, options, options.optionId, optionId, "Option");
+      this.success(res, updated, "Option restored");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * DELETE /api/options/:optionId - Soft delete with countdown
+   */
+  async deleteOption(req, res, next) {
+    try {
+      await this.withTransaction(db, async (tx) => {
         const { optionId } = req.params;
 
-        // Delete option image associations
-        await tx
-          .delete(optionImages)
-          .where(eq(optionImages.optionId, optionId));
+        await this.getOrThrow(tx, options, options.optionId, optionId, "Option");
 
-        // Delete option video associations
-        await tx
-          .delete(optionVideos)
-          .where(eq(optionVideos.optionId, optionId));
-
-        // Delete the option
-        const deleteResult = await tx
-          .delete(options)
-          .where(eq(options.optionId, optionId))
-          .returning();
-
-        if (deleteResult.length === 0) {
-          throw new Error("Option not found");
-        }
-
-        return deleteResult[0];
+        await archiveEntity(tx, options, options.optionId, optionId, TimeUntilDeletion);
       });
 
-      res.json({
-        success: true,
-        message: "Option and all related data deleted successfully",
-      });
+      schedulePurge(TimeUntilDeletion);
+
+      this.success(res, null, "Option scheduled for deletion in 60 seconds.");
     } catch (error) {
-      if (error.message === "Option not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
-};
+  }
+}
 
-module.exports = optionController;
+module.exports = new OptionController();

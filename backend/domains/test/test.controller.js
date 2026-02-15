@@ -1,21 +1,33 @@
-// ==================== controllers/testController.js ====================
+// backend/domains/test/test.controller.js
 const { db } = require("../../config/database");
-const { 
-  tests, 
-  chapters, 
-  sections, 
-  courses, 
-  images, 
-  videos, 
-  questions, 
-  entries 
+const {
+  tests,
+  chapters,
+  sections,
+  courses,
+  images,
+  videos,
+  questions,
+  entries,
 } = require("../../config/schema");
-const { eq, count } = require("drizzle-orm");
+const { eq } = require("drizzle-orm");
+const mediaManager = require("../../shared/utils/mediaManager");
+const BaseController = require("../../shared/utils/baseController");
 
-const testController = {
-  // Get all tests
-  getAllTests: async (req, res, next) => {
+const TimeUntilDeletion = 60000;
+
+class TestController extends BaseController {
+  get mediaSchema() {
+    return { tests, chapters, sections, courses, images, videos };
+  }
+
+  /**
+   * GET /api/tests - Get all tests with optional archive filter
+   */
+  async getAllTests(req, res, next) {
     try {
+      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+
       const result = await db
         .select({
           test_id: tests.testId,
@@ -36,67 +48,22 @@ const testController = {
         .innerJoin(courses, eq(sections.courseId, courses.courseId))
         .leftJoin(images, eq(tests.imageId, images.imageId))
         .leftJoin(videos, eq(tests.videoId, videos.videoId))
+        .where(eq(tests.isArchived, showArchived))
         .orderBy(courses.courseName, sections.title, chapters.chapterNumber, tests.title);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get tests by chapter
-  getTestsByChapter: async (req, res, next) => {
-    try {
-      const { chapterId } = req.params;
-
-      // Check if chapter exists
-      const chapterCheck = await db
-        .select({ count: count() })
-        .from(chapters)
-        .where(eq(chapters.chapterId, chapterId));
-
-      if (chapterCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Chapter not found",
-        });
-      }
-
-      const result = await db
-        .select({
-          test_id: tests.testId,
-          chapter_id: tests.chapterId,
-          title: tests.title,
-          description: tests.description,
-          image_id: tests.imageId,
-          video_id: tests.videoId,
-          test_image: images.imageUrl,
-          video_title: videos.title,
-        })
-        .from(tests)
-        .leftJoin(images, eq(tests.imageId, images.imageId))
-        .leftJoin(videos, eq(tests.videoId, videos.videoId))
-        .where(eq(tests.chapterId, chapterId))
-        .orderBy(tests.title);
-
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Get single test with questions
-  getTestById: async (req, res, next) => {
+  /**
+   * GET /api/tests/:testId - Get single test with questions
+   */
+  async getTestById(req, res, next) {
     try {
       const { testId } = req.params;
 
-      // Get test details
       const testResult = await db
         .select({
           test_id: tests.testId,
@@ -120,13 +87,9 @@ const testController = {
         .where(eq(tests.testId, testId));
 
       if (testResult.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Test not found",
-        });
+        this.throwNotFound("Test");
       }
 
-      // Get questions for this test
       const questionsResult = await db
         .select({
           question_id: questions.questionId,
@@ -140,31 +103,22 @@ const testController = {
       const test = testResult[0];
       test.questions = questionsResult;
 
-      res.json({
-        success: true,
-        data: test,
-      });
+      this.success(res, test);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get questions for a test
-  getTestQuestions: async (req, res, next) => {
+  /**
+   * GET /api/tests/:testId/questions - Get questions for a test
+   */
+  async getTestQuestions(req, res, next) {
     try {
       const { testId } = req.params;
 
-      // Check if test exists
-      const testCheck = await db
-        .select({ count: count() })
-        .from(tests)
-        .where(eq(tests.testId, testId));
-
-      if (testCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Test not found",
-        });
+      const testExists = await this.checkRelatedCount(db, tests, tests.testId, testId);
+      if (testExists === 0) {
+        this.throwNotFound("Test");
       }
 
       const result = await db
@@ -177,205 +131,187 @@ const testController = {
         .where(eq(questions.testId, testId))
         .orderBy(questions.questionId);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Create test
-  createTest: async (req, res, next) => {
+  /**
+   * POST /api/tests - Create test
+   */
+  async createTest(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { chapter_id, title, description, image_url, alt_text, video_id } = req.body;
 
-        if (!chapter_id || !title) {
-          throw new Error("Chapter ID and title are required");
+        const validatedTitle = this.validateRequired(title, "Title");
+
+        if (!chapter_id) {
+          throw this.createError("Chapter ID is required", 400);
         }
 
-        // Check if chapter exists
-        const chapterCheck = await tx
-          .select({ count: count() })
-          .from(chapters)
-          .where(eq(chapters.chapterId, chapter_id));
+        await this.getOrThrow(tx, chapters, chapters.chapterId, chapter_id, "Chapter");
 
-        if (chapterCheck[0].count === 0) {
-          throw new Error("Chapter not found");
-        }
-
-        // Handle image
         let image_id = null;
         if (image_url) {
-          const imageResult = await tx
+          const [imgRow] = await tx
             .insert(images)
             .values({
               imageUrl: image_url,
-              altText: alt_text,
+              altText: alt_text || null,
+              isArchived: false,
+              createdAt: new Date(),
             })
             .returning({ imageId: images.imageId });
-          image_id = imageResult[0].imageId;
+          image_id = imgRow.imageId;
         }
 
-        const testResult = await tx
+        const [test] = await tx
           .insert(tests)
           .values({
             chapterId: chapter_id,
-            title,
-            description,
+            title: validatedTitle,
+            description: description || null,
             imageId: image_id,
-            videoId: video_id,
+            videoId: video_id || null,
+            isArchived: false,
+            createdAt: new Date(),
           })
           .returning();
 
-        return testResult[0];
+        return test;
       });
 
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result, null, 201);
     } catch (error) {
-      if (error.message === "Chapter ID and title are required" ||
-          error.message === "Chapter not found") {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Update test
-  updateTest: async (req, res, next) => {
+  /**
+   * PUT /api/tests/:testId - Update test
+   */
+  async updateTest(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { testId } = req.params;
         const { title, description, image_url, alt_text, video_id } = req.body;
 
-        // Check if test exists
-        const existingTest = await tx
-          .select()
-          .from(tests)
-          .where(eq(tests.testId, testId));
+        const existing = await this.getOrThrow(tx, tests, tests.testId, testId, "Test");
 
-        if (existingTest.length === 0) {
-          throw new Error("Test not found");
-        }
-
-        // Handle image update
-        let image_id = existingTest[0].imageId;
+        let image_id = existing.imageId;
         if (image_url) {
           if (image_id) {
             await tx
               .update(images)
-              .set({
-                imageUrl: image_url,
-                altText: alt_text,
-              })
+              .set({ imageUrl: image_url, altText: alt_text || null, updatedAt: new Date() })
               .where(eq(images.imageId, image_id));
           } else {
-            const imageResult = await tx
+            const [imgRow] = await tx
               .insert(images)
               .values({
                 imageUrl: image_url,
-                altText: alt_text,
+                altText: alt_text || null,
+                isArchived: false,
+                createdAt: new Date(),
               })
               .returning({ imageId: images.imageId });
-            image_id = imageResult[0].imageId;
+            image_id = imgRow.imageId;
           }
         }
 
-        const updateResult = await tx
+        const updateFields = { updatedAt: new Date() };
+        if (title !== undefined) updateFields.title = title;
+        if (description !== undefined) updateFields.description = description;
+        if (image_id !== undefined) updateFields.imageId = image_id;
+        if (video_id !== undefined) updateFields.videoId = video_id;
+
+        const [updated] = await tx
           .update(tests)
-          .set({
-            title,
-            description,
-            imageId: image_id,
-            videoId: video_id,
-          })
+          .set(updateFields)
           .where(eq(tests.testId, testId))
           .returning();
 
-        return updateResult[0];
+        return updated;
       });
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      if (error.message === "Test not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Delete test
-  deleteTest: async (req, res, next) => {
+  /**
+   * POST /api/tests/:testId/archive - Archive test indefinitely
+   */
+  async archiveTest(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const { testId } = req.params;
+      const updated = await this.archive(db, tests, tests.testId, testId, "Test");
+      this.success(res, updated, "Test archived");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * POST /api/tests/:testId/restore - Restore archived test
+   */
+  async restoreTest(req, res, next) {
+    try {
+      const { testId } = req.params;
+      const updated = await this.restore(db, tests, tests.testId, testId, "Test");
+      this.success(res, updated, "Test restored");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * DELETE /api/tests/:testId - Soft delete with countdown
+   */
+  async deleteTest(req, res, next) {
+    try {
+      const result = await this.withTransaction(db, async (tx) => {
         const { testId } = req.params;
 
-        // Check if test has questions
-        const questionsCheck = await tx
-          .select({ count: count() })
-          .from(questions)
-          .where(eq(questions.testId, testId));
+        const test = await this.getOrThrow(tx, tests, tests.testId, testId, "Test");
 
-        if (questionsCheck[0].count > 0) {
-          throw new Error("Cannot delete test with existing questions. Delete questions first.");
+        const questionCount = await this.checkRelatedCount(tx, questions, questions.testId, testId);
+        if (questionCount > 0) {
+          throw this.createError("Cannot delete test with existing questions. Delete questions first.", 400);
         }
 
-        // Check if test is used in entries
-        const entriesCheck = await tx
-          .select({ count: count() })
-          .from(entries)
-          .where(eq(entries.testId, testId));
-
-        if (entriesCheck[0].count > 0) {
-          throw new Error("Cannot delete test that is used in chapter entries. Remove from entries first.");
+        const entryCount = await this.checkRelatedCount(tx, entries, entries.testId, testId);
+        if (entryCount > 0) {
+          throw this.createError("Cannot delete test that is used in chapter entries. Remove from entries first.", 400);
         }
 
-        const deleteResult = await tx
-          .delete(tests)
-          .where(eq(tests.testId, testId))
-          .returning();
-
-        if (deleteResult.length === 0) {
-          throw new Error("Test not found");
-        }
-
-        return deleteResult[0];
+        return await mediaManager.deleteWithCascade(
+          tx,
+          test,
+          tests,
+          tests.testId,
+          testId,
+          this.mediaSchema,
+          TimeUntilDeletion
+        );
       });
 
-      res.json({
-        success: true,
-        message: "Test deleted successfully",
-      });
+      let message = "Test scheduled for deletion in 60 seconds.";
+      const cascaded = [];
+      if (result.image) cascaded.push("image");
+      if (result.video) cascaded.push("video");
+      if (cascaded.length > 0) {
+        message = `Test and its exclusive ${cascaded.join(" and ")} scheduled for deletion in 60 seconds.`;
+      }
+
+      this.success(res, result, message);
     } catch (error) {
-      if (error.message === "Test not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      if (error.message.includes("Cannot delete test")) {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
-};
+  }
+}
 
-module.exports = testController;
+module.exports = new TestController();

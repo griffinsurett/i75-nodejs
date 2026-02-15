@@ -15,6 +15,7 @@ export default function ChaptersSidebar({
   onChapterDelete,
   onChapterUndoDelete,
   onChapterRestoreArchived,
+  onChapterExpired,
   onReorderChapters,
 }) {
   const activeChapterCount = chapters.filter(
@@ -95,6 +96,7 @@ export default function ChaptersSidebar({
             onChapterDelete={onChapterDelete}
             onChapterUndoDelete={onChapterUndoDelete}
             onRestoreArchived={onChapterRestoreArchived}
+            onChapterExpired={onChapterExpired}
             onReorderChapters={onReorderChapters}
           />
         )}

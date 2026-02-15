@@ -123,17 +123,19 @@ export const chapterAPI = {
 
 // Test API functions
 export const testAPI = {
-  getAllTests: () => api.get("/tests"),
+  getAllTests: (params = {}) => api.get("/tests", { params }),
   getTest: (testId) => api.get(`/tests/${testId}`),
   getTestQuestions: (testId) => api.get(`/tests/${testId}/questions`),
   createTest: (testData) => api.post("/tests", testData),
   updateTest: (testId, testData) => api.put(`/tests/${testId}`, testData),
   deleteTest: (testId) => api.delete(`/tests/${testId}`),
+  archiveTest: (testId) => api.post(`/tests/${testId}/archive`),
+  restoreTest: (testId) => api.post(`/tests/${testId}/restore`),
 };
 
 // Question API functions
 export const questionAPI = {
-  getAllQuestions: () => api.get("/questions"),
+  getAllQuestions: (params = {}) => api.get("/questions", { params }),
   getQuestion: (questionId) => api.get(`/questions/${questionId}`),
   getQuestionOptions: (questionId) =>
     api.get(`/questions/${questionId}/options`),
@@ -141,6 +143,34 @@ export const questionAPI = {
   updateQuestion: (questionId, questionData) =>
     api.put(`/questions/${questionId}`, questionData),
   deleteQuestion: (questionId) => api.delete(`/questions/${questionId}`),
+  archiveQuestion: (questionId) => api.post(`/questions/${questionId}/archive`),
+  restoreQuestion: (questionId) => api.post(`/questions/${questionId}/restore`),
+};
+
+// Option API functions
+export const optionAPI = {
+  getAllOptions: (params = {}) => api.get("/options", { params }),
+  getOption: (optionId) => api.get(`/options/${optionId}`),
+  getOptionImages: (optionId) => api.get(`/options/${optionId}/images`),
+  getOptionVideos: (optionId) => api.get(`/options/${optionId}/videos`),
+  createOption: (optionData) => api.post("/options", optionData),
+  updateOption: (optionId, optionData) =>
+    api.put(`/options/${optionId}`, optionData),
+  deleteOption: (optionId) => api.delete(`/options/${optionId}`),
+  archiveOption: (optionId) => api.post(`/options/${optionId}/archive`),
+  restoreOption: (optionId) => api.post(`/options/${optionId}/restore`),
+};
+
+// Entry API functions
+export const entryAPI = {
+  getAllEntries: (params = {}) => api.get("/entries", { params }),
+  getEntry: (entryId) => api.get(`/entries/${entryId}`),
+  createEntry: (entryData) => api.post("/entries", entryData),
+  updateEntry: (entryId, entryData) =>
+    api.put(`/entries/${entryId}`, entryData),
+  deleteEntry: (entryId) => api.delete(`/entries/${entryId}`),
+  archiveEntry: (entryId) => api.post(`/entries/${entryId}/archive`),
+  restoreEntry: (entryId) => api.post(`/entries/${entryId}/restore`),
 };
 
 // Image API functions

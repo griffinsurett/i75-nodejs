@@ -13,6 +13,7 @@ export default function DraggableChapterList({
   onChapterUndoDelete,
   onReorderChapters,
   onRestoreArchived,
+  onChapterExpired,
   loading = false,
 }) {
   const [draggedItem, setDraggedItem] = useState(null);
@@ -306,6 +307,7 @@ export default function DraggableChapterList({
                       {isArchived && hasScheduledDeletion && (
                         <ChapterDeletionBadge
                           scheduledDeleteAt={chapterData.purgeAfterAt || chapterData.scheduledDeleteAt}
+                          onExpired={onChapterExpired}
                           isPending={false}
                         />
                       )}

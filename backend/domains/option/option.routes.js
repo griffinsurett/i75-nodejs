@@ -1,30 +1,21 @@
-// ==================== routes/options.js ====================
+// backend/domains/option/option.routes.js
 const express = require("express");
 const router = express.Router();
 const optionController = require("./option.controller");
 
 // CRUD Routes for Options
-// GET /api/options
 router.get("/", optionController.getAllOptions);
-
-// GET /api/options/:optionId
 router.get("/:optionId", optionController.getOptionById);
-
-// POST /api/options
+router.get("/:optionId/images", optionController.getOptionImages);
+router.get("/:optionId/videos", optionController.getOptionVideos);
 router.post("/", optionController.createOption);
-
-// PUT /api/options/:optionId
 router.put("/:optionId", optionController.updateOption);
 
-// DELETE /api/options/:optionId
+// Archive operations
+router.post("/:optionId/archive", optionController.archiveOption);
+router.post("/:optionId/restore", optionController.restoreOption);
+
+// Safety delete (schedule purge in 60s)
 router.delete("/:optionId", optionController.deleteOption);
-
-// Hierarchical Routes - Images for an Option
-// GET /api/options/:optionId/images
-router.get("/:optionId/images", optionController.getOptionImages);
-
-// Hierarchical Routes - Videos for an Option
-// GET /api/options/:optionId/videos
-router.get("/:optionId/videos", optionController.getOptionVideos);
 
 module.exports = router;

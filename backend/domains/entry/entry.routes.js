@@ -1,22 +1,19 @@
-// ==================== routes/entries.js ====================
+// backend/domains/entry/entry.routes.js
 const express = require("express");
 const router = express.Router();
 const entryController = require("./entry.controller");
 
 // CRUD Routes for Entries
-// GET /api/entries
 router.get("/", entryController.getAllEntries);
-
-// GET /api/entries/:entryId
 router.get("/:entryId", entryController.getEntryById);
-
-// POST /api/entries
 router.post("/", entryController.createEntry);
-
-// PUT /api/entries/:entryId
 router.put("/:entryId", entryController.updateEntry);
 
-// DELETE /api/entries/:entryId
+// Archive operations
+router.post("/:entryId/archive", entryController.archiveEntry);
+router.post("/:entryId/restore", entryController.restoreEntry);
+
+// Safety delete (schedule purge in 60s)
 router.delete("/:entryId", entryController.deleteEntry);
 
 module.exports = router;

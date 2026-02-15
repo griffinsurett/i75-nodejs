@@ -15,6 +15,7 @@ export default function ChapterEditor({
   onDelete,
   onUndoDelete,
   onRestoreArchived,
+  onChapterExpired,
   isTemp = false,
 }) {
   const chapterData = chapter.chapters || chapter;
@@ -166,6 +167,7 @@ export default function ChapterEditor({
           <ChapterDeletionBadge
             scheduledDeleteAt={hasScheduledDeletion}
             onUndo={onRestoreArchived}
+            onExpired={onChapterExpired}
             isPending={false}
           />
         ) : isArchived ? (

@@ -64,9 +64,9 @@ export default function SectionEditPage() {
     reset: resetChapters,
   } = useChapterChanges([]);
 
-  const fetchSectionData = async (keepSelection = false, includeArchived = true) => {
+  const fetchSectionData = async (keepSelection = false, silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
 
       const response = await sectionAPI.getSection(sectionId);
@@ -75,7 +75,16 @@ export default function SectionEditPage() {
         setSection(sectionData);
 
         const sectionInfo = sectionData.sections || sectionData;
-        const chaptersData = sectionInfo.chapters || [];
+        const allChapters = sectionInfo.chapters || [];
+
+        // Filter out chapters whose purge countdown has expired
+        const now = Date.now();
+        const chaptersData = allChapters.filter((ch) => {
+          const data = ch.chapters || ch;
+          const purgeAt = data.purgeAfterAt;
+          if (purgeAt && new Date(purgeAt).getTime() <= now) return false;
+          return true;
+        });
 
         resetChapters(chaptersData);
 
@@ -129,7 +138,7 @@ export default function SectionEditPage() {
       setRestoringChapter(true);
       const chapterData = chapter.chapters || chapter;
       await chapterAPI.restoreChapter(chapterData.chapterId);
-      await fetchSectionData(true);
+      await fetchSectionData(true, true);
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -202,7 +211,7 @@ export default function SectionEditPage() {
       }
 
       await Promise.all(promises);
-      await fetchSectionData(true);
+      await fetchSectionData(true, true);
 
       setHasSectionChanges(false);
       setSectionFormData(null);
@@ -297,7 +306,7 @@ export default function SectionEditPage() {
         (c) => (c.chapters || c).chapterId === chapterId
       );
       if (restoredChapter) {
-        const { pendingDeletion, deletedAt, ...cleanChapter } = restoredChapter;
+        const { pendingDeletion: _pd, deletedAt: _da, ...cleanChapter } = restoredChapter;
         setSelectedChapter(cleanChapter);
       }
     }
@@ -412,6 +421,7 @@ export default function SectionEditPage() {
           onChapterDelete={handleChapterDelete}
           onChapterUndoDelete={handleChapterUndoDelete}
           onChapterRestoreArchived={handleRestoreArchivedChapter}
+          onChapterExpired={() => fetchSectionData(true, true)}
           onReorderChapters={reorderChapters}
         />
 
@@ -436,6 +446,7 @@ export default function SectionEditPage() {
                   onRestoreArchived={() =>
                     handleRestoreArchivedChapter(selectedChapter)
                   }
+                  onChapterExpired={() => fetchSectionData(true, true)}
                   isTemp={selectedChapter.isTemp}
                 />
               ) : (

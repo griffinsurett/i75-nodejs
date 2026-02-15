@@ -1,21 +1,30 @@
-// ==================== controllers/questionController.js ====================
+// backend/domains/question/question.controller.js
 const { db } = require("../../config/database");
-const { 
-  questions, 
-  tests, 
-  chapters, 
-  options, 
-  videos, 
-  images, 
-  questionImages, 
-  questionVideos 
+const {
+  questions,
+  tests,
+  chapters,
+  options,
+  videos,
+  images,
+  questionImages,
+  questionVideos,
 } = require("../../config/schema");
-const { eq, count } = require("drizzle-orm");
+const { eq } = require("drizzle-orm");
+const BaseController = require("../../shared/utils/baseController");
+const { archiveEntity } = require("../../shared/utils/cascadeDelete");
+const { schedulePurge } = require("../../shared/workers/archivePurger");
 
-const questionController = {
-  // Get all questions
-  getAllQuestions: async (req, res, next) => {
+const TimeUntilDeletion = 60000;
+
+class QuestionController extends BaseController {
+  /**
+   * GET /api/questions - Get all questions with optional archive filter
+   */
+  async getAllQuestions(req, res, next) {
     try {
+      const showArchived = String(req.query.archived || "").toLowerCase() === "true";
+
       const result = await db
         .select({
           question_id: questions.questionId,
@@ -27,60 +36,22 @@ const questionController = {
         .from(questions)
         .innerJoin(tests, eq(questions.testId, tests.testId))
         .innerJoin(chapters, eq(tests.chapterId, chapters.chapterId))
+        .where(eq(questions.isArchived, showArchived))
         .orderBy(tests.title, questions.questionId);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get questions by test
-  getQuestionsByTest: async (req, res, next) => {
-    try {
-      const { testId } = req.params;
-
-      // Check if test exists
-      const testCheck = await db
-        .select({ count: count() })
-        .from(tests)
-        .where(eq(tests.testId, testId));
-
-      if (testCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Test not found",
-        });
-      }
-
-      const result = await db
-        .select({
-          question_id: questions.questionId,
-          test_id: questions.testId,
-          question_text: questions.questionText,
-        })
-        .from(questions)
-        .where(eq(questions.testId, testId))
-        .orderBy(questions.questionId);
-
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Get single question with options
-  getQuestionById: async (req, res, next) => {
+  /**
+   * GET /api/questions/:questionId - Get single question with options
+   */
+  async getQuestionById(req, res, next) {
     try {
       const { questionId } = req.params;
 
-      // Get question details
       const questionResult = await db
         .select({
           question_id: questions.questionId,
@@ -93,13 +64,9 @@ const questionController = {
         .where(eq(questions.questionId, questionId));
 
       if (questionResult.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Question not found",
-        });
+        this.throwNotFound("Question");
       }
 
-      // Get options for this question
       const optionsResult = await db
         .select({
           option_id: options.optionId,
@@ -118,31 +85,22 @@ const questionController = {
       const question = questionResult[0];
       question.options = optionsResult;
 
-      res.json({
-        success: true,
-        data: question,
-      });
+      this.success(res, question);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get options for a question
-  getQuestionOptions: async (req, res, next) => {
+  /**
+   * GET /api/questions/:questionId/options - Get options for a question
+   */
+  async getQuestionOptions(req, res, next) {
     try {
       const { questionId } = req.params;
 
-      // Check if question exists
-      const questionCheck = await db
-        .select({ count: count() })
-        .from(questions)
-        .where(eq(questions.questionId, questionId));
-
-      if (questionCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Question not found",
-        });
+      const questionExists = await this.checkRelatedCount(db, questions, questions.questionId, questionId);
+      if (questionExists === 0) {
+        this.throwNotFound("Question");
       }
 
       const result = await db
@@ -160,31 +118,22 @@ const questionController = {
         .where(eq(options.questionId, questionId))
         .orderBy(options.optionId);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get question images
-  getQuestionImages: async (req, res, next) => {
+  /**
+   * GET /api/questions/:questionId/images - Get images for a question
+   */
+  async getQuestionImages(req, res, next) {
     try {
       const { questionId } = req.params;
 
-      // Check if question exists
-      const questionCheck = await db
-        .select({ count: count() })
-        .from(questions)
-        .where(eq(questions.questionId, questionId));
-
-      if (questionCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Question not found",
-        });
+      const questionExists = await this.checkRelatedCount(db, questions, questions.questionId, questionId);
+      if (questionExists === 0) {
+        this.throwNotFound("Question");
       }
 
       const result = await db
@@ -198,31 +147,22 @@ const questionController = {
         .where(eq(questionImages.questionId, questionId))
         .orderBy(images.imageId);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Get question videos
-  getQuestionVideos: async (req, res, next) => {
+  /**
+   * GET /api/questions/:questionId/videos - Get videos for a question
+   */
+  async getQuestionVideos(req, res, next) {
     try {
       const { questionId } = req.params;
 
-      // Check if question exists
-      const questionCheck = await db
-        .select({ count: count() })
-        .from(questions)
-        .where(eq(questions.questionId, questionId));
-
-      if (questionCheck[0].count === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Question not found",
-        });
+      const questionExists = await this.checkRelatedCount(db, questions, questions.questionId, questionId);
+      if (questionExists === 0) {
+        this.throwNotFound("Question");
       }
 
       const result = await db
@@ -238,207 +178,157 @@ const questionController = {
         .where(eq(questionVideos.questionId, questionId))
         .orderBy(videos.videoId);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Create question
-  createQuestion: async (req, res, next) => {
+  /**
+   * POST /api/questions - Create question
+   */
+  async createQuestion(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { test_id, question_text, image_ids, video_ids } = req.body;
 
-        if (!test_id || !question_text) {
-          throw new Error("Test ID and question text are required");
+        const validatedText = this.validateRequired(question_text, "Question text");
+
+        if (!test_id) {
+          throw this.createError("Test ID is required", 400);
         }
 
-        // Check if test exists
-        const testCheck = await tx
-          .select({ count: count() })
-          .from(tests)
-          .where(eq(tests.testId, test_id));
+        await this.getOrThrow(tx, tests, tests.testId, test_id, "Test");
 
-        if (testCheck[0].count === 0) {
-          throw new Error("Test not found");
-        }
-
-        const questionResult = await tx
+        const [question] = await tx
           .insert(questions)
           .values({
             testId: test_id,
-            questionText: question_text,
+            questionText: validatedText,
+            isArchived: false,
+            createdAt: new Date(),
           })
           .returning();
 
-        const question = questionResult[0];
-
-        // Add image associations if provided
-        if (image_ids && image_ids.length > 0) {
-          const imageValues = image_ids.map(image_id => ({
-            questionId: question.questionId,
-            imageId: image_id,
-          }));
-          await tx.insert(questionImages).values(imageValues);
+        if (image_ids?.length > 0) {
+          await tx.insert(questionImages).values(
+            image_ids.map(imageId => ({ questionId: question.questionId, imageId }))
+          );
         }
 
-        // Add video associations if provided
-        if (video_ids && video_ids.length > 0) {
-          const videoValues = video_ids.map(video_id => ({
-            questionId: question.questionId,
-            videoId: video_id,
-          }));
-          await tx.insert(questionVideos).values(videoValues);
+        if (video_ids?.length > 0) {
+          await tx.insert(questionVideos).values(
+            video_ids.map(videoId => ({ questionId: question.questionId, videoId }))
+          );
         }
 
         return question;
       });
 
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result, null, 201);
     } catch (error) {
-      if (error.message === "Test ID and question text are required" ||
-          error.message === "Test not found") {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Update question
-  updateQuestion: async (req, res, next) => {
+  /**
+   * PUT /api/questions/:questionId - Update question
+   */
+  async updateQuestion(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await this.withTransaction(db, async (tx) => {
         const { questionId } = req.params;
         const { question_text, image_ids, video_ids } = req.body;
 
-        // Check if question exists
-        const existingQuestion = await tx
-          .select()
-          .from(questions)
-          .where(eq(questions.questionId, questionId));
+        await this.getOrThrow(tx, questions, questions.questionId, questionId, "Question");
 
-        if (existingQuestion.length === 0) {
-          throw new Error("Question not found");
-        }
+        const updateFields = { updatedAt: new Date() };
+        if (question_text !== undefined) updateFields.questionText = question_text;
 
-        const updateResult = await tx
+        const [updated] = await tx
           .update(questions)
-          .set({
-            questionText: question_text,
-          })
+          .set(updateFields)
           .where(eq(questions.questionId, questionId))
           .returning();
 
-        // Update image associations if provided
         if (image_ids !== undefined) {
-          // Delete existing associations
-          await tx
-            .delete(questionImages)
-            .where(eq(questionImages.questionId, questionId));
-
-          // Add new associations
+          await tx.delete(questionImages).where(eq(questionImages.questionId, questionId));
           if (image_ids.length > 0) {
-            const imageValues = image_ids.map(image_id => ({
-              questionId,
-              imageId: image_id,
-            }));
-            await tx.insert(questionImages).values(imageValues);
+            await tx.insert(questionImages).values(
+              image_ids.map(imageId => ({ questionId: Number(questionId), imageId }))
+            );
           }
         }
 
-        // Update video associations if provided
         if (video_ids !== undefined) {
-          // Delete existing associations
-          await tx
-            .delete(questionVideos)
-            .where(eq(questionVideos.questionId, questionId));
-
-          // Add new associations
+          await tx.delete(questionVideos).where(eq(questionVideos.questionId, questionId));
           if (video_ids.length > 0) {
-            const videoValues = video_ids.map(video_id => ({
-              questionId,
-              videoId: video_id,
-            }));
-            await tx.insert(questionVideos).values(videoValues);
+            await tx.insert(questionVideos).values(
+              video_ids.map(videoId => ({ questionId: Number(questionId), videoId }))
+            );
           }
         }
 
-        return updateResult[0];
+        return updated;
       });
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      this.success(res, result);
     } catch (error) {
-      if (error.message === "Question not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
+  }
 
-  // Delete question
-  deleteQuestion: async (req, res, next) => {
+  /**
+   * POST /api/questions/:questionId/archive - Archive question indefinitely
+   */
+  async archiveQuestion(req, res, next) {
     try {
-      const result = await db.transaction(async (tx) => {
+      const { questionId } = req.params;
+      const updated = await this.archive(db, questions, questions.questionId, questionId, "Question");
+      this.success(res, updated, "Question archived");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * POST /api/questions/:questionId/restore - Restore archived question
+   */
+  async restoreQuestion(req, res, next) {
+    try {
+      const { questionId } = req.params;
+      const updated = await this.restore(db, questions, questions.questionId, questionId, "Question");
+      this.success(res, updated, "Question restored");
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  /**
+   * DELETE /api/questions/:questionId - Soft delete with countdown
+   */
+  async deleteQuestion(req, res, next) {
+    try {
+      await this.withTransaction(db, async (tx) => {
         const { questionId } = req.params;
 
-        // Delete all options for this question first
-        await tx
-          .delete(options)
-          .where(eq(options.questionId, questionId));
+        await this.getOrThrow(tx, questions, questions.questionId, questionId, "Question");
 
-        // Delete question image associations
-        await tx
-          .delete(questionImages)
-          .where(eq(questionImages.questionId, questionId));
-
-        // Delete question video associations
-        await tx
-          .delete(questionVideos)
-          .where(eq(questionVideos.questionId, questionId));
-
-        // Delete the question
-        const deleteResult = await tx
-          .delete(questions)
-          .where(eq(questions.questionId, questionId))
-          .returning();
-
-        if (deleteResult.length === 0) {
-          throw new Error("Question not found");
+        const optionCount = await this.checkRelatedCount(tx, options, options.questionId, questionId);
+        if (optionCount > 0) {
+          throw this.createError("Cannot delete question with existing options. Delete options first.", 400);
         }
 
-        return deleteResult[0];
+        await archiveEntity(tx, questions, questions.questionId, questionId, TimeUntilDeletion);
       });
 
-      res.json({
-        success: true,
-        message: "Question and all related data deleted successfully",
-      });
+      schedulePurge(TimeUntilDeletion);
+
+      this.success(res, null, "Question scheduled for deletion in 60 seconds.");
     } catch (error) {
-      if (error.message === "Question not found") {
-        return res.status(404).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
+      this.handleError(error, res, next);
     }
-  },
-};
+  }
+}
 
-module.exports = questionController;
+module.exports = new QuestionController();

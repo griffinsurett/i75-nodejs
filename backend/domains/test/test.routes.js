@@ -1,27 +1,20 @@
-// ==================== routes/test.routes.js ====================
+// backend/domains/test/test.routes.js
 const express = require("express");
 const router = express.Router();
 const testController = require("./test.controller");
-// const questionController = require("../../controllers/api/question.controller");
 
 // CRUD Routes for Tests
-// GET /api/tests
 router.get("/", testController.getAllTests);
-
-// GET /api/tests/:testId
 router.get("/:testId", testController.getTestById);
-
-// POST /api/tests
+router.get("/:testId/questions", testController.getTestQuestions);
 router.post("/", testController.createTest);
-
-// PUT /api/tests/:testId
 router.put("/:testId", testController.updateTest);
 
-// DELETE /api/tests/:testId
-router.delete("/:testId", testController.deleteTest);
+// Archive operations
+router.post("/:testId/archive", testController.archiveTest);
+router.post("/:testId/restore", testController.restoreTest);
 
-// Hierarchical Routes - Questions for a Test
-// GET /api/tests/:testId/questions
-router.get("/:testId/questions", testController.getTestQuestions);
+// Safety delete (schedule purge in 60s)
+router.delete("/:testId", testController.deleteTest);
 
 module.exports = router;
