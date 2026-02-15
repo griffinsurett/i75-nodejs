@@ -15,6 +15,7 @@ export default function ChapterEditor({
   onDelete,
   onUndoDelete,
   onRestoreArchived,
+  onPermanentDelete,
   onChapterExpired,
   isTemp = false,
 }) {
@@ -46,7 +47,7 @@ export default function ChapterEditor({
   }, [chapter]);
 
   const handleFieldChange = (field, value) => {
-    if (isPendingDeletion || isArchived) return;
+    if (isPendingDeletion) return;
 
     if (field === "chapterNumber") {
       const numValue = parseInt(value, 10);
@@ -171,13 +172,22 @@ export default function ChapterEditor({
             isPending={false}
           />
         ) : isArchived ? (
-          <button
-            onClick={onRestoreArchived}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Restore Chapter
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRestoreArchived}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Restore
+            </button>
+            <button
+              onClick={onPermanentDelete}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </div>
         ) : (
           <button
             onClick={onDelete}
@@ -190,23 +200,10 @@ export default function ChapterEditor({
         )}
       </div>
 
-      {/* Archived Notice */}
-      {isArchived && !hasScheduledDeletion && (
-        <div className="mb-6">
-          <StatusIndicator
-            status="archived"
-            message="This chapter is archived and cannot be edited. Click 'Restore' to make it active again."
-            size="md"
-            showIcon={true}
-            className="w-full justify-start p-4 rounded-lg"
-          />
-        </div>
-      )}
-
       {/* Form */}
       <div
         className={`bg-bg rounded-xl border border-border-primary p-5 space-y-6 ${
-          isPendingDeletion || isArchived
+          isPendingDeletion
             ? "opacity-50 pointer-events-none"
             : ""
         }`}
@@ -245,7 +242,7 @@ export default function ChapterEditor({
                     min="1"
                     placeholder="Chapter number"
                     className="text-lg"
-                    disabled={isPendingDeletion || isArchived}
+                    disabled={isPendingDeletion}
                   />
                 </FormField>
 
@@ -256,7 +253,7 @@ export default function ChapterEditor({
                       onChange={(e) => handleFieldChange("title", e.target.value)}
                       placeholder="e.g., Introduction"
                       className="text-lg"
-                      disabled={isPendingDeletion || isArchived}
+                      disabled={isPendingDeletion}
                     />
                   </FormField>
                 </div>
@@ -271,7 +268,7 @@ export default function ChapterEditor({
                   onChange={(e) => handleFieldChange("description", e.target.value)}
                   placeholder="Describe what students will learn in this chapter..."
                   rows={3}
-                  disabled={isPendingDeletion || isArchived}
+                  disabled={isPendingDeletion}
                 />
               </FormField>
 

@@ -13,7 +13,9 @@ export default function DraggableChapterList({
   onChapterUndoDelete,
   onReorderChapters,
   onRestoreArchived,
+  onPermanentDelete,
   onChapterExpired,
+  isArchivedView = false,
   loading = false,
 }) {
   const [draggedItem, setDraggedItem] = useState(null);
@@ -34,6 +36,7 @@ export default function DraggableChapterList({
   );
 
   const handleDragStart = (e, chapter, indexInSorted) => {
+    if (isArchivedView) { e.preventDefault(); return; }
     const chapterData = chapter.chapters || chapter;
     if (chapter.pendingDeletion || chapterData.isArchived) {
       e.preventDefault();
@@ -189,6 +192,7 @@ export default function DraggableChapterList({
     const hasScheduledDeletion = chapterData.purgeAfterAt || chapterData.scheduledDeleteAt;
     const isSelected = chapterData.chapterId === selectedChapterId;
 
+    if (isArchivedView) return isSelected ? 'primary' : 'default';
     if (isPendingDeletion || (isArchived && hasScheduledDeletion)) return 'danger';
     if (isArchived) return 'warning';
     if (isSelected) return 'primary';
@@ -211,9 +215,9 @@ export default function DraggableChapterList({
     <div
       ref={containerRef}
       className="space-y-1 relative"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDragOver={isArchivedView ? undefined : handleDragOver}
+      onDragLeave={isArchivedView ? undefined : handleDragLeave}
+      onDrop={isArchivedView ? undefined : handleDrop}
     >
       {sortedChapters.map((chapter, index) => {
         const chapterData = chapter.chapters || chapter;
@@ -232,7 +236,7 @@ export default function DraggableChapterList({
             className="relative"
           >
             {/* Drop indicator line - TOP */}
-            {dropLinePosition === "top" && (
+            {!isArchivedView && dropLinePosition === "top" && (
               <div className="absolute -top-0.5 left-0 right-0 h-0.5 bg-primary rounded-full z-50 pointer-events-none">
                 <div className="absolute -left-1 -top-1.5 w-1 h-4 bg-primary rounded-full" />
                 <div className="absolute -right-1 -top-1.5 w-1 h-4 bg-primary rounded-full" />
@@ -240,15 +244,19 @@ export default function DraggableChapterList({
             )}
 
             <div
-              draggable={!loading && !isPendingDeletion && !isArchived}
-              onDragStart={(e) => handleDragStart(e, chapter, index)}
-              onDragEnd={handleDragEnd}
+              draggable={!isArchivedView && !loading && !isPendingDeletion && !isArchived}
+              onDragStart={isArchivedView ? undefined : (e) => handleDragStart(e, chapter, index)}
+              onDragEnd={isArchivedView ? undefined : handleDragEnd}
               className={`
-                group relative rounded-lg border transition-all 
-                ${isPendingDeletion || isArchived ? "cursor-not-allowed" : "cursor-move"}
+                group relative rounded-lg border transition-all
+                ${isArchivedView ? "cursor-pointer" : isPendingDeletion || isArchived ? "cursor-not-allowed" : "cursor-move"}
                 ${isBeingDragged ? "opacity-50" : ""}
                 ${
-                  isSelected
+                  isArchivedView
+                    ? isSelected
+                      ? "bg-primary/10 border-primary/20 text-primary"
+                      : "border-transparent hover:bg-bg2 hover:border-border-primary"
+                    : isSelected
                     ? isPendingDeletion || (isArchived && hasScheduledDeletion)
                       ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700"
                       : isArchived
@@ -263,8 +271,8 @@ export default function DraggableChapterList({
               `}
             >
               <div className="flex items-center">
-                {/* Drag Handle - Hide for deleted/archived chapters */}
-                {!isPendingDeletion && !isArchived && (
+                {/* Drag Handle - Hide for deleted/archived chapters and archived view */}
+                {!isArchivedView && !isPendingDeletion && !isArchived && (
                   <div className="px-2 py-3 cursor-grab active:cursor-grabbing hover:bg-bg2 rounded-l-lg transition-colors">
                     <GripVertical className="w-4 h-4 text-text/40" />
                   </div>
@@ -284,7 +292,9 @@ export default function DraggableChapterList({
                     <div className="min-w-0 flex-1">
                       <div
                         className={`text-sm font-medium truncate ${
-                          isPendingDeletion || (isArchived && hasScheduledDeletion)
+                          isArchivedView
+                            ? isSelected ? "text-primary" : "text-heading"
+                            : isPendingDeletion || (isArchived && hasScheduledDeletion)
                             ? "text-red-600 line-through"
                             : isArchived
                             ? "text-yellow-600"
@@ -295,25 +305,25 @@ export default function DraggableChapterList({
                       >
                         {chapterData.title || `Chapter ${chapterData.chapterNumber}`}
                       </div>
-                      {status && status === 'pendingDeletion' && (
-                        <StatusIndicator 
-                          status="pendingDeletion" 
+                      {!isArchivedView && status && status === 'pendingDeletion' && (
+                        <StatusIndicator
+                          status="pendingDeletion"
                           label="Will be deleted on save"
                           size="xs"
                           showIcon={false}
                           className="mt-0.5"
                         />
                       )}
-                      {isArchived && hasScheduledDeletion && (
+                      {!isArchivedView && isArchived && hasScheduledDeletion && (
                         <ChapterDeletionBadge
                           scheduledDeleteAt={chapterData.purgeAfterAt || chapterData.scheduledDeleteAt}
                           onExpired={onChapterExpired}
                           isPending={false}
                         />
                       )}
-                      {status && status === 'archived' && (
-                        <StatusIndicator 
-                          status="archived" 
+                      {!isArchivedView && status && status === 'archived' && (
+                        <StatusIndicator
+                          status="archived"
                           size="xs"
                           showIcon={false}
                           className="mt-0.5"
@@ -324,7 +334,30 @@ export default function DraggableChapterList({
                 </button>
 
                 {/* Delete/Undo/Restore Action */}
-                {isPendingDeletion ? (
+                {isArchivedView ? (
+                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity mr-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onRestoreArchived) onRestoreArchived(chapter);
+                      }}
+                      className="p-1.5 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                      title="Restore chapter"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-green-600" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onPermanentDelete) onPermanentDelete(chapter);
+                      }}
+                      className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                      title="Permanently delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                    </button>
+                  </div>
+                ) : isPendingDeletion ? (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -348,8 +381,8 @@ export default function DraggableChapterList({
                       <RotateCcw className="w-4 h-4 text-green-600" />
                     </button>
                   ) : (
-                    <StatusIndicator 
-                      status="archived" 
+                    <StatusIndicator
+                      status="archived"
                       size="xs"
                       showLabel={false}
                       className="mr-2"
@@ -371,7 +404,7 @@ export default function DraggableChapterList({
             </div>
 
             {/* Drop indicator line - BOTTOM */}
-            {dropLinePosition === "bottom" && (
+            {!isArchivedView && dropLinePosition === "bottom" && (
               <div className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-primary rounded-full z-50 pointer-events-none">
                 <div className="absolute -left-1 -bottom-1.5 w-1 h-4 bg-primary rounded-full" />
                 <div className="absolute -right-1 -bottom-1.5 w-1 h-4 bg-primary rounded-full" />
@@ -382,7 +415,7 @@ export default function DraggableChapterList({
       })}
 
       {/* Drop zone at the end when dragging */}
-      {isDragging && activeChapters.length > 0 && dropPosition?.sortedIndex === sortedChapters.length && (
+      {!isArchivedView && isDragging && activeChapters.length > 0 && dropPosition?.sortedIndex === sortedChapters.length && (
         <div className="relative">
           <div className="absolute -top-0.5 left-0 right-0 h-0.5 bg-primary rounded-full z-50 pointer-events-none">
             <div className="absolute -left-1 -top-1.5 w-1 h-4 bg-primary rounded-full" />

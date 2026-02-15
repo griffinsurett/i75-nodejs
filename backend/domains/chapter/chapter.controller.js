@@ -8,8 +8,12 @@ const {
   tests,
   entries,
   videos,
+  questions,
+  options,
+  questionImages,
+  questionVideos,
 } = require("../../config/schema");
-const { eq, desc, sql } = require("drizzle-orm");
+const { eq, desc, sql, inArray } = require("drizzle-orm");
 const mediaManager = require("../../shared/utils/mediaManager");
 const BaseController = require("../../shared/utils/baseController");
 const chapterService = require("./chapter.service");
@@ -382,6 +386,9 @@ async createChapter(req, res, next) {
           "Chapter"
         );
         
+        // Remember original number before restore
+        const originalNumber = chapter.chapterNumber;
+
         // Restore the chapter
         const updated = await this.restore(
           tx,
@@ -390,22 +397,36 @@ async createChapter(req, res, next) {
           chapterId,
           "Chapter"
         );
-        
-        // Assign it the next available number
-        const nextNumber = await chapterService.getNextChapterNumber(tx, chapter.sectionId);
+
+        // Get active chapter count (excluding this one, since restore already set isArchived=false)
+        const activeChapters = await chapterService.getSectionChapters(tx, chapter.sectionId, false);
+        const activeCount = activeChapters.length;
+
+        // Try to restore near original position, clamped to valid range
+        const targetNumber = Math.min(originalNumber, activeCount);
+
         await tx
           .update(chapters)
-          .set({ 
-            chapterNumber: nextNumber,
+          .set({
+            chapterNumber: targetNumber,
             updatedAt: new Date()
           })
           .where(eq(chapters.chapterId, chapterId));
-        
-        updated.chapterNumber = nextNumber;
-        
+
+        // Renumber to resolve any conflicts
+        await chapterService.renumberChapters(tx, chapter.sectionId);
+
+        // Re-read to get final number after renumbering
+        const [final] = await tx
+          .select()
+          .from(chapters)
+          .where(eq(chapters.chapterId, chapterId));
+
+        updated.chapterNumber = final.chapterNumber;
+
         return updated;
       });
-      
+
       this.success(res, result, `Chapter restored as Chapter ${result.chapterNumber}`);
     } catch (error) {
       this.handleError(error, res, next);
@@ -414,43 +435,67 @@ async createChapter(req, res, next) {
 
   /**
    * DELETE /api/chapters/:chapterId - Delete chapter with automatic cascade and renumbering
+   * If the chapter is already indefinitely archived (no purgeAfterAt), performs a permanent hard delete.
+   * Otherwise, soft-deletes with countdown → archive transition.
    */
   async deleteChapter(req, res, next) {
     try {
+      const { chapterId } = req.params;
+
+      const chapter = await this.getOrThrow(
+        db,
+        chapters,
+        chapters.chapterId,
+        chapterId,
+        "Chapter"
+      );
+
+      // Already indefinitely archived — permanent hard delete
+      if (chapter.isArchived && !chapter.purgeAfterAt) {
+        await this.withTransaction(db, async (tx) => {
+          // Get all tests belonging to this chapter
+          const chapterTests = await tx
+            .select({ testId: tests.testId })
+            .from(tests)
+            .where(eq(tests.chapterId, chapterId));
+
+          const testIds = chapterTests.map(t => t.testId);
+
+          if (testIds.length > 0) {
+            // Get all questions belonging to these tests
+            const testQuestions = await tx
+              .select({ questionId: questions.questionId })
+              .from(questions)
+              .where(inArray(questions.testId, testIds));
+
+            const questionIds = testQuestions.map(q => q.questionId);
+
+            if (questionIds.length > 0) {
+              // Delete question media joins
+              await tx.delete(questionImages).where(inArray(questionImages.questionId, questionIds));
+              await tx.delete(questionVideos).where(inArray(questionVideos.questionId, questionIds));
+              // Delete options
+              await tx.delete(options).where(inArray(options.questionId, questionIds));
+              // Delete questions
+              await tx.delete(questions).where(inArray(questions.testId, testIds));
+            }
+
+            // Delete tests
+            await tx.delete(tests).where(eq(tests.chapterId, chapterId));
+          }
+
+          // Delete entries
+          await tx.delete(entries).where(eq(entries.chapterId, chapterId));
+
+          // Delete the chapter itself
+          await tx.delete(chapters).where(eq(chapters.chapterId, chapterId));
+        });
+
+        return this.success(res, null, "Chapter permanently deleted.");
+      }
+
+      // Active or mid-countdown — soft-delete with countdown → archive
       const result = await this.withTransaction(db, async (tx) => {
-        const { chapterId } = req.params;
-
-        const chapter = await this.getOrThrow(
-          tx,
-          chapters,
-          chapters.chapterId,
-          chapterId,
-          "Chapter"
-        );
-
-        // Check if chapter has tests or entries
-        const testCount = await this.checkRelatedCount(
-          tx,
-          tests,
-          tests.chapterId,
-          chapterId
-        );
-
-        const entryCount = await this.checkRelatedCount(
-          tx,
-          entries,
-          entries.chapterId,
-          chapterId
-        );
-
-        if (testCount > 0 || entryCount > 0) {
-          throw this.createError(
-            "Cannot delete chapter with existing tests or entries. Delete them first.",
-            400
-          );
-        }
-
-        // Delete the chapter
         const deletedChapter = await mediaManager.deleteWithCascade(
           tx,
           chapter,

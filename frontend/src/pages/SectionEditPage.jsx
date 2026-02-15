@@ -34,6 +34,7 @@ export default function SectionEditPage() {
   const [sectionFormData, setSectionFormData] = useState(null);
   const [hasSectionChanges, setHasSectionChanges] = useState(false);
   const [restoringChapter, setRestoringChapter] = useState(false);
+  const [chapterView, setChapterView] = useState("active"); // 'active' or 'archived'
 
   // Sidebar management
   const { sidebarOpen, closeSidebar, openSidebar } = useSidebar();
@@ -75,16 +76,7 @@ export default function SectionEditPage() {
         setSection(sectionData);
 
         const sectionInfo = sectionData.sections || sectionData;
-        const allChapters = sectionInfo.chapters || [];
-
-        // Filter out chapters whose purge countdown has expired
-        const now = Date.now();
-        const chaptersData = allChapters.filter((ch) => {
-          const data = ch.chapters || ch;
-          const purgeAt = data.purgeAfterAt;
-          if (purgeAt && new Date(purgeAt).getTime() <= now) return false;
-          return true;
-        });
+        const chaptersData = sectionInfo.chapters || [];
 
         resetChapters(chaptersData);
 
@@ -132,6 +124,32 @@ export default function SectionEditPage() {
   useEffect(() => {
     if (sectionId) fetchSectionData(false);
   }, [sectionId]);
+
+  const handleChapterExpired = () => {
+    // Clear selection if the expired chapter is selected
+    if (selectedChapter) {
+      const selData = selectedChapter.chapters || selectedChapter;
+      if (selData.isArchived && (selData.purgeAfterAt || selData.scheduledDeleteAt)) {
+        setSelectedChapter(null);
+      }
+    }
+    // Delay refetch to let the backend purger transition the chapter to indefinite archive
+    setTimeout(() => fetchSectionData(true, true), 3000);
+  };
+
+  const handlePermanentDeleteChapter = async (chapter) => {
+    const chapterData = chapter.chapters || chapter;
+    if (!window.confirm(`Permanently delete "${chapterData.title}"? This cannot be undone.`)) return;
+    try {
+      await chapterAPI.deleteChapter(chapterData.chapterId);
+      if (selectedChapter && (selectedChapter.chapters || selectedChapter).chapterId === chapterData.chapterId) {
+        setSelectedChapter(null);
+      }
+      await fetchSectionData(true, true);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Failed to delete chapter");
+    }
+  };
 
   const handleRestoreArchivedChapter = async (chapter) => {
     try {
@@ -323,6 +341,27 @@ export default function SectionEditPage() {
     setHasSectionChanges(hasChanges);
   };
 
+  // Filter chapters based on active/archived view
+  const visibleChapters = chapters.filter((ch) => {
+    const data = ch.chapters || ch;
+    if (chapterView === "archived") {
+      // Archived view: show indefinitely archived chapters (no purge countdown)
+      return data.isArchived && !data.purgeAfterAt;
+    }
+    // Active view: show non-archived + chapters with active countdown
+    return !data.isArchived || data.purgeAfterAt;
+  });
+
+  const archivedCount = chapters.filter((ch) => {
+    const data = ch.chapters || ch;
+    return data.isArchived && !data.purgeAfterAt;
+  }).length;
+
+  const handleChapterViewChange = (view) => {
+    setChapterView(view);
+    setSelectedChapter(null);
+  };
+
   const hasUnsavedChanges = hasChanges() || hasSectionChanges;
 
   // Use the new hooks
@@ -408,20 +447,24 @@ export default function SectionEditPage() {
         {/* Sidebar - shows in both views */}
         <ChaptersSidebar
           sectionId={sectionId}
-          chapters={chapters}
+          chapters={visibleChapters}
           selectedChapter={selectedChapter}
           activeTab={activeTab}
           pendingChanges={{
             ...pendingChanges,
             sectionChanged: hasSectionChanges,
           }}
+          chapterView={chapterView}
+          onChapterViewChange={handleChapterViewChange}
+          archivedCount={archivedCount}
           onChapterSelect={handleChapterSelect}
           onSectionSelect={handleSectionSelect}
           onChapterCreate={handleChapterCreate}
           onChapterDelete={handleChapterDelete}
           onChapterUndoDelete={handleChapterUndoDelete}
           onChapterRestoreArchived={handleRestoreArchivedChapter}
-          onChapterExpired={() => fetchSectionData(true, true)}
+          onChapterPermanentDelete={handlePermanentDeleteChapter}
+          onChapterExpired={handleChapterExpired}
           onReorderChapters={reorderChapters}
         />
 
@@ -446,7 +489,10 @@ export default function SectionEditPage() {
                   onRestoreArchived={() =>
                     handleRestoreArchivedChapter(selectedChapter)
                   }
-                  onChapterExpired={() => fetchSectionData(true, true)}
+                  onPermanentDelete={() =>
+                    handlePermanentDeleteChapter(selectedChapter)
+                  }
+                  onChapterExpired={handleChapterExpired}
                   isTemp={selectedChapter.isTemp}
                 />
               ) : (

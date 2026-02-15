@@ -106,6 +106,26 @@ function topologicalSort(tables, dependencies) {
  */
 async function purgeTableExpiredItems(tableName) {
   try {
+    // Chapters transition to indefinite archive instead of being hard-deleted
+    if (tableName === 'chapters') {
+      const updateQuery = sql.raw(`
+        UPDATE "chapters"
+        SET "purge_after_at" = NULL, "updated_at" = NOW()
+        WHERE "is_archived" = true
+          AND "purge_after_at" IS NOT NULL
+          AND "purge_after_at" <= now()
+      `);
+
+      const result = await db.execute(updateQuery);
+      const archivedCount = result.rowCount || 0;
+
+      if (archivedCount > 0) {
+        console.log(`[purger] Transitioned ${archivedCount} chapter(s) to indefinite archive`);
+      }
+
+      return archivedCount;
+    }
+
     const deleteQuery = sql.raw(`
       DELETE FROM "${tableName}"
       WHERE "is_archived" = true
